@@ -11,7 +11,7 @@ import {
   getGmailSync,
   setGmailSync,
 } from '../lib/cache.js'
-import { runAnalyzeAll } from '../lib/scoring.js'
+import { quickPass } from '../lib/reasoning.js'
 import {
   lookupService,
   type SubscriptionCategory,
@@ -548,7 +548,7 @@ app.post('/scan', async (c) => {
     // Ensures confidence + recommendations are populated immediately after every scan.
     let analyzed = 0
     try {
-      analyzed = await runAnalyzeAll(dbUserId)
+      analyzed = await quickPass(dbUserId)
     } catch (err) {
       log('analyze-all-error', (err as Error).message)
     }
