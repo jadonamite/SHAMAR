@@ -1,0 +1,37 @@
+# Deps
+node_modules/
+.pnp
+.pnp.js
+
+# Env — never commit
+.env
+.env.local
+.env.*.local
+.env.production
+server/.env
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Build
+server/dist/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+*.log
+.vercel
+
+# Local scratch / throwaway verification scripts — never committed
+_scratch*
+**/_scratch*
+
+# Internal working docs — kept local, not published
+HANDOVER.md
+STATUS.md
+NEXT.md
+PROGRESS.md
+TODO.md
+Context.md
+contracts/ERC8004_HANDOVER.md

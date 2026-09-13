@@ -1,0 +1,38 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "SAM — Subscription Agentic Manager",
+  "description": "Autonomous AI agent that detects, analyzes, and manages recurring subscriptions across Web2 and Web3. Uses deterministic confidence scoring and AI-generated insights to surface cancellation and optimization recommendations. Operates under user-defined ERC-8004 permission scopes on Celo.",
+  "image": "https://ciphergon.vercel.app/SAM.png",
+  "active": true,
+  "x402Support": false,
+  "services": [
+    {
+      "type": "agentWallet",
+      "address": "0x3ea23aa1d53eb5209f014f02ca889a6a7b37eed0",
+      "chains": ["eip155:42220"]
+    },
+    {
+      "type": "ENS",
+      "endpoint": "https://ciphergon.vercel.app"
+    }
+  ],
+  "registrations": [
+    {
+      "agentId": "9175",
+      "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "capabilities": {
+    "domains": ["finance", "subscriptions", "payments"],
+    "skills": [
+      "subscription-detection",
+      "recurring-payment-analysis",
+      "cancel-recommendation",
+      "policy-enforcement",
+      "gmail-scanning",
+      "wallet-transaction-analysis"
+    ]
+  },
+  "policyContract": "eip155:42220:0xae0b9b78419fe19b84152be75b4333bbbfd6f158",
+  "owner": "0xF6795a9E2E9ae0F96CD46b3F9b3F1d24EaD77638"
+}
