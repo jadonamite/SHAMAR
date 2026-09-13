@@ -260,7 +260,7 @@ Decide.`
         { role: 'system', content: SYSTEM },
         { role: 'user', content: user },
       ],
-      { maxTokens: 400, temperature: 0.2 }
+      { maxTokens: 260, temperature: 0.2 }
     )
     parsed = extractJson(raw)
   } catch (err) {
@@ -316,7 +316,7 @@ export async function reasonOverAll(
 
   // Bounded concurrency — 26 sequential model calls put the whole run past a
   // demo's patience, and unbounded ones trip provider rate limits.
-  const LANES = 6
+  const LANES = 12
   for (let i = 0; i < evidence.length; i += LANES) {
     const batch = await Promise.all(evidence.slice(i, i + LANES).map(decide))
     decisions.push(...batch)

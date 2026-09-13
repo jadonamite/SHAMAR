@@ -16,7 +16,7 @@ authorization is absent or you've told it to stop.
 
 ## Demo
 
-📹 **Video:** _link pending_
+📹 **Video:** https://www.youtube.com/watch?v=ZtTMTnJ5Ebk
 
 🔗 **Live:** https://shamar.namite.xyz
 

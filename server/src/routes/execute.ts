@@ -108,8 +108,13 @@ app.post('/', async (c) => {
   const dispatches: DispatchResult[] = []
   const calendarWrites: RenewalEvent[] = []
 
-  for (const e of evidence) {
-    const decision = await decide(e)
+  // Reason over everything at once; a serverless function has a hard ceiling
+  // and one model call per subscription in sequence exceeds it.
+  const reasoned = await Promise.all(evidence.map(decide))
+
+  for (let i = 0; i < evidence.length; i++) {
+    const e = evidence[i]
+    const decision = reasoned[i]
     decisions.push(decision)
     await persistDecision(decision)
 
