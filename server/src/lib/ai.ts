@@ -19,25 +19,28 @@ type Provider = {
   client: OpenAI
 }
 
+// Model ids are configurable because pinning them in source is how this broke:
+// the original default reached end of life and every call started failing with
+// no code change on our side.
 function providers(): Provider[] {
   const out: Provider[] = []
-  if (process.env.NVIDIA_API_KEY) {
-    out.push({
-      name: 'nvidia',
-      model: 'meta/llama-3.1-70b-instruct',
-      client: new OpenAI({
-        apiKey: process.env.NVIDIA_API_KEY,
-        baseURL: 'https://integrate.api.nvidia.com/v1',
-      }),
-    })
-  }
   if (process.env.GROQ_API_KEY) {
     out.push({
       name: 'groq',
-      model: 'llama-3.3-70b-versatile',
+      model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
       client: new OpenAI({
         apiKey: process.env.GROQ_API_KEY,
         baseURL: 'https://api.groq.com/openai/v1',
+      }),
+    })
+  }
+  if (process.env.NVIDIA_API_KEY) {
+    out.push({
+      name: 'nvidia',
+      model: process.env.NVIDIA_MODEL ?? 'nvidia/llama-3.1-nemotron-70b-instruct',
+      client: new OpenAI({
+        apiKey: process.env.NVIDIA_API_KEY,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
       }),
     })
   }
