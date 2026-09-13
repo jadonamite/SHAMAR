@@ -12,6 +12,7 @@ import {
   setGmailSync,
 } from '../lib/cache.js'
 import { quickPass } from '../lib/reasoning.js'
+import { CALENDAR_SCOPE } from '../lib/calendar.js'
 import {
   lookupService,
   type SubscriptionCategory,
@@ -238,7 +239,7 @@ app.get('/auth', (c) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/gmail.readonly'],
+    scope: ['https://www.googleapis.com/auth/gmail.readonly', CALENDAR_SCOPE],
     state: userId,
   })
 

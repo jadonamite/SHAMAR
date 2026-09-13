@@ -3,6 +3,9 @@ import { sql, getOrCreateUser } from '../lib/db.js'
 import { gatherEvidence, decide, persistDecision, type Decision } from '../lib/reasoning.js'
 import { dispatchCancellation, cancellationRecipient, type DispatchResult } from '../lib/dispatch.js'
 import { checkOnchainAuthorization, SCOPES, isAgentConfigured, getAgentAddress, getPolicyContract } from '../lib/agent.js'
+import { calendarClientFor, writeRenewalEvent, writeCancellationEvent, type RenewalEvent } from '../lib/calendar.js'
+import { pollControl, sendTelegram, dispatchReport, getHaltState } from '../lib/telegram.js'
+import { currencySymbol } from '../lib/currency.js'
 
 const app = new Hono()
 
@@ -67,6 +70,8 @@ app.post('/', async (c) => {
   const t0 = Date.now()
   const dbUserId = await getOrCreateUser(userId)
   const authorization = await resolveAuthorization(dbUserId)
+  const control = await pollControl()
+  const calendar = await calendarClientFor(userId)
 
   let evidence = await gatherEvidence(dbUserId)
   if (body.subscription_id) {
@@ -76,30 +81,68 @@ app.post('/', async (c) => {
 
   const decisions: Decision[] = []
   const dispatches: DispatchResult[] = []
+  const calendarWrites: RenewalEvent[] = []
 
   for (const e of evidence) {
     const decision = await decide(e)
     decisions.push(decision)
     await persistDecision(decision)
 
+    // Every subscription it keeps gets its next charge put on the calendar —
+    // knowing the deadline is most of the value even when nothing is cancelled.
+    if (calendar && apply && decision.action !== 'cancel') {
+      calendarWrites.push(
+        await writeRenewalEvent(calendar, {
+          id: e.subscription_id,
+          merchant: e.merchant,
+          amount: e.amount,
+          currency: e.currency,
+          cadence: e.cadence,
+          last_charged: e.days_since_charge === null ? null : new Date(Date.now() - e.days_since_charge * 86_400_000),
+        })
+      )
+    }
+
     if (decision.action !== 'cancel') continue
 
-    dispatches.push(
-      await dispatchCancellation({
-        decision,
-        userPrivyDid: userId,
-        dbUserId,
-        accountEmail,
-        authorized: authorization.granted,
-        apply,
-      })
-    )
+    const result = await dispatchCancellation({
+      decision,
+      userPrivyDid: userId,
+      dbUserId,
+      accountEmail,
+      authorized: authorization.granted && !control.halted,
+      apply,
+    })
+    if (control.halted && result.status === 'blocked_unauthorized') {
+      result.reason = 'Halted from Telegram — /resume to re-authorize'
+    }
+    dispatches.push(result)
+
+    if (result.status === 'sent') {
+      if (calendar) {
+        calendarWrites.push(
+          await writeCancellationEvent(calendar, { id: e.subscription_id, merchant: e.merchant }, result.recipient ?? '')
+        )
+      }
+      await sendTelegram(
+        dispatchReport({
+          merchant: e.merchant,
+          recipient: result.recipient ?? '',
+          amount: `${currencySymbol(e.currency)}${e.amount}/${e.cadence}`,
+          rationale: decision.rationale,
+          attested: Boolean(result.attestation),
+        })
+      )
+    }
   }
 
   const sent = dispatches.filter((d) => d.status === 'sent')
   return c.json({
     mode: apply ? 'apply' : 'dry_run',
     authorization,
+    control,
+    calendar_connected: calendar !== null,
+    calendar_writes: calendarWrites,
     reasoned: decisions.length,
     fell_back: decisions.filter((d) => d.reasoned_by === 'fallback').length,
     proposed_cancellations: dispatches.length,
@@ -124,6 +167,16 @@ app.get('/authorization', async (c) => {
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
   const dbUserId = await getOrCreateUser(userId)
   return c.json(await resolveAuthorization(dbUserId))
+})
+
+// GET /execute/control — halt state, without draining the Telegram queue
+app.get('/control', async (c) => {
+  return c.json(await getHaltState())
+})
+
+// POST /execute/control/poll — drain Telegram and apply /stop or /resume
+app.post('/control/poll', async (c) => {
+  return c.json(await pollControl())
 })
 
 // GET /execute/recipient/:merchant — where a cancellation would be sent
