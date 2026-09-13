@@ -11,6 +11,7 @@ import self from './routes/self.js'
 import reminders from './routes/reminders.js'
 import actions from './routes/actions.js'
 import policies from './routes/policies.js'
+import execute from './routes/execute.js'
 
 const app = new Hono()
 
@@ -36,5 +37,6 @@ app.route('/self', self)
 app.route('/reminders', reminders)
 app.route('/actions', actions)
 app.route('/policies', policies)
+app.route('/execute', execute)
 
 export default app
