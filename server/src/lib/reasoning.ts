@@ -43,6 +43,13 @@ const CADENCE_MULTIPLIER: Record<string, number> = {
   yearly: 1 / 12,
 }
 
+const CADENCE_DAYS: Record<string, number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: 30,
+  yearly: 365,
+}
+
 // Category priors for what cancelling actually costs you. The model may argue
 // against these with merchant-specific knowledge; the guardrails below cannot.
 const CATEGORY_PRIOR: Record<string, Pick<BlastRadius, 'data_loss' | 'access_loss'>> = {
@@ -224,13 +231,26 @@ function unpricedDecision(e: Evidence): Decision {
 export async function decide(e: Evidence): Promise<Decision> {
   if (!(e.amount > 0)) return unpricedDecision(e)
   const prior = priorFor(e.category)
+  const cycleDays = CADENCE_DAYS[e.cadence] ?? 30
+  const missed = e.days_since_charge === null ? null : Math.floor(e.days_since_charge / cycleDays)
+  const status =
+    missed === null
+      ? 'No charge has ever been recorded.'
+      : missed >= 2
+        ? `DORMANT — ${missed} ${e.cadence} billing cycles have passed with no charge. This is being paid for and not used, or billing has already lapsed.`
+        : missed === 1
+          ? `One ${e.cadence} cycle has passed without a charge.`
+          : 'Billing is current and on schedule.'
+
   const user = `Subscription: ${e.merchant}
 Category: ${e.category ?? 'unknown'}
 Price: ${currencySymbol(e.currency)}${e.amount}/${e.cadence} (≈$${e.monthly_usd.toFixed(2)}/month)
 Last charged: ${e.days_since_charge === null ? 'never recorded' : `${e.days_since_charge} days ago`}
+Status: ${status}
 First detected: ${e.days_since_detected} days ago
 Category prior — data loss: ${prior.data_loss}, access: ${prior.access_loss}
 
+A dormant subscription with no data-loss risk is the clearest case for cancelling.
 Decide.`
 
   let parsed: any = null
