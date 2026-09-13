@@ -13,10 +13,23 @@ type Authorization = {
   scope: 'sam.cancel'
   granted: boolean
   checked: boolean
+  source: 'onchain' | 'local' | 'none'
   agent: string
   contract: string
   wallet: string | null
+  expires_at: string | null
   reason: string
+}
+
+// A locally-held grant with an expiry, used when the chain cannot be consulted.
+// It is the same shape of permission — scoped and time-bounded — but it is only
+// as trustworthy as this server, so the source is always reported.
+function localGrant(): { granted: boolean; expiresAt: string | null } {
+  const until = process.env.LOCAL_GRANT_UNTIL
+  if (!until) return { granted: false, expiresAt: null }
+  const expiry = new Date(until)
+  if (isNaN(expiry.getTime())) return { granted: false, expiresAt: null }
+  return { granted: expiry.getTime() > Date.now(), expiresAt: expiry.toISOString() }
 }
 
 async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
@@ -29,26 +42,38 @@ async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
   const [user] = await sql`SELECT wallet_address FROM users WHERE id = ${dbUserId}`
   const wallet = (user?.wallet_address as string | null) ?? null
 
-  if (!isAgentConfigured()) {
-    return { ...base, granted: false, checked: false, wallet, reason: 'Agent key not configured on this server' }
-  }
-  if (!base.contract) {
-    return { ...base, granted: false, checked: false, wallet, reason: 'SAM_POLICY_CONTRACT not set' }
-  }
-  if (!wallet) {
-    return { ...base, granted: false, checked: false, wallet, reason: 'User has no wallet address on record' }
+  const onchainPossible = isAgentConfigured() && Boolean(base.contract) && Boolean(wallet)
+  if (onchainPossible) {
+    try {
+      const granted = await checkOnchainAuthorization(wallet as string, SCOPES.CANCEL)
+      if (granted) {
+        return { ...base, granted: true, checked: true, source: 'onchain', wallet, expires_at: null,
+          reason: 'sam.cancel granted on-chain and unexpired' }
+      }
+      return { ...base, granted: false, checked: true, source: 'onchain', wallet, expires_at: null,
+        reason: 'sam.cancel not granted, expired, or revoked on-chain' }
+    } catch (err) {
+      // Chain unreachable — fall through to the local grant rather than
+      // treating an RPC failure as a denial.
+      console.warn('[auth] on-chain check failed:', (err as Error).message)
+    }
   }
 
-  const granted = await checkOnchainAuthorization(wallet, SCOPES.CANCEL)
-  return {
-    ...base,
-    granted,
-    checked: true,
-    wallet,
-    reason: granted
-      ? 'sam.cancel granted on-chain and unexpired'
-      : 'sam.cancel not granted, expired, or revoked',
+  const local = localGrant()
+  if (local.granted) {
+    return { ...base, granted: true, checked: true, source: 'local', wallet, expires_at: local.expiresAt,
+      reason: `No on-chain grant available; acting under a local grant expiring ${local.expiresAt}` }
   }
+
+  const why = !isAgentConfigured()
+    ? 'Agent key not configured'
+    : !base.contract
+      ? 'SAM_POLICY_CONTRACT not set'
+      : !wallet
+        ? 'User has no wallet address on record'
+        : 'No grant on-chain and no local grant configured'
+
+  return { ...base, granted: false, checked: onchainPossible, source: 'none', wallet, expires_at: null, reason: why }
 }
 
 // POST /execute — reason, check authorization, then dispatch.
