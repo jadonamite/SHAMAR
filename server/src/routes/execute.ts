@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
+import { readBody } from '../lib/body.js'
 import { sql, getOrCreateUser } from '../lib/db.js'
-import { gatherEvidence, decide, persistDecision, type Decision } from '../lib/reasoning.js'
+import { gatherEvidence, decide, persistDecision, monthlyUsd, type Decision } from '../lib/reasoning.js'
 import { dispatchCancellation, cancellationRecipient, type DispatchResult } from '../lib/dispatch.js'
 import { checkOnchainAuthorization, SCOPES, isAgentConfigured, getAgentAddress, getPolicyContract } from '../lib/agent.js'
 import { calendarClientFor, writeRenewalEvent, writeCancellationEvent, type RenewalEvent } from '../lib/calendar.js'
@@ -76,17 +77,75 @@ async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
   return { ...base, granted: false, checked: onchainPossible, source: 'none', wallet, expires_at: null, reason: why }
 }
 
+
+
+// Every pre-flight check talks to something outside this process. None of them
+// is worth failing the whole run over, so each gets a hard ceiling and a
+// stated fallback.
+function withTimeout<T>(work: Promise<T>, ms: number, fallback: T, label: string): Promise<T> {
+  return Promise.race([
+    work.catch((err) => {
+      console.warn(`[execute] ${label} failed:`, (err as Error).message)
+      return fallback
+    }),
+    new Promise<T>((resolve) =>
+      setTimeout(() => {
+        console.warn(`[execute] ${label} timed out after ${ms}ms`)
+        resolve(fallback)
+      }, ms)
+    ),
+  ])
+}
+
+// Reasoning is slow and belongs off the request path. Decisions persisted by a
+// prior run are replayed here so a page load never waits on a model.
+async function cachedDecisions(dbUserId: string): Promise<Decision[] | null> {
+  const rows = (await sql`
+    SELECT r.subscription_id, r.action, r.confidence, r.evidence,
+           s.merchant, s.amount, s.currency, s.cadence, s.category
+    FROM recommendations r
+    JOIN subscriptions s ON s.id = r.subscription_id
+    WHERE s.user_id = ${dbUserId} AND s.status = 'active'
+    ORDER BY r.confidence DESC
+  `) as Array<Record<string, any>>
+  if (rows.length === 0) return null
+
+  return rows.map((r) => {
+    const notes: string[] = Array.isArray(r.evidence) ? r.evidence : []
+    const [rationale, ...rest] = notes
+    return {
+      subscription_id: r.subscription_id,
+      merchant: r.merchant,
+      action: r.action,
+      confidence: Number(r.confidence),
+      rationale: rationale ?? '',
+      blast_radius: {
+        data_loss: 'recoverable',
+        access_loss: 'solo',
+        repurchase: 'same_price',
+        irreversible: rest.some((n) => /permanent|legacy|irreversible/i.test(n)),
+        notes: rest,
+      },
+      savings_usd_monthly:
+        r.action === 'cancel' || r.action === 'pause'
+          ? monthlyUsd(Number(r.amount), r.currency, r.cadence)
+          : 0,
+      requires_authorization: r.action === 'cancel' || r.action === 'pause',
+      reasoned_by: 'model' as const,
+    }
+  })
+}
+
 // POST /execute — reason, check authorization, then dispatch.
 // Dry-run unless { apply: true }. Nothing leaves the building without it.
 app.post('/', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const body = await c.req
-    .json<{ apply?: boolean; subscription_id?: string; account_email?: string }>()
-    .catch(() => ({}) as Record<string, never>)
+  const body = await readBody<{ apply: boolean; fresh: boolean; subscription_id: string; account_email: string }>(c)
 
   const apply = body.apply ?? false
+  const fresh = body.fresh ?? false
   const accountEmail = body.account_email ?? process.env.NOTIFY_EMAIL_TO ?? ''
   if (apply && !accountEmail) {
     return c.json({ error: 'account_email required to dispatch (or set NOTIFY_EMAIL_TO)' }, 400)
@@ -94,9 +153,17 @@ app.post('/', async (c) => {
 
   const t0 = Date.now()
   const dbUserId = await getOrCreateUser(userId)
-  const authorization = await resolveAuthorization(dbUserId)
-  const control = await pollControl()
-  const calendar = await calendarClientFor(userId)
+  const [authorization, control, calendar] = await Promise.all([
+    withTimeout(resolveAuthorization(dbUserId), 6000,
+      { scope: 'sam.cancel' as const, granted: false, checked: false, source: 'none' as const,
+        agent: getAgentAddress(), contract: getPolicyContract(), wallet: null, expires_at: null,
+        reason: 'Authorization check timed out; refusing rather than assuming permission' },
+      'authorization'),
+    withTimeout(pollControl(), 4000,
+      { halted: false, source: 'unavailable' as const, reason: 'Control channel unreachable' },
+      'telegram control'),
+    withTimeout(calendarClientFor(userId), 4000, null, 'calendar'),
+  ])
 
   let evidence = await gatherEvidence(dbUserId)
   if (body.subscription_id) {
@@ -108,15 +175,19 @@ app.post('/', async (c) => {
   const dispatches: DispatchResult[] = []
   const calendarWrites: RenewalEvent[] = []
 
-  // Reason over everything at once; a serverless function has a hard ceiling
-  // and one model call per subscription in sequence exceeds it.
-  const reasoned = await Promise.all(evidence.map(decide))
+  // A serverless function has a hard ceiling that live model calls can exceed,
+  // so persisted decisions are replayed unless a fresh pass is asked for.
+  const cached = fresh ? null : await cachedDecisions(dbUserId)
+  const reasoned = cached && cached.length === evidence.length
+    ? evidence.map((e) => cached.find((c) => c.subscription_id === e.subscription_id)!).filter(Boolean)
+    : await Promise.all(evidence.map(decide))
+  const replayed = Boolean(cached && cached.length === evidence.length)
 
   for (let i = 0; i < evidence.length; i++) {
     const e = evidence[i]
     const decision = reasoned[i]
     decisions.push(decision)
-    await persistDecision(decision)
+    if (!replayed) await persistDecision(decision)
 
     // Every subscription it keeps gets its next charge put on the calendar —
     // knowing the deadline is most of the value even when nothing is cancelled.
@@ -169,6 +240,7 @@ app.post('/', async (c) => {
   const sent = dispatches.filter((d) => d.status === 'sent')
   return c.json({
     mode: apply ? 'apply' : 'dry_run',
+    reasoning: replayed ? 'replayed' : 'live',
     authorization,
     control,
     calendar_connected: calendar !== null,

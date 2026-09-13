@@ -4,6 +4,11 @@ import OpenAI from 'openai'
 // meant an absent key threw during module load and took the whole server down
 // rather than degrading the one feature that needed it.
 
+// A provider that never answers is worse than one that errors: without this the
+// request hangs until the whole function is killed, and the deterministic
+// fallback never gets a chance to run.
+const PROVIDER_TIMEOUT_MS = Number(process.env.MODEL_TIMEOUT_MS ?? 12_000)
+
 export type AIMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
 export class NoModelAvailable extends Error {
@@ -31,6 +36,8 @@ function providers(): Provider[] {
       client: new OpenAI({
         apiKey: process.env.GROQ_API_KEY,
         baseURL: 'https://api.groq.com/openai/v1',
+        timeout: PROVIDER_TIMEOUT_MS,
+        maxRetries: 0,
       }),
     })
   }
@@ -41,6 +48,8 @@ function providers(): Provider[] {
       client: new OpenAI({
         apiKey: process.env.NVIDIA_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
+        timeout: PROVIDER_TIMEOUT_MS,
+        maxRetries: 0,
       }),
     })
   }

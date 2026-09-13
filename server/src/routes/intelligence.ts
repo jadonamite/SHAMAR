@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { readBody } from '../lib/body.js'
 import { sql, getOrCreateUser } from '../lib/db.js'
 import {
   gatherEvidence,
@@ -32,7 +33,7 @@ app.post('/reason', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const body = await c.req.json<{ persist?: boolean }>().catch(() => ({ persist: false }))
+  const body = await readBody<{ persist: boolean }>(c)
   const dbUserId = await getOrCreateUser(userId)
 
   const t0 = Date.now()

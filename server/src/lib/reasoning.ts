@@ -316,7 +316,7 @@ export async function reasonOverAll(
 
   // Bounded concurrency — 26 sequential model calls put the whole run past a
   // demo's patience, and unbounded ones trip provider rate limits.
-  const LANES = 12
+  const LANES = 3
   for (let i = 0; i < evidence.length; i += LANES) {
     const batch = await Promise.all(evidence.slice(i, i + LANES).map(decide))
     decisions.push(...batch)

@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { readBody } from '../lib/body.js'
 import { sql, getOrCreateUser } from '../lib/db.js'
 import { logAction } from '../lib/actions.js'
 import { toUsd } from '../lib/currency.js'
@@ -123,7 +124,7 @@ app.post('/evaluate', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const body = await c.req.json<{ apply?: boolean }>().catch(() => ({ apply: false }))
+  const body = await readBody<{ apply: boolean }>(c)
   const apply = body.apply ?? false
 
   const dbUserId = await getOrCreateUser(userId)

@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { readBody } from '../lib/body.js'
 import { getOrCreateUser, sql } from '../lib/db.js'
 import { tick, pollDecisions, getNotice, stageNotice } from '../lib/renewal.js'
 
@@ -9,7 +10,7 @@ const app = new Hono()
 app.post('/tick', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
-  const body = await c.req.json<{ apply?: boolean }>().catch(() => ({}) as { apply?: boolean })
+  const body = await readBody<{ apply: boolean }>(c)
   const dbUserId = await getOrCreateUser(userId)
   return c.json(await tick(dbUserId, { apply: body.apply ?? false }))
 })
@@ -28,8 +29,8 @@ app.get('/:id', async (c) => {
 app.post('/stage', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
-  const { merchant, hours_out = 100, notices_sent = 0 } =
-    await c.req.json<{ merchant: string; hours_out?: number; notices_sent?: number }>()
+  const { merchant = '', hours_out = 100, notices_sent = 0 } =
+    await readBody<{ merchant: string; hours_out: number; notices_sent: number }>(c)
 
   const dbUserId = await getOrCreateUser(userId)
   const [sub] = await sql`
