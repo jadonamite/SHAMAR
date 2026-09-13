@@ -29,7 +29,7 @@ authorization is absent or you've told it to stop.
 | **Gmail** | read | Scans receipts to detect recurring charges, amounts, and cadence | `server/src/routes/gmail.ts` |
 | **Google Calendar** | write | Writes each renewal date, and the date a cancellation was requested | `server/src/lib/calendar.ts` |
 | **Resend** | send | Dispatches the cancellation request to the merchant's billing address | `server/src/lib/dispatch.ts` |
-| **Telegram** | read + write | Reports every dispatch; `/stop` halts the agent mid-run | `server/src/lib/telegram.ts` |
+| **Telegram** | read + write | Asks before each renewal with inline Cancel/Keep buttons, reports every dispatch, and `/stop` halts the agent mid-run | `server/src/lib/telegram.ts`, `renewal.ts` |
 | **Celo** (`SAMPolicy`) | read | Checks a scoped, expiring, revocable on-chain grant before acting | `server/src/lib/agent.ts` |
 
 The contract is live on Celo mainnet at
@@ -37,6 +37,45 @@ The contract is live on Celo mainnet at
 with four registered scopes — `sam.cancel`, `sam.pause`, `sam.remind`,
 `sam.analyze`. Anyone can verify the agent's permissions without trusting this
 repository.
+
+---
+
+## It asks before it acts
+
+Before a subscription renews, SHAMAR sends a notice to Telegram with two
+buttons:
+
+```
+CLAUDE PRO renews on the 16 September.
+
+$20.00 / monthly
+
+Reply below. Silence means SHAMAR cancels it 24 hours before renewal.
+_68h remaining._
+
+        [ ✕  Cancel it ]   [ ✓  Keep it ]
+```
+
+- **Keep it** — the decision is recorded and no further notices are sent
+- **Cancel it** — cancelled immediately
+- **Silence** — four notices go out at 120h, 72h, 48h and 36h before renewal,
+  each more insistent than the last. If none is answered, SHAMAR cancels the
+  subscription 24 hours before it would charge, and says so.
+
+The default is deliberate. An unanswered renewal is not consent, and the cost
+of wrongly cancelling something cheap is smaller than the cost of silently
+renewing something forgotten.
+
+Button presses are read on a separate update offset from the `/stop` control
+channel, so neither consumes the other's messages, and a decision already taken
+is never re-asked.
+
+```
+POST /renewals/tick          one pass of the schedule, dry-run by default
+POST /renewals/poll          read pending button presses
+GET  /renewals/:id           notice state for one subscription
+POST /renewals/stage         position a renewal for demonstration
+```
 
 ---
 
