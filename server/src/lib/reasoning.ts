@@ -199,7 +199,30 @@ function applyGuardrails(d: Decision): Decision {
   return g
 }
 
+// A charge we could not price is a charge we do not understand. Acting on it
+// risks cancelling something valuable to save an unknown amount, so it is
+// surfaced for review and never dispatched.
+function unpricedDecision(e: Evidence): Decision {
+  return {
+    subscription_id: e.subscription_id,
+    merchant: e.merchant,
+    action: 'remind',
+    confidence: 100,
+    rationale: `${e.merchant} was detected but no charge amount could be parsed from its receipts. SHAMAR will not cancel a subscription it cannot price.`,
+    blast_radius: {
+      ...priorFor(e.category),
+      repurchase: 'same_price',
+      irreversible: false,
+      notes: ['Amount unknown — excluded from cancellation'],
+    },
+    savings_usd_monthly: 0,
+    requires_authorization: false,
+    reasoned_by: 'fallback',
+  }
+}
+
 export async function decide(e: Evidence): Promise<Decision> {
+  if (!(e.amount > 0)) return unpricedDecision(e)
   const prior = priorFor(e.category)
   const user = `Subscription: ${e.merchant}
 Category: ${e.category ?? 'unknown'}
@@ -271,10 +294,13 @@ export async function reasonOverAll(
   const evidence = await gatherEvidence(dbUserId)
   const decisions: Decision[] = []
 
-  for (const e of evidence) {
-    const d = await decide(e)
-    decisions.push(d)
-    if (opts.persist) await persistDecision(d)
+  // Bounded concurrency — 26 sequential model calls put the whole run past a
+  // demo's patience, and unbounded ones trip provider rate limits.
+  const LANES = 6
+  for (let i = 0; i < evidence.length; i += LANES) {
+    const batch = await Promise.all(evidence.slice(i, i + LANES).map(decide))
+    decisions.push(...batch)
+    if (opts.persist) await Promise.all(batch.map(persistDecision))
   }
 
   return decisions.sort((a, b) => b.savings_usd_monthly - a.savings_usd_monthly)

@@ -1,42 +1,82 @@
 import OpenAI from 'openai'
 
-const nvidia = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY!,
-  baseURL: 'https://integrate.api.nvidia.com/v1',
-})
-
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY!,
-  baseURL: 'https://api.groq.com/openai/v1',
-})
+// Clients are built on first use, not at import. Constructing them eagerly
+// meant an absent key threw during module load and took the whole server down
+// rather than degrading the one feature that needed it.
 
 export type AIMessage = { role: 'system' | 'user' | 'assistant'; content: string }
+
+export class NoModelAvailable extends Error {
+  constructor(detail: string) {
+    super(`No model provider available: ${detail}`)
+    this.name = 'NoModelAvailable'
+  }
+}
+
+type Provider = {
+  name: string
+  model: string
+  client: OpenAI
+}
+
+function providers(): Provider[] {
+  const out: Provider[] = []
+  if (process.env.NVIDIA_API_KEY) {
+    out.push({
+      name: 'nvidia',
+      model: 'meta/llama-3.1-70b-instruct',
+      client: new OpenAI({
+        apiKey: process.env.NVIDIA_API_KEY,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
+      }),
+    })
+  }
+  if (process.env.GROQ_API_KEY) {
+    out.push({
+      name: 'groq',
+      model: 'llama-3.3-70b-versatile',
+      client: new OpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: 'https://api.groq.com/openai/v1',
+      }),
+    })
+  }
+  return out
+}
+
+export function modelAvailable(): boolean {
+  return providers().length > 0
+}
 
 export async function complete(
   messages: AIMessage[],
   opts: { maxTokens?: number; temperature?: number } = {}
 ): Promise<string> {
   const { maxTokens = 512, temperature = 0.3 } = opts
+  const available = providers()
 
-  try {
-    const res = await nvidia.chat.completions.create({
-      model: 'meta/llama-3.1-70b-instruct',
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-    })
-    return res.choices[0]?.message?.content ?? ''
-  } catch (err) {
-    console.warn('[AI] NVIDIA NIM failed, falling back to Groq:', (err as Error).message)
-
-    const res = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-    })
-    return res.choices[0]?.message?.content ?? ''
+  if (available.length === 0) {
+    throw new NoModelAvailable('set NVIDIA_API_KEY or GROQ_API_KEY')
   }
+
+  const failures: string[] = []
+  for (const provider of available) {
+    try {
+      const res = await provider.client.chat.completions.create({
+        model: provider.model,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      })
+      return res.choices[0]?.message?.content ?? ''
+    } catch (err) {
+      const detail = (err as Error).message
+      failures.push(`${provider.name}: ${detail}`)
+      console.warn(`[AI] ${provider.name} failed, trying next:`, detail)
+    }
+  }
+
+  throw new NoModelAvailable(failures.join(' | '))
 }
 
 export async function generateSubscriptionInsight(sub: {
@@ -49,7 +89,7 @@ export async function generateSubscriptionInsight(sub: {
     {
       role: 'system',
       content:
-        'You are Shamar, a subscription intelligence agent. Generate a single concise insight (1-2 sentences) about a subscription based on usage signals. Be direct, specific, and confidence-calibrated. Never alarmist.',
+        'You are SHAMAR, a subscription intelligence agent. Generate a single concise insight (1-2 sentences) about a subscription based on usage signals. Be direct, specific, and confidence-calibrated. Never alarmist.',
     },
     {
       role: 'user',
@@ -58,5 +98,9 @@ Signals: ${sub.signals.join(', ')}
 Generate insight:`,
     },
   ]
-  return complete(messages, { maxTokens: 120, temperature: 0.4 })
+  try {
+    return await complete(messages, { maxTokens: 120, temperature: 0.4 })
+  } catch {
+    return ''
+  }
 }
