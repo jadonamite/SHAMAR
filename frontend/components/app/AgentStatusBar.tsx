@@ -70,7 +70,7 @@ export default function AgentStatusBar({ scanning, lastScan, subCount = 0 }: Age
 
       <Divider />
 
-      <Field label="AGENT">SAM v0.1</Field>
+      <Field label="AGENT">Shamar v0.1</Field>
     </div>
   )
 }

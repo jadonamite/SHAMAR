@@ -121,7 +121,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
                 flex: 1,
               }}
             >
-              <span style={{ color: '#fff' }}>SAM</span> {describeAction(a)}
+              <span style={{ color: '#fff' }}>Shamar</span> {describeAction(a)}
               {a.triggered_by === 'policy' && (
                 <span
                   style={{

@@ -11,5 +11,5 @@ if (typeof net.setDefaultAutoSelectFamily === 'function') {
 const port = Number(process.env.PORT ?? 3001)
 
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`SAM server running on http://localhost:${port}`)
+  console.log(`Shamar server running on http://localhost:${port}`)
 })

@@ -1,10 +1,10 @@
 'use client'
 
-import { PrivyProvider as Privy } from '@privy-io/react-auth'
+import { PrivyProvider as Privy, type PrivyClientConfig } from '@privy-io/react-auth'
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
+const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cm00000000000000000000000'
 
-const getPrivyConfig = () => ({
+const getPrivyConfig = (): PrivyClientConfig => ({
   appearance: {
     theme: 'dark',
     accentColor: '#E50914',

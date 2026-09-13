@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 /**
  * @title  SAMPolicy
- * @author Ciphergon / SAM
+ * @author SHAMAR
  * @notice ERC-8004-inspired programmable agent-permission registry.
  *         Each user grants an agent address time-bounded, revocable execution
  *         scopes. SAM's backend MUST pass {isAuthorized} before performing any

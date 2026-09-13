@@ -95,7 +95,7 @@ app.get('/cancel-guide/:subscriptionId', async (c) => {
   const steps = await complete([
     {
       role: 'system',
-      content: 'You are SAM. Give exactly 3 numbered steps to cancel a specific subscription. Be concise and specific about UI locations. No fluff.',
+      content: 'You are Shamar. Give exactly 3 numbered steps to cancel a specific subscription. Be concise and specific about UI locations. No fluff.',
     },
     {
       role: 'user',

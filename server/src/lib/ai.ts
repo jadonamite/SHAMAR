@@ -49,7 +49,7 @@ export async function generateSubscriptionInsight(sub: {
     {
       role: 'system',
       content:
-        'You are SAM, a subscription intelligence agent. Generate a single concise insight (1-2 sentences) about a subscription based on usage signals. Be direct, specific, and confidence-calibrated. Never alarmist.',
+        'You are Shamar, a subscription intelligence agent. Generate a single concise insight (1-2 sentences) about a subscription based on usage signals. Be direct, specific, and confidence-calibrated. Never alarmist.',
     },
     {
       role: 'user',

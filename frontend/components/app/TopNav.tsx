@@ -44,10 +44,10 @@ export default function TopNav({
     >
       {/* Left: logo + optional section title */}
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-        <Link href="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="SAM home">
+        <Link href="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="Shamar home">
           <Image
             src="/SAM.png"
-            alt="SAM"
+            alt="Shamar"
             width={24}
             height={24}
             priority
@@ -57,7 +57,7 @@ export default function TopNav({
             className="text-white font-bold tracking-tight hidden sm:inline"
             style={{ fontFamily: 'var(--font-syne)', fontSize: '16px', letterSpacing: '-0.02em' }}
           >
-            SAM
+            Shamar
           </span>
         </Link>
         {title && (

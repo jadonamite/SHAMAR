@@ -4,7 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 
 const pillars = [
-  'Read-only Gmail access. SAM cannot send or delete.',
+  'Read-only Gmail access. Shamar cannot send or delete.',
   'Every action requires your approval in Phase 1.',
   'All execution is logged, auditable, and reversible.',
 ]
@@ -84,7 +84,7 @@ export default function TrustSection() {
                 letterSpacing: '-0.03em',
               }}
             >
-              "SAM acts
+              "Shamar acts
               <br />
               <span style={{ color: '#E50914' }}>when you say so."</span>
             </motion.h2>
@@ -95,7 +95,7 @@ export default function TrustSection() {
               className="text-secondary mt-6"
               style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '14px', maxWidth: '340px', lineHeight: '1.7' }}
             >
-              Progressive trust. SAM starts with visibility and earns execution rights
+              Progressive trust. Shamar starts with visibility and earns execution rights
               through performance — never the other way around.
             </motion.p>
           </div>

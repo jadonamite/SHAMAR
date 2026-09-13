@@ -19,13 +19,13 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'SAM — Subscription Agentic Manager',
+  title: 'Shamar — Subscription Agentic Manager',
   description:
     'An autonomous AI system that understands and manages your recurring financial commitments across Web2 and Web3.',
   openGraph: {
-    title: 'SAM — Subscription Agentic Manager',
+    title: 'Shamar — Subscription Agentic Manager',
     description: 'Your subscriptions are bleeding you.',
-    siteName: 'SAM by Ciphergon',
+    siteName: 'SHAMAR',
   },
  other: {
     "talentapp:project_verification":

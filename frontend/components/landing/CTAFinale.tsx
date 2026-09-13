@@ -1,10 +1,17 @@
+'use client'
+
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 
-const handleLogin = (login, setEntering, router, authenticated) => {
+const handleLogin = (
+  login: () => void,
+  setEntering: (v: boolean) => void,
+  router: { push: (path: string) => void },
+  authenticated: boolean,
+) => {
   if (authenticated) {
     router.push('/dashboard');
   } else {
@@ -63,7 +70,7 @@ export default function CTAFinale() {
             letterSpacing: '0.16em',
           }}
         >
-          Ciphergon · Subscription Intelligence
+          SHAMAR · Subscription Intelligence
         </motion.p>
         <motion.h2
           initial={{ opacity: 0, y: 32 }}

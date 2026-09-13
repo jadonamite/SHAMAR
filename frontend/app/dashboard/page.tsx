@@ -216,7 +216,7 @@ function DashboardInner() {
           className="text-3xl font-bold text-white text-center"
           style={{ fontFamily: 'var(--font-syne)', letterSpacing: '-0.03em' }}
         >
-          SAM
+          Shamar
         </h1>
         <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3' }} className="text-sm text-center">
           Connect your wallet to get started

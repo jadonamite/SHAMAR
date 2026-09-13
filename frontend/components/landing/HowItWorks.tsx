@@ -12,7 +12,7 @@ const steps = [
   {
     number: '02',
     label: 'DETECT',
-    desc: 'SAM scans. Every subscription surfaced.',
+    desc: 'Shamar scans. Every subscription surfaced.',
     detail: 'Invoices, receipts, renewal notices, onchain recurring payments.',
   },
   {
@@ -24,7 +24,7 @@ const steps = [
   {
     number: '04',
     label: 'ACT',
-    desc: 'Remind, pause, or cancel. You approve. SAM executes.',
+    desc: 'Remind, pause, or cancel. You approve. Shamar executes.',
     detail: 'Every action is logged, auditable, and reversible.',
   },
 ]
@@ -107,7 +107,7 @@ export default function HowItWorks() {
             className="text-secondary mt-4"
             style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '14px', maxWidth: '280px' }}
           >
-            Scroll to walk through how SAM takes you from chaos to clarity.
+            Scroll to walk through how Shamar takes you from chaos to clarity.
           </p>
         </div>
 

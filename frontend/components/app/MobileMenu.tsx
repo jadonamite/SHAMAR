@@ -85,7 +85,7 @@ export default function MobileMenu({
                     fontWeight: 700,
                   }}
                 >
-                  SAM
+                  Shamar
                 </span>
                 <button
                   onClick={() => setOpen(false)}

@@ -5,7 +5,7 @@
 //   - The Gmail `from:` query (pre-filters at API level)
 //   - Merchant normalization (consistent naming)
 //   - Billing-domain allowlist (sender-based detection)
-//   - Category metadata (used by SAM's intelligence/grouping layer)
+//   - Category metadata (used by Shamar's intelligence/grouping layer)
 //
 // To add a service, add an entry below. Everything else is auto-derived.
 // ---------------------------------------------------------------------------

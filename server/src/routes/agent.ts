@@ -100,7 +100,7 @@ app.get('/history', async (c) => {
   return c.json({ actions: rows })
 })
 
-// POST /agent/grant-policy — user explicitly grants SAM policy execution
+// POST /agent/grant-policy — user explicitly grants Shamar policy execution
 app.post('/grant-policy', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
@@ -114,7 +114,7 @@ app.post('/grant-policy', async (c) => {
   return c.json({ granted: true })
 })
 
-// POST /agent/revoke-policy — user revokes SAM policy execution
+// POST /agent/revoke-policy — user revokes Shamar policy execution
 app.post('/revoke-policy', async (c) => {
   const userId = c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)

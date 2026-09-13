@@ -71,9 +71,9 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
           Connect Gmail
         </h3>
         <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3' }} className="text-sm leading-relaxed">
-          SAM reads your inbox to detect recurring subscriptions.
+          Shamar reads your inbox to detect recurring subscriptions.
           <br />
-          Read-only access. SAM cannot send or delete emails.
+          Read-only access. Shamar cannot send or delete emails.
         </p>
       </div>
 

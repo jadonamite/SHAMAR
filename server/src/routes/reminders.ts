@@ -101,7 +101,7 @@ app.post('/send-due', async (c) => {
 
     const ok = await sendEmail({
       to: r.user_email,
-      subject: `SAM: ${r.merchant} subscription reminder`,
+      subject: `Shamar: ${r.merchant} subscription reminder`,
       html: reminderEmail(r.merchant, r.amount, r.currency, r.cadence, r.message),
     })
 

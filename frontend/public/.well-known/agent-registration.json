@@ -1,6 +1,6 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "SAM — Subscription Agentic Manager",
+  "name": "Shamar — Subscription Agentic Manager",
   "description": "Autonomous AI agent that detects, analyzes, and manages recurring subscriptions across Web2 and Web3. Uses deterministic confidence scoring and AI-generated insights to surface cancellation and optimization recommendations. Operates under user-defined ERC-8004 permission scopes on Celo.",
   "image": "https://ciphergon.vercel.app/SAM.png",
   "active": true,

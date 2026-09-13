@@ -98,7 +98,7 @@ export default function Footer() {
             letterSpacing: '0.14em',
           }}
         >
-          <span>© 2026 CIPHERGON, ALL RIGHTS RESERVED.</span>
+          <span>© 2026 SHAMAR, ALL RIGHTS RESERVED.</span>
           <span className="hidden sm:inline opacity-50">|</span>
           <div className="flex items-center justify-center gap-2 sm:gap-3">
             <a href="#" className="underline hover:text-white transition-colors">

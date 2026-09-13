@@ -170,7 +170,7 @@ export default function AgentPage() {
   const selfApp = useMemo(() => {
     if (!user?.id) return null
     return new SelfAppBuilder({
-      appName: 'SAM — Subscription Agentic Manager',
+      appName: 'Shamar — Subscription Agentic Manager',
       scope: 'sam-ciphergon',
       endpoint: `${process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001'}/self/verify`,
       endpointType: 'staging_https',
@@ -253,7 +253,7 @@ export default function AgentPage() {
           style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
         >
           <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            SAM Agent
+            Shamar Agent
           </span>
           <div className="grid grid-cols-2 gap-4">
             {[
@@ -323,7 +323,7 @@ export default function AgentPage() {
 
           {isVerified || selfSuccess ? (
             <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '13px' }}>
-              Identity verified. SAM logs attributable attestations tied to your ZK proof.
+              Identity verified. Shamar logs attributable attestations tied to your ZK proof.
             </p>
           ) : selfApp ? (
             <div className="flex flex-col gap-3">

@@ -290,7 +290,7 @@ export default function NotificationCascade() {
                   letterSpacing: '0.05em',
                 }}
               >
-                SAM cancelled 2
+                Shamar cancelled 2
               </p>
               <p
                 style={{

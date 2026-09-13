@@ -65,7 +65,7 @@ export default function Hero() {
         >
           <Image
             src="/SAM.png"
-            alt="SAM logo"
+            alt="Shamar logo"
             width={140}
             height={140}
             priority
@@ -87,7 +87,7 @@ export default function Hero() {
                 letterSpacing: '0.16em',
               }}
             >
-              Ciphergon / SAM
+              SHAMAR
             </motion.p>
 
             <motion.h1

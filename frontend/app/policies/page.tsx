@@ -481,7 +481,7 @@ export default function PoliciesPage() {
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '13px' }}>No policies yet.</p>
             <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#3a3a3a', fontSize: '12px' }}>
-              Create a policy to let SAM act automatically on your subscriptions.
+              Create a policy to let Shamar act automatically on your subscriptions.
             </p>
           </div>
         ) : (

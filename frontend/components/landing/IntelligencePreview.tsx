@@ -93,7 +93,7 @@ export default function IntelligencePreview() {
               letterSpacing: '-0.03em',
             }}
           >
-            SAM sees what you miss.
+            Shamar sees what you miss.
           </h2>
         </motion.div>
 
@@ -132,7 +132,7 @@ export default function IntelligencePreview() {
                   margin: '0 auto',
                 }}
               >
-                sam.ciphergon.xyz/dashboard
+                shamar.xyz/dashboard
               </div>
               {/* Live scanning badge */}
               <div className="flex items-center gap-1.5 ml-auto">
@@ -274,7 +274,7 @@ export default function IntelligencePreview() {
                   className="text-muted"
                   style={{ fontFamily: 'var(--font-dm-mono)', fontSize: '10px' }}
                 >
-                  SAM · confidence engine v0.1
+                  Shamar · confidence engine v0.1
                 </span>
                 <motion.div
                   animate={{ opacity: [0.4, 1, 0.4] }}
