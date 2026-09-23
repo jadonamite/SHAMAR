@@ -1,17 +1,30 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import Image from 'next/image'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Button from '@/components/ui/Button'
+import Logo from '@/components/ui/Logo'
+import BrandLogo, { type BrandName } from '@/components/ui/BrandLogo'
 import NotificationCascade from '@/components/landing/NotificationCascade'
 import { useMiniPay } from '@/components/providers/MiniPayProvider'
+import { PrimaryButton } from '@/components/landing/primitives'
 
-export default function Hero() {
+const KNOWN: Array<{ name: BrandName; label: string }> = [
+  { name: 'netflix', label: 'Netflix' },
+  { name: 'spotify', label: 'Spotify' },
+  { name: 'claude', label: 'Claude' },
+  { name: 'figma', label: 'Figma' },
+  { name: 'youtube', label: 'YouTube' },
+  { name: 'chatgpt', label: 'ChatGPT' },
+  { name: 'notion', label: 'Notion' },
+  { name: 'duolingo', label: 'Duolingo' },
+]
+
+export function useStart() {
   const { ready, authenticated, login } = usePrivy()
-  const { isMiniPay, isAutoConnecting } = useMiniPay()
+  const { isMiniPay } = useMiniPay()
   const router = useRouter()
   const [entering, setEntering] = useState(false)
 
@@ -19,7 +32,7 @@ export default function Hero() {
     if ((entering || isMiniPay) && authenticated) router.push('/dashboard')
   }, [entering, isMiniPay, authenticated, router])
 
-  function handleCTA() {
+  function start() {
     if (!ready || isMiniPay) return
     if (authenticated) router.push('/dashboard')
     else {
@@ -28,140 +41,59 @@ export default function Hero() {
     }
   }
 
+  return { start, loading: entering && !authenticated }
+}
+
+export default function Hero() {
+  const { start, loading } = useStart()
+
   return (
-    <section
-      className="relative min-h-screen flex items-center overflow-hidden"
-      style={{ backgroundColor: '#0D0D0D' }}
-    >
-      {/* Particle field — subtle grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-        }}
-      />
+    <section className="relative isolate flex min-h-[calc(100svh-32px)] flex-col overflow-hidden rounded-[var(--radius-section)] bg-surface p-3">
+      {/* The owner's blob language, spelling SHAMAR in pale red strokes */}
+      <Image src="/brand/hero-pattern.svg" alt="" fill priority className="-z-10 object-cover" />
 
-      {/* Red ambient glow top-right */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: '-20%',
-          right: '-10%',
-          width: '600px',
-          height: '600px',
-          background: 'radial-gradient(circle, rgba(229,9,20,0.08) 0%, transparent 60%)',
-          filter: 'blur(40px)',
-        }}
-      />
-
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 py-16 sm:py-24">
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.92 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mb-12 flex justify-center"
-        >
-          <Image
-            src="/SAM.png"
-            alt="Shamar logo"
-            width={140}
-            height={140}
-            priority
-            className="rounded-lg"
-          />
-        </motion.div>
-
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-10 lg:gap-16">
-          {/* Left — 60% */}
-          <div className="flex-1">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="uppercase text-muted mb-6"
-              style={{
-                fontFamily: 'var(--font-dm-mono)',
-                fontSize: '11px',
-                letterSpacing: '0.16em',
-              }}
-            >
-              SHAMAR
-            </motion.p>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-              className="text-white font-extrabold leading-none mb-6"
-              style={{
-                fontFamily: 'var(--font-syne)',
-                fontSize: 'clamp(32px, 5.8vw, 90px)',
-                letterSpacing: '-0.03em',
-              }}
-            >
-              Your subscriptions
-              <br />
-              <span style={{ color: '#E50914' }}>are bleeding you.</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-secondary mb-10"
-              style={{
-                fontFamily: 'var(--font-dm-mono)',
-                fontSize: '14px',
-                letterSpacing: '0.01em',
-              }}
-            >
-              $2,847 lost to forgotten subscriptions last year. On average.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.55 }}
-            >
-              {isMiniPay ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 border-2 border-[#E50914] border-t-transparent rounded-full animate-spin" />
-                  <span style={{ fontFamily: 'var(--font-dm-mono)', fontSize: '12px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)' }}>
-                    {isAutoConnecting ? 'Connecting MiniPay...' : 'Connected'}
-                  </span>
-                </div>
-              ) : (
-                <Button size="lg" onClick={handleCTA}>Connect &amp; Find Out</Button>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Right — 40% */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full lg:w-auto lg:min-w-[400px]"
+      <header className="flex items-center justify-between gap-4 px-3 pt-2 md:px-6">
+        <Link href="/" aria-label="SHAMAR home" className="touch-target text-label">
+          <Logo variant="lockup" size={22} priority />
+        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="#how"
+            className="type-footnote hidden min-h-[44px] items-center px-3 font-semibold text-label hover:underline sm:inline-flex"
           >
-            <NotificationCascade />
-          </motion.div>
+            See how it works
+          </a>
+          <PrimaryButton onClick={start} loading={loading} size="sm">
+            <span className="whitespace-nowrap sm:hidden">Get started</span>
+            <span className="hidden whitespace-nowrap sm:inline">Find my subscriptions</span>
+          </PrimaryButton>
         </div>
-      </div>
+      </header>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-        <motion.div
-          animate={{ scaleY: [0, 1, 0], y: [0, 8, 0] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-          style={{
-            width: '1px',
-            height: '32px',
-            backgroundColor: '#E50914',
-            transformOrigin: 'top',
-          }}
-        />
+      <div className="grid flex-1 items-center gap-10 px-3 py-10 md:grid-cols-[1fr_minmax(0,27rem)] md:gap-12 md:px-6 lg:grid-cols-[1fr_minmax(0,29rem)]">
+        <div className="flex flex-col gap-6">
+          <h1 className="max-w-[14ch] text-[clamp(2.25rem,1.3rem+3.3vw,4.25rem)] font-[600] leading-[1] tracking-[-0.045em]">
+            Forgot you&rsquo;re paying for it? <span className="em-claim text-accent-text">SHAMAR didn&rsquo;t.</span>
+          </h1>
+          <p className="type-callout max-w-[38ch] font-[450] text-label md:text-[1.0625rem] md:leading-[1.5]">
+            It finds every subscription in your inbox, messages you before each one renews, and cancels the ones you
+            ignore. You don&rsquo;t lift a finger.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-4">
+            <div className="flex -space-x-1.5">
+              {KNOWN.map((b) => (
+                <span key={b.name} className="rounded-[9px] ring-2 ring-surface">
+                  <BrandLogo name={b.name} size={30} label={b.label} />
+                </span>
+              ))}
+            </div>
+            <p className="type-caption text-label">Knows 165 services, and counting.</p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[var(--radius-card)] bg-inverse p-3 shadow-[var(--shadow-float)] md:p-4">
+          <NotificationCascade />
+        </div>
       </div>
     </section>
   )

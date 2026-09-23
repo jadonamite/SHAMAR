@@ -1,129 +1,65 @@
 'use client'
 
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
 import { useRef } from 'react'
-import CountUp from 'react-countup'
+import BrandLogo, { type BrandName } from '@/components/ui/BrandLogo'
+import { Card } from '@/components/landing/primitives'
 
-const lines = [
-  { text: "Netflix you haven't opened in 4 months.", price: '$15.99/mo' },
-  { text: 'Figma Pro, even though you use the free tier.', price: '$15/mo' },
-  { text: 'That productivity app from 2023.', price: '$8/mo' },
+const LINES: Array<{ brand: BrandName; text: string; price: string }> = [
+  { brand: 'netflix', text: 'The Netflix you haven’t opened since the finale.', price: '$15.49/mo' },
+  { brand: 'figma', text: 'Figma Professional, from that one project in March.', price: '$15/mo' },
+  { brand: 'duolingo', text: 'Duolingo Super. The streak ended in week two.', price: '$12.99/mo' },
+  { brand: 'chatgpt', text: 'ChatGPT Plus, still billing next to Claude Pro.', price: '$20/mo' },
 ]
 
-function StrikeoutLine({
-  text,
-  price,
-  delay,
-}: {
-  text: string
-  price: string
-  delay: number
-}) {
+function StrikeLine({ brand, text, price, delay }: { brand: BrandName; text: string; price: string; delay: number }) {
   const ref = useRef(null)
+  const reduce = useReducedMotion()
   const inView = useInView(ref, { once: true, margin: '-60px' })
-
+  const show = reduce || inView
   return (
-    <motion.div
+    <motion.li
       ref={ref}
-      initial={{ opacity: 0, x: -24 }}
-      animate={inView ? { opacity: 1, x: 0 } : {}}
+      initial={reduce ? false : { opacity: 0, x: -24 }}
+      animate={show ? { opacity: 1, x: 0 } : {}}
       transition={{ duration: 0.5, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex items-baseline gap-3 py-4"
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      className="flex items-center gap-5 border-b border-separator py-5 last:border-0"
     >
-      <span
-        className="text-secondary"
-        style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '15px' }}
-      >
-        {text}
-      </span>
-      <span className="relative inline-flex items-center shrink-0">
-        <span
-          className="text-secondary"
-          style={{ fontFamily: 'var(--font-dm-mono)', fontSize: '14px' }}
-        >
-          {price}
-        </span>
+      <BrandLogo name={brand} size={48} />
+      <span className="type-callout flex-1 text-label md:text-[1.25rem] md:tracking-[-0.01em]">{text}</span>
+      <span className="relative shrink-0">
+        <span className="type-callout tabular text-label-2 md:text-[1.0625rem]">{price}</span>
         <motion.span
-          initial={{ scaleX: 0 }}
-          animate={inView ? { scaleX: 1 } : {}}
-          transition={{ duration: 0.4, delay: delay + 0.3, ease: 'easeOut' }}
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2"
-          style={{
-            height: '1.5px',
-            backgroundColor: '#E50914',
-            transformOrigin: 'left',
-          }}
+          initial={reduce ? false : { scaleX: 0 }}
+          animate={show ? { scaleX: 1 } : {}}
+          transition={{ duration: 0.4, delay: delay + 0.35, ease: 'easeOut' }}
+          className="absolute inset-x-0 top-1/2 h-[2px] origin-left -translate-y-1/2 bg-accent"
         />
       </span>
-    </motion.div>
+    </motion.li>
   )
 }
 
 export default function Problem() {
-  const sectionRef = useRef(null)
-  const inView = useInView(sectionRef, { once: true, margin: '-80px' })
-
   return (
-    <section
-      ref={sectionRef}
-      className="relative py-20 sm:py-32 overflow-hidden"
-      style={{ backgroundColor: '#0D0D0D' }}
-    >
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16">
-        <div className="flex flex-col lg:flex-row gap-10 sm:gap-16 lg:gap-24 items-start">
-          {/* Large number */}
-          <div className="shrink-0">
-            <div
-              className="font-extrabold leading-none select-none"
-              style={{
-                fontFamily: 'var(--font-dm-mono)',
-                fontSize: 'clamp(80px, 16vw, 220px)',
-                color: '#E50914',
-                letterSpacing: '-0.04em',
-                lineHeight: 1,
-              }}
-            >
-              {inView ? (
-                <CountUp start={0} end={273} duration={2} delay={0.2} prefix="$" />
-              ) : (
-                '$0'
-              )}
-            </div>
-          </div>
-
-          {/* Text side */}
-          <div className="flex-1 pt-4 lg:pt-8">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-white font-bold mb-8 leading-tight"
-              style={{
-                fontFamily: 'var(--font-syne)',
-                fontSize: 'clamp(22px, 3vw, 34px)',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              The average person pays for{' '}
-              <span style={{ color: '#E50914' }}>12 subscriptions.</span>
-              <br />
-              Remembers 8.
-            </motion.p>
-
-            <div>
-              {lines.map((line, i) => (
-                <StrikeoutLine
-                  key={line.price}
-                  text={line.text}
-                  price={line.price}
-                  delay={0.4 + i * 0.15}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+    <Card as="section" className="grid gap-8 rounded-[var(--radius-section)] px-6 py-12 md:grid-cols-[1fr_1.3fr] md:items-center md:gap-16 md:px-14 md:py-20">
+      <div className="flex flex-col gap-5">
+        <p className="type-eyebrow inline-flex items-center gap-2 text-label-2">
+          <span aria-hidden className="size-1.5 rounded-full bg-accent" /> Sound familiar?
+        </p>
+        <h2 className="type-display max-w-[14ch]">
+          Signing up takes a tap. <span className="em-claim">Cancelling takes a Saturday.</span>
+        </h2>
+        <p className="type-callout max-w-[36ch] text-label-2 md:text-[1.0625rem]">
+          Logins you&rsquo;ve forgotten, retention offers, &ldquo;are you sure?&rdquo; screens. So the charges quietly
+          keep coming. SHAMAR is the friend who actually gets round to it.
+        </p>
       </div>
-    </section>
+      <ul className="flex flex-col">
+        {LINES.map((l, i) => (
+          <StrikeLine key={l.brand} {...l} delay={i * 0.12} />
+        ))}
+      </ul>
+    </Card>
   )
 }

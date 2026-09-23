@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <pattern id="dots" width="10" height="10" patternUnits="userSpaceOnUse">
+      <circle cx="2.5" cy="2.5" r="1.1" fill="#D90012" fill-opacity="0.06"/>
+      <circle cx="7.5" cy="7.5" r="1.1" fill="#D90012" fill-opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="#F8F3F4"/>
+
+  <!-- S H A M A R in rounded monoline strokes, tilted and cropped so it reads as pattern first.
+       The second A carries the one red stroke, echoing the mark. -->
+  <g transform="translate(800 450) rotate(-5) scale(1.08) translate(-800 -450)"
+     fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="60">
+    <g stroke="#F2CFD4">
+      <path d="M200 250 C170 185 55 185 55 300 C55 435 200 425 200 565 C200 720 65 725 45 640"/>
+    </g>
+    <g stroke="#EDBBC2">
+      <path d="M320 190 L320 710"/>
+      <path d="M470 190 L470 710"/>
+      <path d="M320 450 L470 450"/>
+    </g>
+    <g stroke="#F2CFD4">
+      <path d="M590 710 L590 340 C590 165 740 165 740 340 L740 710"/>
+      <path d="M590 490 L740 490"/>
+    </g>
+    <g stroke="#EDBBC2">
+      <path d="M860 710 L860 300 C860 185 935.0 185 935.0 300 L935.0 560"/>
+      <path d="M935.0 300 C935.0 185 1010 185 1010 300 L1010 710"/>
+    </g>
+    <g stroke="#EDBBC2">
+      <path d="M1130 710 L1130 340 C1130 165 1280 165 1280 340 L1280 710"/>
+    </g>
+    <g stroke="#E0101F">
+      <path d="M1130 490 L1280 490"/>
+    </g>
+    <g stroke="#F2CFD4">
+      <path d="M1400 710 L1400 190 L1467.5 190 C1575 190 1575 450 1467.5 450 L1400 450"/>
+      <path d="M1467.5 450 L1550 710"/>
+    </g>
+  </g>
+
+  <g fill="#E0101F">
+    <circle cx="1040" cy="95" r="16"/>
+    <circle cx="1555" cy="835" r="13"/>
+    <circle cx="640" cy="850" r="10" fill-opacity="0.7"/>
+  </g>
+
+  <rect width="1600" height="900" fill="url(#dots)"/>
+</svg>

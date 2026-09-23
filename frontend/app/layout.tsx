@@ -1,51 +1,60 @@
 import type { Metadata } from 'next'
-import { Syne, DM_Mono } from 'next/font/google'
-import { GeistSans } from 'geist/font/sans'
+import localFont from 'next/font/local'
+import { Archivo } from 'next/font/google'
 import PrivyProvider from '@/components/providers/PrivyProvider'
 import MiniPayProvider from '@/components/providers/MiniPayProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
+import CookieBanner from '@/components/ui/CookieBanner'
 import './globals.css'
 
-const syne = Syne({
-  subsets: ['latin'],
-  variable: '--font-syne',
-  weight: ['400', '600', '700', '800'],
+// Switzer by Indian Type Foundry, ITF Free Font License (app/fonts/Switzer-LICENSE.txt).
+const switzer = localFont({
+  src: [
+    { path: './fonts/Switzer-Variable.woff2', weight: '100 900', style: 'normal' },
+    { path: './fonts/Switzer-VariableItalic.woff2', weight: '100 900', style: 'italic' },
+  ],
+  variable: '--font-switzer',
+  display: 'swap',
 })
 
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  variable: '--font-dm-mono',
-  weight: ['300', '400', '500'],
-})
+// The wordmark face. Downloaded at build time and served from our own domain.
+const archivo = Archivo({ subsets: ['latin'], axes: ['wdth'], variable: '--font-wordmark', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'Shamar — Subscription Agentic Manager',
+  metadataBase: new URL('https://shamar.namite.xyz'),
+  title: 'SHAMAR: an agent you can hand a recurring bill to',
   description:
-    'An autonomous AI system that understands and manages your recurring financial commitments across Web2 and Web3.',
+    'SHAMAR reads your receipts, works out what cancelling would cost you, asks before every renewal and acts when you stay silent. It checks a grant you hold on Base before it does anything.',
   openGraph: {
-    title: 'Shamar — Subscription Agentic Manager',
-    description: 'Your subscriptions are bleeding you.',
+    title: 'SHAMAR: an agent you can hand a recurring bill to',
+    description: 'It decides what cancelling costs, not just what it saves.',
     siteName: 'SHAMAR',
+    images: [{ url: '/brand/shamar-mark-512.png', width: 512, height: 349, alt: 'The SHAMAR mark' }],
   },
- other: {
-    "talentapp:project_verification":
-  "3f57bed226531808843f4c9458e0e03c0ca059a04690041d4011d56cbdb56c79b0edcbac725b4838e9c763ae4e4fbfda474a516ccaebe42395f9ff1aa6de8eec",
+  other: {
+    'talentapp:project_verification':
+      '3f57bed226531808843f4c9458e0e03c0ca059a04690041d4011d56cbdb56c79b0edcbac725b4838e9c763ae4e4fbfda474a516ccaebe42395f9ff1aa6de8eec',
   },
-
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${dmMono.variable} ${GeistSans.variable}`}
+      data-theme="light"
+      className={`${switzer.variable} ${archivo.variable}`}
     >
-      <body className="bg-void text-white antialiased">
-        <PrivyProvider>
-          <MiniPayProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </MiniPayProvider>
-        </PrivyProvider>
+      <body className="antialiased">
+        <>
+          <PrivyProvider>
+            <MiniPayProvider>
+              <ToastProvider>
+                {children}
+                <CookieBanner />
+              </ToastProvider>
+            </MiniPayProvider>
+          </PrivyProvider>
+        </>
       </body>
     </html>
   )

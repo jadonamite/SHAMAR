@@ -155,7 +155,7 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
       <div className="flex items-center justify-between">
         <span
           style={{
-            fontFamily: 'var(--font-geist-sans)',
+            fontFamily: 'var(--font-sans)',
             color: '#525252',
             fontSize: '10px',
             letterSpacing: '0.16em',
@@ -204,7 +204,7 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
           <div className="flex flex-col gap-2">
             <span
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 color: c.tag,
                 fontSize: '10px',
                 letterSpacing: '0.16em',
@@ -215,7 +215,7 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
             </span>
             <h3
               style={{
-                fontFamily: 'var(--font-syne)',
+                fontFamily: 'var(--font-sans)',
                 color: '#fff',
                 fontSize: '18px',
                 letterSpacing: '-0.02em',
@@ -227,7 +227,7 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
             </h3>
             <p
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 color: '#A3A3A3',
                 fontSize: '13px',
                 lineHeight: 1.5,

@@ -48,7 +48,7 @@ export default function MonthlyBleed({ byCurrency }: MonthlyBleedProps) {
       <div className="flex items-end gap-2 flex-wrap">
         <span
           style={{
-            fontFamily: 'var(--font-dm-mono)',
+            fontFamily: 'var(--font-mono)',
             color: '#fff',
             fontSize: 'clamp(48px, 7vw, 72px)',
             letterSpacing: '-0.04em',
@@ -60,7 +60,7 @@ export default function MonthlyBleed({ byCurrency }: MonthlyBleedProps) {
         </span>
         <span
           style={{
-            fontFamily: 'var(--font-dm-mono)',
+            fontFamily: 'var(--font-mono)',
             color: '#525252',
             fontSize: '16px',
             marginBottom: '8px',
@@ -72,7 +72,7 @@ export default function MonthlyBleed({ byCurrency }: MonthlyBleedProps) {
       {extras.length > 0 && (
         <span
           style={{
-            fontFamily: 'var(--font-dm-mono)',
+            fontFamily: 'var(--font-mono)',
             color: '#A3A3A3',
             fontSize: '13px',
             marginTop: '4px',
@@ -83,14 +83,14 @@ export default function MonthlyBleed({ byCurrency }: MonthlyBleedProps) {
       )}
       <span
         style={{
-          fontFamily: 'var(--font-geist-sans)',
+          fontFamily: 'var(--font-sans)',
           color: '#525252',
           fontSize: '12px',
           letterSpacing: '0.02em',
         }}
       >
         You'll spend{' '}
-        <span style={{ color: '#E50914', fontFamily: 'var(--font-dm-mono)' }}>
+        <span style={{ color: '#E50914', fontFamily: 'var(--font-mono)' }}>
           {formatMoney(yearlyPrimary, primary)}
         </span>{' '}
         this year if nothing changes.

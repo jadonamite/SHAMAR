@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import TopNav from '@/components/app/TopNav'
+import AppFooter from '@/components/app/AppFooter'
 import { normalizeRec } from '@/lib/normalize'
 import { aggregateByCurrency, formatAggregate, formatMoney } from '@/lib/format'
 
@@ -72,10 +73,10 @@ export default function RecommendationsPage() {
       <TopNav title="Recommendations" />
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-syne)' }}>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-sans)' }}>
             Recommendations
           </h1>
-          <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-dm-mono)' }}>
+          <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
             {recs.length} actionable insights
           </p>
         </div>
@@ -91,10 +92,10 @@ export default function RecommendationsPage() {
               borderRadius: '2px',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3', fontSize: '13px' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px' }}>
               Potential monthly savings
             </span>
-            <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#E50914', fontSize: '20px', letterSpacing: '-0.02em' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: '#E50914', fontSize: '20px', letterSpacing: '-0.02em' }}>
               {totalSavingsStr}
             </span>
           </motion.div>
@@ -129,6 +130,7 @@ export default function RecommendationsPage() {
           </div>
         )}
       </div>
+      <AppFooter />
     </div>
   )
 }

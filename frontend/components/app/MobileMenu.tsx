@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { NAV_LINKS } from '@/lib/nav'
+import Logo from '@/components/ui/Logo'
 
 interface MobileMenuProps {
   walletAddress?: string
@@ -38,7 +39,7 @@ export default function MobileMenu({
       <button
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="md:hidden flex flex-col gap-1.5 p-2 cursor-pointer"
+        className="lg:hidden min-h-[44px] min-w-[44px] flex flex-col items-center justify-center gap-1.5 p-2 cursor-pointer"
         style={{ background: 'none', border: 'none' }}
       >
         <span style={{ width: '20px', height: '1.5px', background: '#A3A3A3', display: 'block' }} />
@@ -64,41 +65,19 @@ export default function MobileMenu({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
-              className="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
+              className="fixed top-0 right-0 bottom-0 z-50 flex flex-col bg-surface border-l border-separator"
               style={{
                 width: 'min(320px, 85vw)',
-                background: '#0a0a0a',
-                borderLeft: '1px solid rgba(255,255,255,0.06)',
               }}
             >
               {/* drawer header */}
-              <div
-                className="flex items-center justify-between px-5 py-4 border-b"
-                style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-syne)',
-                    color: '#fff',
-                    fontSize: '16px',
-                    letterSpacing: '-0.02em',
-                    fontWeight: 700,
-                  }}
-                >
-                  Shamar
-                </span>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-separator">
+                <Logo variant="lockup" size={22} />
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#A3A3A3',
-                    fontSize: '22px',
-                    lineHeight: 1,
-                    cursor: 'pointer',
-                    padding: '4px',
-                  }}
+                  className="touch-target text-label-2 hover:text-label text-2xl leading-none cursor-pointer"
+                  style={{ background: 'none', border: 'none' }}
                 >
                   ×
                 </button>
@@ -111,7 +90,7 @@ export default function MobileMenu({
               >
                 <span
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#525252',
                     fontSize: '10px',
                     letterSpacing: '0.14em',
@@ -122,7 +101,7 @@ export default function MobileMenu({
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--font-dm-mono)',
+                    fontFamily: 'var(--font-mono)',
                     color: '#fff',
                     fontSize: '12px',
                     wordBreak: 'break-all',
@@ -144,7 +123,7 @@ export default function MobileMenu({
                       aria-current={active ? 'page' : undefined}
                       className="px-5 py-3"
                       style={{
-                        fontFamily: 'var(--font-geist-sans)',
+                        fontFamily: 'var(--font-sans)',
                         color: active ? '#fff' : '#A3A3A3',
                         fontSize: '14px',
                         letterSpacing: '-0.01em',
@@ -171,7 +150,7 @@ export default function MobileMenu({
                     disabled={walletScanning}
                     className="w-full py-3 cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-geist-sans)',
+                      fontFamily: 'var(--font-sans)',
                       background: 'transparent',
                       color: walletScanning ? '#525252' : '#fff',
                       border: '1px solid rgba(255,255,255,0.15)',
@@ -194,7 +173,7 @@ export default function MobileMenu({
                     disabled={scanning}
                     className="w-full py-3 cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-geist-sans)',
+                      fontFamily: 'var(--font-sans)',
                       background: scanning ? '#2a2a2a' : '#E50914',
                       color: '#fff',
                       border: 'none',
@@ -217,7 +196,7 @@ export default function MobileMenu({
                     disabled={debugScanning}
                     className="w-full py-3 cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-geist-sans)',
+                      fontFamily: 'var(--font-sans)',
                       background: 'transparent',
                       color: debugScanning ? '#525252' : '#FACC15',
                       border: `1px solid ${debugScanning ? 'rgba(255,255,255,0.08)' : 'rgba(250,204,21,0.4)'}`,

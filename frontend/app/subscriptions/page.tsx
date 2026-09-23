@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
 import SubscriptionRow, { type Subscription } from '@/components/app/SubscriptionRow'
 import TopNav from '@/components/app/TopNav'
+import AppFooter from '@/components/app/AppFooter'
 import { normalizeSubscription } from '@/lib/normalize'
 import { aggregateByCurrency, formatAggregate } from '@/lib/format'
 
@@ -80,10 +81,10 @@ export default function SubscriptionsPage() {
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-syne)' }}>
+            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-sans)' }}>
               Subscriptions
             </h1>
-            <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-dm-mono)' }}>
+            <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
               {activeSubs.length} active · {totalMonthlyStr}/mo
             </p>
           </div>
@@ -95,7 +96,7 @@ export default function SubscriptionsPage() {
                 className={`px-3 py-1 text-xs rounded uppercase font-medium tracking-wider ${
                   filter === f ? 'bg-white text-black' : 'bg-neutral-900 text-neutral-400 hover:text-white'
                 }`}
-                style={{ fontFamily: 'var(--font-dm-mono)' }}
+                style={{ fontFamily: 'var(--font-mono)' }}
               >
                 {f}
               </button>
@@ -115,6 +116,7 @@ export default function SubscriptionsPage() {
           </div>
         )}
       </div>
+      <AppFooter />
     </div>
   )
 }

@@ -62,7 +62,7 @@ export default function Toast() {
           {/* message */}
           <span
             style={{
-              fontFamily: 'var(--font-geist-sans)',
+              fontFamily: 'var(--font-sans)',
               fontSize: '13px',
               color: '#E5E5E5',
               lineHeight: 1.4,

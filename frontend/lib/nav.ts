@@ -7,4 +7,5 @@ export const NAV_LINKS: NavLink[] = [
   { href: '/agent',           label: 'Agent' },
   { href: '/audit',           label: 'Audit' },
   { href: '/policies',        label: 'Policies' },
+  { href: '/run',             label: 'Run' },
 ]

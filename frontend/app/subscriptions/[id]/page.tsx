@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import ConfidenceScore from '@/components/app/ConfidenceScore'
 import TopNav from '@/components/app/TopNav'
+import AppFooter from '@/components/app/AppFooter'
 import { normalizeSubscription } from '@/lib/normalize'
 import { formatMoney } from '@/lib/format'
 import type { Subscription } from '@/components/app/SubscriptionRow'
@@ -206,14 +207,14 @@ export default function SubscriptionDetail() {
   const signalLabels = signals.map((s) => s.value)
 
   return (
-    <main className="min-h-screen bg-void">
+    <main className="min-h-screen bg-void flex flex-col justify-between">
       <TopNav
         title={sub.merchant}
         rightMeta={
           <span
             className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
             style={{
-              fontFamily: 'var(--font-geist-sans)',
+              fontFamily: 'var(--font-sans)',
               color: statusStyle.color,
               border: `1px solid ${statusStyle.border}`,
               borderRadius: '2px',
@@ -226,7 +227,7 @@ export default function SubscriptionDetail() {
       <div className="max-w-2xl mx-auto px-6 pt-4">
         <Link
           href="/subscriptions"
-          style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '12px' }}
+          style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '12px' }}
         >
           ← Subscriptions
         </Link>
@@ -249,21 +250,21 @@ export default function SubscriptionDetail() {
               borderRadius: '2px',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-syne)', color: '#E50914', fontSize: '22px', fontWeight: 700 }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '22px', fontWeight: 700 }}>
               {sub.merchant.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="flex flex-col gap-1">
             <h1
-              style={{ fontFamily: 'var(--font-syne)', color: '#fff', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}
+              style={{ fontFamily: 'var(--font-sans)', color: '#fff', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}
             >
               {sub.merchant}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#fff', fontSize: '20px', letterSpacing: '-0.02em' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#fff', fontSize: '20px', letterSpacing: '-0.02em' }}>
                 {formatAmount(sub.amount, sub.currency)}
               </span>
-              <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '14px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '14px' }}>
                 {CADENCE_LABELS[sub.cadence]}
               </span>
             </div>
@@ -271,7 +272,7 @@ export default function SubscriptionDetail() {
               <span
                 className="px-2 py-0.5 text-[10px] uppercase tracking-widest"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   color: sub.source === 'gmail' ? '#3B82F6' : '#A78BFA',
                   border: `1px solid ${sub.source === 'gmail' ? 'rgba(59,130,246,0.3)' : 'rgba(167,139,250,0.3)'}`,
                   borderRadius: '2px',
@@ -279,11 +280,11 @@ export default function SubscriptionDetail() {
               >
                 {sub.source}
               </span>
-              <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
                 Detected {formatDate(sub.detected_at)}
               </span>
               {sub.last_charged && (
-                <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
                   Last charged {formatDate(sub.last_charged)}
                 </span>
               )}
@@ -303,7 +304,7 @@ export default function SubscriptionDetail() {
         >
           <div className="flex items-center justify-between">
             <span
-              style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               Intelligence
             </span>
@@ -314,7 +315,7 @@ export default function SubscriptionDetail() {
               whileTap={{ scale: analyzing ? 1 : 0.98 }}
               className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cursor-pointer"
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 background: 'transparent',
                 color: analyzing ? '#525252' : '#E50914',
                 border: `1px solid ${analyzing ? 'rgba(255,255,255,0.06)' : 'rgba(229,9,20,0.4)'}`,
@@ -328,7 +329,7 @@ export default function SubscriptionDetail() {
           {confidence !== undefined ? (
             <ConfidenceScore score={confidence} signals={signalLabels} action={action} />
           ) : (
-            <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '13px' }}>
+            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
               No analysis yet. Run analysis to score this subscription.
             </p>
           )}
@@ -344,11 +345,11 @@ export default function SubscriptionDetail() {
             style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
           >
             <span
-              style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               AI Insight
             </span>
-            <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
+            <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
               {insight}
             </p>
           </motion.div>
@@ -369,14 +370,14 @@ export default function SubscriptionDetail() {
           >
             <div className="flex items-center justify-between">
               <span
-                style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
               >
                 Recommendation
               </span>
               <span
                 className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   color: ACTION_COLORS[action],
                   border: `1px solid ${ACTION_COLORS[action]}60`,
                   borderRadius: '2px',
@@ -388,7 +389,7 @@ export default function SubscriptionDetail() {
             {recommendation.evidence.length > 0 && (
               <ul className="flex flex-col gap-1.5">
                 {recommendation.evidence.map((e, i) => (
-                  <li key={i} className="flex items-center gap-2" style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3', fontSize: '12px' }}>
+                  <li key={i} className="flex items-center gap-2" style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '12px' }}>
                     <span style={{ color: ACTION_COLORS[action], fontSize: '6px' }}>●</span>
                     {e}
                   </li>
@@ -408,7 +409,7 @@ export default function SubscriptionDetail() {
             style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
           >
             <span
-              style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
             >
               Set Reminder
             </span>
@@ -416,7 +417,7 @@ export default function SubscriptionDetail() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{ fontFamily: 'var(--font-geist-sans)', color: '#16A34A', fontSize: '12px' }}
+                style={{ fontFamily: 'var(--font-sans)', color: '#16A34A', fontSize: '12px' }}
               >
                 Reminder scheduled.
               </motion.p>
@@ -434,7 +435,7 @@ export default function SubscriptionDetail() {
                     disabled={reminderSending}
                     className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-geist-sans)',
+                      fontFamily: 'var(--font-sans)',
                       background: 'transparent',
                       color: reminderSending ? '#525252' : '#3B82F6',
                       border: `1px solid ${reminderSending ? 'rgba(255,255,255,0.06)' : 'rgba(59,130,246,0.3)'}`,
@@ -447,7 +448,7 @@ export default function SubscriptionDetail() {
               </div>
             )}
             {reminderError && (
-              <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#E50914', fontSize: '11px' }}>
+              <p style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '11px' }}>
                 {reminderError}
               </p>
             )}
@@ -469,7 +470,7 @@ export default function SubscriptionDetail() {
                   disabled={statusChanging}
                   className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     background: 'transparent',
                     color: statusChanging ? '#525252' : '#D97706',
                     border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(217,119,6,0.4)'}`,
@@ -483,7 +484,7 @@ export default function SubscriptionDetail() {
                   disabled={statusChanging}
                   className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     background: 'transparent',
                     color: statusChanging ? '#525252' : '#E50914',
                     border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(229,9,20,0.4)'}`,
@@ -500,7 +501,7 @@ export default function SubscriptionDetail() {
                 disabled={statusChanging}
                 className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: 'transparent',
                   color: statusChanging ? '#525252' : '#16A34A',
                   border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(22,163,74,0.4)'}`,
@@ -513,6 +514,7 @@ export default function SubscriptionDetail() {
           </motion.div>
         )}
       </div>
+      <AppFooter />
     </main>
   )
 }

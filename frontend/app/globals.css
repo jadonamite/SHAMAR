@@ -1,55 +1,245 @@
 @import "tailwindcss";
 
+/*
+ * SHAMAR foundations. Rationale and rules live in DESIGN.md; this file is the
+ * source of truth for values. Components use these tokens, never raw hex.
+ */
+
 @theme {
-  --color-void: #0D0D0D;
-  --color-surface: #141414;
-  --color-elevated: #1C1C1C;
-  --color-sam-red: #E50914;
-  --color-sam-dim: #B81D24;
-  --color-secondary: #A3A3A3;
-  --color-muted: #525252;
-  --color-sam-success: #16A34A;
-  --color-sam-warning: #D97706;
+  --font-sans: var(--font-switzer), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Semantic colours, swapped per theme below */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
+  /* Tiles and success text on the black slab */
+  --color-inverse-raised: #1C1C1F;
+  --color-success-on-inverse: #3DD17A;
+  --color-label: var(--label);
+  --color-label-2: var(--label-2);
+  --color-label-3: var(--label-3);
+  --color-separator: var(--separator);
+  --color-separator-strong: var(--separator-strong);
+  --color-accent: var(--accent-fill);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: #FFFFFF;
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  /* Legacy names, kept until every screen is rebuilt on the tokens above */
+  --color-void: var(--canvas);
+  --color-elevated: var(--surface-2);
+  --color-foreground: var(--label);
+  --color-secondary: var(--label-2);
+  --color-muted: var(--label-3);
+  --color-border-subtle: var(--separator);
+  --color-sam-red: var(--accent-fill);
+  --color-sam-dim: var(--accent-hover);
+  --color-sam-success: var(--success);
+  --color-sam-warning: var(--warning);
+
+  /* Radius: control, tile, card, section, pill */
+  --radius-control: 10px;
+  --radius-tile: 16px;
+  --radius-card: 24px;
+  --radius-section: 32px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
 :root {
-  --accent-red: #E50914;
-  --accent-dim: #B81D24;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-red: rgba(229, 9, 20, 0.3);
-}
+  color-scheme: light;
 
-* {
-  box-sizing: border-box;
+  /* Light only, by the owner's call (2026-09-23). Contrast ratios are in DESIGN.md. */
+  --canvas: #EEEEF2;
+  --surface: #FFFFFF;
+  --surface-2: #F5F5F8;
+  --inverse: #0B0B0C;
+  --on-inverse: #FFFFFF;
+  --label: #0B0B0C;
+  --label-2: #5C5C66;
+  --label-3: #6B6B73;
+  --separator: rgba(11, 11, 12, 0.08);
+  --separator-strong: rgba(11, 11, 12, 0.16);
+  --accent-fill: #D90012;
+  --accent-hover: #BC0010;
+  --accent-text: #D90012;
+  --accent-soft: rgba(217, 0, 18, 0.08);
+  --success: #107C3A;
+  --warning: #A15C00;
+  --shadow-float: 0 12px 32px -12px rgba(11, 11, 12, 0.18), 0 2px 6px rgba(11, 11, 12, 0.06);
+
+  /* Motion durations */
+  --motion-quick: 150ms;
+  --motion-base: 250ms;
+  --motion-enter: 350ms;
+
+  /* Legacy variable names */
+  --bg-void: var(--canvas);
+  --bg-surface: var(--surface);
+  --bg-elevated: var(--surface-2);
+  --text-primary: var(--label);
+  --text-secondary: var(--label-2);
+  --text-muted: var(--label-3);
+  --border-subtle: var(--separator);
+  --border-strong: var(--separator-strong);
+  --border-red: rgba(217, 0, 18, 0.3);
+  --accent-red: var(--accent-fill);
+  --accent-dim: var(--accent-hover);
+  --min-touch-target: 44px;
+  --font-heading: var(--font-sans);
 }
 
 html {
-  scroll-behavior: smooth;
-  background-color: #0D0D0D;
+  background-color: var(--canvas);
+  color: var(--label);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: #0D0D0D;
-  color: #ffffff;
+  background-color: var(--canvas);
+  color: var(--label);
+  font-size: 1rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  min-height: 100vh;
+  font-feature-settings: "ss01", "tnum" 0;
 }
 
 ::selection {
-  background: rgba(229, 9, 20, 0.3);
-  color: #ffffff;
+  background: var(--accent-soft);
+  color: var(--label);
 }
 
-::-webkit-scrollbar {
-  width: 4px;
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-::-webkit-scrollbar-track {
-  background: #0D0D0D;
+/*
+ * Type roles. Sizes follow the HIG web port; display sizes are ours.
+ * Italic is reserved for the one phrase in a headline that carries the claim,
+ * and for quoted speech. Never for UI labels or body copy.
+ */
+@utility type-hero {
+  font-size: clamp(5rem, 21vw, 19rem);
+  line-height: 0.82;
+  letter-spacing: -0.065em;
+  font-weight: 600;
+}
+@utility type-display {
+  font-size: clamp(2.25rem, 1.2rem + 3vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 560;
+}
+@utility type-title-1 {
+  font-size: 2.125rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 560;
+}
+@utility type-title-2 {
+  font-size: 1.75rem;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 560;
+}
+@utility type-title-3 {
+  font-size: 1.1875rem;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+@utility type-headline {
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+@utility type-body {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility type-callout {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  font-weight: 400;
+}
+@utility type-footnote {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  font-weight: 450;
+}
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+}
+@utility type-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 560;
+}
+@utility em-claim {
+  font-style: italic;
+  font-weight: 380;
+  letter-spacing: -0.02em;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #E50914;
-  border-radius: 2px;
+/* 44px hit region; the visual can be smaller inside it */
+@utility touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    backdrop-filter: none !important;
+    background: var(--surface) !important;
+  }
+}
+
+.glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: var(--surface);
+  }
 }

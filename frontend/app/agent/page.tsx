@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import TopNav from '@/components/app/TopNav'
+import AppFooter from '@/components/app/AppFooter'
 import { SelfAppBuilder, type SelfApp } from '@selfxyz/qrcode'
 
 type SelfQRcodeProps = {
@@ -80,7 +81,7 @@ function ShortAddress({ address }: { address: string }) {
     return <span style={{ color: '#525252' }}>Not configured</span>
   }
   return (
-    <span style={{ fontFamily: 'var(--font-dm-mono)' }}>
+    <span style={{ fontFamily: 'var(--font-mono)' }}>
       {address.slice(0, 6)}…{address.slice(-4)}
     </span>
   )
@@ -228,14 +229,14 @@ export default function AgentPage() {
   const isPolicyGranted = userStatus?.policy_granted ?? false
 
   return (
-    <main className="min-h-screen bg-void">
+    <main className="min-h-screen bg-void flex flex-col justify-between">
       <TopNav
         title="Agent Identity"
         rightMeta={
           <span
             className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
             style={{
-              fontFamily: 'var(--font-geist-sans)',
+              fontFamily: 'var(--font-sans)',
               color: isConfigured ? '#16A34A' : '#525252',
               border: `1px solid ${isConfigured ? 'rgba(22,163,74,0.3)' : 'rgba(255,255,255,0.08)'}`,
               borderRadius: '2px',
@@ -255,7 +256,7 @@ export default function AgentPage() {
           className="flex flex-col gap-4 p-5"
           style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
         >
-          <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Shamar Agent
           </span>
           <div className="grid grid-cols-2 gap-4">
@@ -266,8 +267,8 @@ export default function AgentPage() {
               { label: 'Chain', value: <span style={{ color: '#A3A3A3' }}>Base Mainnet</span> },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1">
-                <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
-                <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#A3A3A3', fontSize: '12px' }}>{value}</span>
+                <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', color: '#A3A3A3', fontSize: '12px' }}>{value}</span>
               </div>
             ))}
           </div>
@@ -281,7 +282,7 @@ export default function AgentPage() {
           className="flex flex-col gap-4 p-5"
           style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
         >
-          <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Trust Level
           </span>
           <div className="flex flex-col gap-3">
@@ -292,11 +293,11 @@ export default function AgentPage() {
             ].map(({ label, done }) => (
               <div key={label} className="flex items-center gap-3">
                 <StatusDot ok={done} />
-                <span style={{ fontFamily: 'var(--font-geist-sans)', color: done ? '#A3A3A3' : '#525252', fontSize: '13px' }}>
+                <span style={{ fontFamily: 'var(--font-sans)', color: done ? '#A3A3A3' : '#525252', fontSize: '13px' }}>
                   {label}
                 </span>
                 {done && (
-                  <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#3a3a3a', fontSize: '10px' }}>✓</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: '#3a3a3a', fontSize: '10px' }}>✓</span>
                 )}
               </div>
             ))}
@@ -316,21 +317,21 @@ export default function AgentPage() {
           }}
         >
           <div className="flex items-center justify-between">
-            <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               SELF Protocol
             </span>
             {isVerified && (
-              <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#16A34A', fontSize: '11px' }}>Verified</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#16A34A', fontSize: '11px' }}>Verified</span>
             )}
           </div>
 
           {isVerified || selfSuccess ? (
-            <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '13px' }}>
+            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
               Identity verified. Shamar logs attributable attestations tied to your ZK proof.
             </p>
           ) : selfApp ? (
             <div className="flex flex-col gap-3">
-              <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
                 Scan with the SELF app to generate a ZK proof of identity.
               </p>
               <div style={{ background: '#fff', padding: '12px', borderRadius: '2px', width: 'fit-content' }}>
@@ -344,11 +345,11 @@ export default function AgentPage() {
                 />
               </div>
               {selfError && (
-                <p style={{ fontFamily: 'var(--font-dm-mono)', color: '#E50914', fontSize: '11px' }}>{selfError}</p>
+                <p style={{ fontFamily: 'var(--font-mono)', color: '#E50914', fontSize: '11px' }}>{selfError}</p>
               )}
             </div>
           ) : (
-            <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '13px' }}>
+            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
               Connect wallet to enable SELF verification.
             </p>
           )}
@@ -367,10 +368,10 @@ export default function AgentPage() {
           }}
         >
           <div className="flex items-center justify-between">
-            <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               ERC8004 Policy
             </span>
-            <span style={{ fontFamily: 'var(--font-dm-mono)', color: isPolicyGranted ? '#E50914' : '#525252', fontSize: '11px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: isPolicyGranted ? '#E50914' : '#525252', fontSize: '11px' }}>
               {isPolicyGranted ? 'Active' : 'Not granted'}
             </span>
           </div>
@@ -379,7 +380,7 @@ export default function AgentPage() {
             {Object.entries(SCOPE_LABELS).map(([scope, label]) => (
               <div key={scope} className="flex items-center gap-2">
                 <StatusDot ok={isPolicyGranted} />
-                <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '12px' }}>{label}</span>
+                <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '12px' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -387,7 +388,7 @@ export default function AgentPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <StatusDot ok={status?.onchainAuthorized ?? false} />
-              <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '12px' }}>
+              <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '12px' }}>
                 {status?.onchainAuthorized ? 'Onchain authorized' : 'Not onchain authorized'}
               </span>
             </div>
@@ -396,7 +397,7 @@ export default function AgentPage() {
                 href={status.agent.scan8004Url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '10px', textDecoration: 'none' }}
+                style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '10px', textDecoration: 'none' }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#A3A3A3')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#525252')}
               >
@@ -414,7 +415,7 @@ export default function AgentPage() {
                 whileTap={{ scale: granting ? 1 : 0.98 }}
                 className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: granting ? 'transparent' : '#E50914',
                   color: granting ? '#525252' : '#fff',
                   border: `1px solid ${granting ? 'rgba(255,255,255,0.06)' : '#E50914'}`,
@@ -428,7 +429,7 @@ export default function AgentPage() {
                 onClick={revokePolicy}
                 className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: 'transparent',
                   color: '#525252',
                   border: '1px solid rgba(255,255,255,0.06)',
@@ -449,7 +450,7 @@ export default function AgentPage() {
             transition={{ delay: 0.22 }}
             className="flex flex-col gap-3"
           >
-            <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Attestation Log
             </span>
             <div className="flex flex-col gap-1.5">
@@ -460,18 +461,18 @@ export default function AgentPage() {
                   style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '2px' }}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3', fontSize: '12px' }}>
+                    <span style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '12px' }}>
                       {action.merchant} — {action.type}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#3a3a3a', fontSize: '10px' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: '#3a3a3a', fontSize: '10px' }}>
                       {action.signature.slice(0, 24)}…
                     </span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5">
-                    <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
                       {new Date(action.executed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#3a3a3a', fontSize: '9px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    <span style={{ fontFamily: 'var(--font-sans)', color: '#3a3a3a', fontSize: '9px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                       {action.triggered_by}
                     </span>
                   </div>
@@ -481,6 +482,7 @@ export default function AgentPage() {
           </motion.div>
         )}
       </div>
+      <AppFooter />
     </main>
   )
 }

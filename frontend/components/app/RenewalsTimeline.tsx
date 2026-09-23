@@ -66,7 +66,7 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
         <div className="flex flex-col gap-1 min-w-0">
           <span
             style={{
-              fontFamily: 'var(--font-geist-sans)',
+              fontFamily: 'var(--font-sans)',
               color: '#525252',
               fontSize: '10px',
               letterSpacing: '0.16em',
@@ -77,7 +77,7 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
           </span>
           <span
             style={{
-              fontFamily: 'var(--font-dm-mono)',
+              fontFamily: 'var(--font-mono)',
               color: '#fff',
               fontSize: '20px',
               letterSpacing: '-0.02em',
@@ -93,7 +93,7 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
           <div className="flex flex-col items-end gap-0.5 text-right min-w-0">
             <span
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 color: '#fff',
                 fontSize: '13px',
                 overflow: 'hidden',
@@ -106,7 +106,7 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
             </span>
             <span
               style={{
-                fontFamily: 'var(--font-dm-mono)',
+                fontFamily: 'var(--font-mono)',
                 color: '#E50914',
                 fontSize: '12px',
               }}
@@ -194,7 +194,7 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
           <span
             key={d}
             style={{
-              fontFamily: 'var(--font-dm-mono)',
+              fontFamily: 'var(--font-mono)',
               color: '#3a3a3a',
               fontSize: '10px',
             }}

@@ -13,6 +13,7 @@ import InsightsCarousel from '@/components/app/InsightsCarousel'
 import RenewalsTimeline from '@/components/app/RenewalsTimeline'
 import AgentActivity from '@/components/app/AgentActivity'
 import TopNav from '@/components/app/TopNav'
+import AppFooter from '@/components/app/AppFooter'
 import { useToast } from '@/components/providers/ToastProvider'
 import { normalizeSubscription } from '@/lib/normalize'
 import { aggregateByCurrency, formatAggregate, type CurrencyMap } from '@/lib/format'
@@ -214,11 +215,11 @@ function DashboardInner() {
       <main className="min-h-screen bg-void flex flex-col items-center justify-center gap-6 px-6">
         <h1
           className="text-3xl font-bold text-white text-center"
-          style={{ fontFamily: 'var(--font-syne)', letterSpacing: '-0.03em' }}
+          style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.03em' }}
         >
           Shamar
         </h1>
-        <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3' }} className="text-sm text-center">
+        <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm text-center">
           Connect your wallet to get started
         </p>
         <motion.button
@@ -227,7 +228,7 @@ function DashboardInner() {
           whileTap={{ scale: 0.98 }}
           className="px-8 py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
           style={{
-            fontFamily: 'var(--font-geist-sans)',
+            fontFamily: 'var(--font-sans)',
             background: '#E50914',
             color: '#fff',
             borderRadius: '2px',
@@ -244,7 +245,7 @@ function DashboardInner() {
   const activeSubs = subs.filter((s) => s.status === 'active').slice(0, 5)
 
   return (
-    <main className="min-h-screen bg-void">
+    <main className="min-h-screen bg-void flex flex-col justify-between">
       <TopNav
         gmailConnected={gmailConnected}
         scanning={scanning}
@@ -263,7 +264,7 @@ function DashboardInner() {
                 whileTap={{ scale: walletScanning ? 1 : 0.98 }}
                 className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: 'transparent',
                   color: walletScanning ? '#525252' : '#A3A3A3',
                   border: `1px solid ${walletScanning ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)'}`,
@@ -282,7 +283,7 @@ function DashboardInner() {
                 whileTap={{ scale: scanning ? 1 : 0.98 }}
                 className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: 'transparent',
                   color: scanning ? '#525252' : '#E50914',
                   border: `1px solid ${scanning ? 'rgba(255,255,255,0.08)' : 'rgba(229,9,20,0.4)'}`,
@@ -301,7 +302,7 @@ function DashboardInner() {
                 whileTap={{ scale: debugScanning ? 1 : 0.98 }}
                 className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   background: 'transparent',
                   color: debugScanning ? '#525252' : '#FACC15',
                   border: `1px solid ${debugScanning ? 'rgba(255,255,255,0.08)' : 'rgba(250,204,21,0.4)'}`,
@@ -368,7 +369,7 @@ function DashboardInner() {
               >
                 <span
                   style={{
-                    fontFamily: 'var(--font-dm-mono)',
+                    fontFamily: 'var(--font-mono)',
                     color: stat.alert ? '#E50914' : '#fff',
                     fontSize: '24px',
                     letterSpacing: '-0.02em',
@@ -379,7 +380,7 @@ function DashboardInner() {
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#525252',
                     fontSize: '11px',
                     letterSpacing: '0.06em',
@@ -404,13 +405,13 @@ function DashboardInner() {
           <ConnectGmail />
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
-            <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '12px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '12px' }}>
               Loading...
             </span>
           </div>
         ) : subs.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3' }} className="text-sm">
+            <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm">
               No subscriptions detected yet.
             </p>
             <motion.button
@@ -420,7 +421,7 @@ function DashboardInner() {
               whileTap={{ scale: 0.98 }}
               className="px-6 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 background: '#E50914',
                 color: '#fff',
                 borderRadius: '2px',
@@ -439,7 +440,7 @@ function DashboardInner() {
             <div className="flex items-center justify-between mb-2">
               <span
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#525252',
                   fontSize: '11px',
                   letterSpacing: '0.1em',
@@ -450,7 +451,7 @@ function DashboardInner() {
               </span>
               <Link
                 href="/subscriptions"
-                style={{ fontFamily: 'var(--font-geist-sans)', color: '#E50914', fontSize: '11px' }}
+                style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '11px' }}
               >
                 View all →
               </Link>
@@ -493,7 +494,7 @@ function DashboardInner() {
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <span
                 className="text-[11px] font-semibold uppercase tracking-widest"
-                style={{ fontFamily: 'var(--font-geist-sans)', color: '#FACC15', letterSpacing: '0.12em' }}
+                style={{ fontFamily: 'var(--font-sans)', color: '#FACC15', letterSpacing: '0.12em' }}
               >
                 Debug Scan Output
               </span>
@@ -538,7 +539,7 @@ function DashboardInner() {
             <pre
               className="px-4 py-3 overflow-auto flex-1 text-[11px] leading-relaxed"
               style={{
-                fontFamily: 'var(--font-dm-mono)',
+                fontFamily: 'var(--font-mono)',
                 color: '#D4D4D4',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
@@ -549,6 +550,7 @@ function DashboardInner() {
           </div>
         </div>
       )}
+      <AppFooter />
     </main>
   )
 }

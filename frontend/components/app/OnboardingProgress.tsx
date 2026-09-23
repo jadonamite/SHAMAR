@@ -39,7 +39,7 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
       <div className="flex items-center justify-between mb-5">
         <span
           style={{
-            fontFamily: 'var(--font-geist-sans)',
+            fontFamily: 'var(--font-sans)',
             color: '#525252',
             fontSize: '10px',
             letterSpacing: '0.16em',
@@ -50,7 +50,7 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
         </span>
         <span
           style={{
-            fontFamily: 'var(--font-dm-mono)',
+            fontFamily: 'var(--font-mono)',
             color: '#E50914',
             fontSize: '11px',
             letterSpacing: '0.04em',
@@ -112,7 +112,7 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
               <div className="flex flex-col items-center gap-0.5 text-center">
                 <span
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: done ? '#fff' : active ? '#E50914' : '#525252',
                     fontSize: '10px',
                     letterSpacing: '0.14em',
@@ -124,7 +124,7 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
                 <span
                   className="hidden sm:inline"
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#3a3a3a',
                     fontSize: '10px',
                   }}

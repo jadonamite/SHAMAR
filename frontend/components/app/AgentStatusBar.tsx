@@ -1,11 +1,14 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import AgentStateBadge, { type AgentStateKind } from './AgentStateBadge'
 
 interface AgentStatusBarProps {
   scanning?: boolean
   lastScan?: Date | string | null
   subCount?: number
+  userId?: string
 }
 
 function formatRelative(date: Date | string | null | undefined): string {
@@ -21,62 +24,115 @@ function formatRelative(date: Date | string | null | undefined): string {
   return `${days}d ago`
 }
 
-export default function AgentStatusBar({ scanning, lastScan, subCount = 0 }: AgentStatusBarProps) {
-  const status = scanning ? 'SCANNING' : 'ACTIVE'
-  const dotColor = scanning ? '#E50914' : '#16A34A'
+export default function AgentStatusBar({
+  scanning,
+  lastScan,
+  subCount = 0,
+  userId,
+}: AgentStatusBarProps) {
+  const [controlState, setControlState] = useState<{ halted: boolean; reason: string } | null>(null)
+  const [authState, setAuthState] = useState<{ granted: boolean; reason: string } | null>(null)
+
+  useEffect(() => {
+    // Check Telegram control state
+    fetch('/api/execute/control')
+      .then((r) => r.json())
+      .then((d) => setControlState(d))
+      .catch(() => {})
+
+    // Check policy status if user is present
+    if (userId) {
+      fetch('/api/agent/status', { headers: { 'x-user-id': userId } })
+        .then((r) => r.json())
+        .then((d) => {
+          setAuthState({
+            granted: Boolean(d.onchainAuthorized || d.user?.policy_granted),
+            reason: d.onchainAuthorized
+              ? 'shamar.cancel authorized on Base'
+              : d.user?.policy_granted
+              ? 'Local grant active'
+              : 'Not authorized',
+          })
+        })
+        .catch(() => {})
+    }
+  }, [userId])
+
+  const agentStateKind: AgentStateKind = controlState?.halted
+    ? 'halted'
+    : authState
+    ? authState.granted
+      ? 'authorized'
+      : 'blocked'
+    : scanning
+    ? 'checking'
+    : 'authorized'
 
   return (
     <div
-      className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-2.5 border-b overflow-x-auto whitespace-nowrap"
+      className="flex items-center justify-between px-4 sm:px-6 py-2 border-b overflow-x-auto whitespace-nowrap transition-colors"
       style={{
-        borderColor: 'rgba(255,255,255,0.04)',
-        background: 'rgba(20,20,20,0.4)',
+        borderColor: 'var(--border-subtle)',
+        background: 'var(--bg-surface)',
         scrollbarWidth: 'none',
       }}
     >
-      {/* Status dot */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <motion.span
-          animate={scanning ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
-          transition={scanning ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } : {}}
-          style={{
-            display: 'inline-block',
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: dotColor,
-            boxShadow: `0 0 8px ${dotColor}`,
-          }}
-        />
-        <span
-          style={{
-            fontFamily: 'var(--font-dm-mono)',
-            color: scanning ? '#E50914' : '#A3A3A3',
-            fontSize: '10px',
-            letterSpacing: '0.18em',
-          }}
-        >
-          {status}
-        </span>
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Status dot */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <motion.span
+            animate={scanning ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
+            transition={scanning ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } : {}}
+            style={{
+              display: 'inline-block',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: scanning ? '#E50914' : '#16A34A',
+              boxShadow: scanning ? '0 0 8px #E50914' : '0 0 8px #16A34A',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: scanning ? '#E50914' : 'var(--text-secondary)',
+              fontSize: '10px',
+              letterSpacing: '0.18em',
+            }}
+          >
+            {scanning ? 'SCANNING' : 'ONLINE'}
+          </span>
+        </div>
+
+        <Divider />
+
+        <Field label="SUBS">{subCount}</Field>
+
+        <Divider />
+
+        <Field label="LAST SCAN">{formatRelative(lastScan)}</Field>
+
+        <Divider />
+
+        <Field label="POLICY">
+          <span className="text-[10px] text-green-500 font-mono">SHAMARPolicy (Base)</span>
+        </Field>
       </div>
 
-      <Divider />
-
-      <Field label="SUBS">{subCount}</Field>
-
-      <Divider />
-
-      <Field label="LAST SCAN">{formatRelative(lastScan)}</Field>
-
-      <Divider />
-
-      <Field label="AGENT">Shamar v0.1</Field>
+      {/* R23 Agent State at a glance */}
+      <div className="flex items-center gap-2 shrink-0 pl-3">
+        <AgentStateBadge
+          state={agentStateKind}
+          reason={controlState?.halted ? 'Halted via Telegram /stop' : authState?.reason}
+          compact
+        />
+      </div>
     </div>
   )
 }
 
 function Divider() {
-  return <span style={{ color: '#2a2a2a', fontSize: '10px' }}>·</span>
+  return <span style={{ color: 'var(--border-strong)', fontSize: '10px' }}>·</span>
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -84,8 +140,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="flex items-center gap-1.5 flex-shrink-0">
       <span
         style={{
-          fontFamily: 'var(--font-geist-sans)',
-          color: '#3a3a3a',
+          fontFamily: 'var(--font-sans)',
+          color: 'var(--text-muted)',
           fontSize: '9px',
           letterSpacing: '0.14em',
           textTransform: 'uppercase',
@@ -93,7 +149,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       >
         {label}
       </span>
-      <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#A3A3A3', fontSize: '11px' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '11px' }}>
         {children}
       </span>
     </div>

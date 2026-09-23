@@ -32,19 +32,19 @@ export default function ConfidenceScore({ score, signals = [], action }: Confide
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          style={{ fontFamily: 'var(--font-dm-mono)', color, lineHeight: 1 }}
+          style={{ fontFamily: 'var(--font-mono)', color, lineHeight: 1 }}
           className="text-6xl font-bold"
         >
           {score}
         </motion.span>
-        <span style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252' }} className="text-lg mb-1">
+        <span style={{ fontFamily: 'var(--font-mono)', color: '#525252' }} className="text-lg mb-1">
           %
         </span>
         {action && (
           <span
             className="mb-1 px-2 py-0.5 text-[10px] font-bold tracking-widest"
             style={{
-              fontFamily: 'var(--font-geist-sans)',
+              fontFamily: 'var(--font-sans)',
               color,
               border: `1px solid ${color}`,
               borderRadius: '2px',
@@ -72,7 +72,7 @@ export default function ConfidenceScore({ score, signals = [], action }: Confide
           {signals.slice(0, 3).map((sig, i) => (
             <li
               key={i}
-              style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252' }}
+              style={{ fontFamily: 'var(--font-sans)', color: '#525252' }}
               className="text-xs flex items-center gap-2"
             >
               <span style={{ color, fontSize: '6px' }}>●</span>

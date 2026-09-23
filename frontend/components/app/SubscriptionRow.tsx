@@ -51,7 +51,7 @@ function MerchantAvatar({ name }: { name: string }) {
       }}
     >
       <span
-        style={{ fontFamily: 'var(--font-syne)', color: '#E50914', fontSize: '14px', fontWeight: 700 }}
+        style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '14px', fontWeight: 700 }}
       >
         {name.charAt(0).toUpperCase()}
       </span>
@@ -106,19 +106,19 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
       <div className="flex flex-col gap-0.5 flex-1 min-w-0">
         <span
           className="text-sm font-medium text-white truncate"
-          style={{ fontFamily: 'var(--font-geist-sans)' }}
+          style={{ fontFamily: 'var(--font-sans)' }}
         >
           {sub.merchant}
         </span>
         <div className="flex items-center gap-2">
           <span
-            style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}
+            style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
           >
             {sub.cadence}
           </span>
           <span style={{ color: '#525252', fontSize: '10px' }}>·</span>
           <span
-            style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}
+            style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
           >
             {sub.source}
           </span>
@@ -130,7 +130,7 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
         <div className="flex flex-col items-end gap-0.5">
           <span
             style={{
-              fontFamily: 'var(--font-dm-mono)',
+              fontFamily: 'var(--font-mono)',
               color: actionColor ?? '#A3A3A3',
               fontSize: '11px',
               letterSpacing: '0.04em',
@@ -141,7 +141,7 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
           {sub.action && (
             <span
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 color: actionColor,
                 fontSize: '9px',
                 letterSpacing: '0.1em',
@@ -157,12 +157,12 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
       {/* Amount */}
       <div className="flex flex-col items-end gap-0.5 ml-4">
         <span
-          style={{ fontFamily: 'var(--font-dm-mono)', color: '#fff', fontSize: '15px', letterSpacing: '-0.01em' }}
+          style={{ fontFamily: 'var(--font-mono)', color: '#fff', fontSize: '15px', letterSpacing: '-0.01em' }}
         >
           {formatMoney(sub.amount, sub.currency)}
         </span>
         <span
-          style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252', fontSize: '11px' }}
+          style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
         >
           {CADENCE_LABELS[sub.cadence]}
         </span>
@@ -184,7 +184,7 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
                   onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'paused') }}
                   className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#D97706',
                     border: '1px solid rgba(217,119,6,0.4)',
                     borderRadius: '2px',
@@ -197,7 +197,7 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
                   onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'cancelled') }}
                   className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                   style={{
-                    fontFamily: 'var(--font-geist-sans)',
+                    fontFamily: 'var(--font-sans)',
                     color: '#E50914',
                     border: '1px solid rgba(229,9,20,0.4)',
                     borderRadius: '2px',
@@ -213,7 +213,7 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
                 onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'active') }}
                 className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                 style={{
-                  fontFamily: 'var(--font-geist-sans)',
+                  fontFamily: 'var(--font-sans)',
                   color: '#16A34A',
                   border: '1px solid rgba(22,163,74,0.4)',
                   borderRadius: '2px',

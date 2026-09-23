@@ -24,7 +24,7 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         whileTap={{ scale: 0.98 }}
         className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-widest cursor-pointer"
         style={{
-          fontFamily: 'var(--font-geist-sans)',
+          fontFamily: 'var(--font-sans)',
           background: '#E50914',
           color: '#fff',
           borderRadius: '2px',
@@ -66,11 +66,11 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
       <div className="text-center flex flex-col gap-2">
         <h3
           className="text-xl font-bold text-white"
-          style={{ fontFamily: 'var(--font-syne)', letterSpacing: '-0.02em' }}
+          style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.02em' }}
         >
           Connect Gmail
         </h3>
-        <p style={{ fontFamily: 'var(--font-geist-sans)', color: '#A3A3A3' }} className="text-sm leading-relaxed">
+        <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm leading-relaxed">
           Shamar reads your inbox to detect recurring subscriptions.
           <br />
           Read-only access. Shamar cannot send or delete emails.
@@ -81,7 +81,7 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         {['Read-only Gmail access', 'Detected in under 30 seconds', 'No manual entry required'].map((item) => (
           <div key={item} className="flex items-center gap-3">
             <div className="w-1 h-1 rounded-full" style={{ background: '#E50914', flexShrink: 0 }} />
-            <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252' }} className="text-xs">
+            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252' }} className="text-xs">
               {item}
             </span>
           </div>
@@ -94,7 +94,7 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         whileTap={{ scale: 0.98 }}
         className="w-full py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
         style={{
-          fontFamily: 'var(--font-geist-sans)',
+          fontFamily: 'var(--font-sans)',
           background: '#E50914',
           color: '#fff',
           borderRadius: '2px',
@@ -104,7 +104,7 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         Connect & Scan Gmail
       </motion.button>
 
-      <p style={{ fontFamily: 'var(--font-dm-mono)', color: '#525252' }} className="text-[10px] text-center">
+      <p style={{ fontFamily: 'var(--font-mono)', color: '#525252' }} className="text-[10px] text-center">
         You will be redirected to Google's secure sign-in page
       </p>
     </motion.div>

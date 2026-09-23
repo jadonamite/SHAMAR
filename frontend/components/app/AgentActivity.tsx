@@ -71,7 +71,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
       <div className="flex items-center justify-between">
         <span
           style={{
-            fontFamily: 'var(--font-geist-sans)',
+            fontFamily: 'var(--font-sans)',
             color: '#525252',
             fontSize: '10px',
             letterSpacing: '0.16em',
@@ -82,7 +82,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
         </span>
         <span
           style={{
-            fontFamily: 'var(--font-dm-mono)',
+            fontFamily: 'var(--font-mono)',
             color: '#3a3a3a',
             fontSize: '10px',
           }}
@@ -115,7 +115,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
             {/* label */}
             <span
               style={{
-                fontFamily: 'var(--font-geist-sans)',
+                fontFamily: 'var(--font-sans)',
                 color: '#A3A3A3',
                 fontSize: '12px',
                 flex: 1,
@@ -125,7 +125,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
               {a.triggered_by === 'policy' && (
                 <span
                   style={{
-                    fontFamily: 'var(--font-dm-mono)',
+                    fontFamily: 'var(--font-mono)',
                     color: '#E50914',
                     fontSize: '9px',
                     marginLeft: '8px',
@@ -140,7 +140,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
             {/* time */}
             <span
               style={{
-                fontFamily: 'var(--font-dm-mono)',
+                fontFamily: 'var(--font-mono)',
                 color: '#525252',
                 fontSize: '11px',
                 flexShrink: 0,
