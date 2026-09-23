@@ -1,85 +1,102 @@
 # SHAMAR
 
-**A subscription agent that treats cancelling as a one-way door.**
+**An agent you can hand a recurring bill to.**
 
-Most subscription tools find what you pay for and hand you a list. The decision
-stays yours, because the tool has no idea what cancelling would cost you —
-whether the data is deleted, whether a teammate loses access, whether the price
-you re-subscribe at is the price you're on now.
+Ask people what they spend on subscriptions and they say around $86 a month. The real figure
+is $219. Seven in ten have been charged for a free trial they meant to cancel, and $15.5
+billion a year goes to apps nobody opens.
 
-SHAMAR makes that decision, and then acts on it: it reads your inbox, reasons
-about blast radius, puts the renewal date on your calendar, emails the merchant
-a cancellation request, and reports what it did — refusing to act at all if
-authorization is absent or you've told it to stop.
+None of that is forgetfulness. Renewing requires nothing. Cancelling requires a login, a
+retention screen and sometimes a phone call, and when the FTC tried to force click-to-cancel
+in 2025 the rule was struck down. The friction is the business model, and it is now legally
+protected.
 
----
+You already know you should audit this. You have known for months. The reason you have not is
+that cancelling the wrong thing takes a design library with it, or cuts off a teammate, or
+gives up a price the service stopped offering, and no list of charges tells you which is
+which.
 
-## Demo
+SHAMAR makes the call. It reads your receipts, weighs what cancelling costs against what it
+saves, asks you three times, and acts if you never answer.
 
-📹 **Video:** https://www.youtube.com/watch?v=ZtTMTnJ5Ebk
+[Live](https://shamar.namite.xyz) · [Demo video](https://www.youtube.com/watch?v=ZtTMTnJ5Ebk)
 
-🔗 **Live:** https://shamar.namite.xyz
+## It decides, which is the whole point
 
----
+Every other tool in this category finds your subscriptions and hands you a list, which is the
+easy half of the job dressed up as the whole of it. The work stays with you. A list knows the
+price of a thing and nothing about the cost of losing it.
 
-## External apps the agent interacts with
+SHAMAR returns a blast radius instead. Permanent data loss. Shared access somebody else
+depends on. A repurchase price higher than the one you are on. Those are the facts that
+decide whether a $9 subscription is worth keeping, and no amount of spending analysis
+surfaces them.
 
-| App | Direction | What the agent does | Code |
-|---|---|---|---|
-| **Gmail** | read | Scans receipts to detect recurring charges, amounts, and cadence | `server/src/routes/gmail.ts` |
-| **Google Calendar** | write | Writes each renewal date, and the date a cancellation was requested | `server/src/lib/calendar.ts` |
-| **Resend** | send | Dispatches the cancellation request to the merchant's billing address | `server/src/lib/dispatch.ts` |
-| **Telegram** | read + write | Asks before each renewal with inline Cancel/Keep buttons, reports every dispatch, and `/stop` halts the agent mid-run | `server/src/lib/telegram.ts`, `renewal.ts` |
-| **Celo** (`SAMPolicy`) | read | Checks a scoped, expiring, revocable on-chain grant before acting | `server/src/lib/agent.ts` |
+Then it enforces limits on its own reasoning. Permanent data loss turns a cancel into a
+reminder. Anything irreversible below 85% confidence, the same. An amount it could not parse
+is never cancelled at any confidence. Each downgrade writes its own reason into the record,
+so you can watch the agent overrule itself.
 
-The contract is live on Celo mainnet at
-[`0x18fbb7eec6e7a48f4a1ea265ace191e845b8ea9a`](https://celoscan.io/address/0x18fbb7eec6e7a48f4a1ea265ace191e845b8ea9a)
-with four registered scopes — `sam.cancel`, `sam.pause`, `sam.remind`,
-`sam.analyze`. Anyone can verify the agent's permissions without trusting this
-repository.
+## Authority you grant, and take back in one transaction
 
----
+An agent that can only suggest is a newsletter. SHAMAR acts, and acting on your behalf means
+holding real authority, which means you need a real way to withdraw it.
 
-## It asks before it acts
+`SHAMARPolicy` is live on Base mainnet at
+[`0xCcdF06aa225864B775de2bCA38403916375B6933`](https://basescan.org/address/0xCcdF06aa225864B775de2bCA38403916375B6933),
+carrying five scopes: `shamar.cancel`, `shamar.pause`, `shamar.remind`, `shamar.analyze`, and
+`shamar.pay`, which the card tier needs and nobody gets by default. You grant the ones you
+want. They expire when you say. Revoking is a single transaction from your own
+wallet, and the agent reads that grant before every action it takes.
 
-Before a subscription renews, SHAMAR sends a notice to Telegram with two
-buttons:
+Not a promise written in our code. A permission written in yours, and anyone can read it on
+Basescan without asking us anything.
+
+`/stop` on Telegram halts a run mid-flight. If Telegram is unreachable, the last known halt
+stands, because a control channel nobody can read does not grant permission.
+
+## It asks first, and silence is not consent
+
+Before a renewal, a notice arrives on Telegram.
 
 ```
 CLAUDE PRO renews on the 16 September.
 
 $20.00 / monthly
 
-Reply below. Silence means SHAMAR cancels it 24 hours before renewal.
-_68h remaining._
+Reply below. Silence means SHAMAR cancels it 36 hours before renewal.
+68h remaining.
 
-        [ ✕  Cancel it ]   [ ✓  Keep it ]
+        [ Cancel it ]   [ Keep it ]
 ```
 
-- **Keep it** — the decision is recorded and no further notices are sent
-- **Cancel it** — cancelled immediately
-- **Silence** — four notices go out at 120h, 72h, 48h and 36h before renewal,
-  each more insistent than the last. If none is answered, SHAMAR cancels the
-  subscription 24 hours before it would charge, and says so.
+Keep it, and the notices stop. Cancel it, and it goes. Say nothing, and it asks again at 72
+hours and at 48, each one more insistent than the last, then cancels a day and a half ahead
+of the charge, early enough for the merchant to act on it, and tells you exactly what it did.
 
-The default is deliberate. An unanswered renewal is not consent, and the cost
-of wrongly cancelling something cheap is smaller than the cost of silently
-renewing something forgotten.
+That default is deliberate. An unanswered renewal is not consent, and wrongly cancelling
+something cheap costs less than silently renewing something forgotten.
 
-Button presses are read on a separate update offset from the `/stop` control
-channel, so neither consumes the other's messages, and a decision already taken
-is never re-asked.
+## Give it a card and cancelling stops being a request
 
-```
-POST /renewals/tick          one pass of the schedule, dry-run by default
-POST /renewals/poll          read pending button presses
-GET  /renewals/:id           notice state for one subscription
-POST /renewals/stage         position a renewal for demonstration
-```
+Emailing a merchant to cancel is asking. The merchant can route you to a retention screen, or
+a phone line, or nothing at all, and the entire category is built on that friction.
 
----
+A card removes the conversation. Each subscription gets its own virtual card with its own
+ceiling, so cancelling is closing the card and the next charge simply declines. A silent
+price rise declines too, and tells SHAMAR why. A free trial converting is the first charge
+above zero. The blast radius of any mistake stops at one subscription.
 
-## How it decides
+| | Default | Card |
+|---|---|---|
+| Subscriptions found by | Gmail receipts | The charges themselves |
+| Cancelling works by | Emailing the merchant | Closing the card |
+| Certainty | The merchant has to cooperate | The next charge declines |
+
+The card is opt-in and the default tier is a complete product without it. The pipeline that
+decides does not know or care how a subscription is paid; only the last step changes.
+
+## How it works
 
 ```
 EVIDENCE          deterministic facts from Gmail receipts
@@ -88,124 +105,42 @@ JUDGMENT          a model weighs what cancelling costs, not only what it saves
     ↓
 GUARDRAILS        constraints the model cannot argue past
     ↓
-AUTHORIZATION     on-chain grant + Telegram control channel
+AUTHORIZATION     the on-chain grant, plus the Telegram control channel
     ↓
-DISPATCH          the cancellation email, then a signed record
+DISPATCH          the cancellation, then a signed record
 ```
 
-**Evidence** is never model-generated. Amounts, cadence and dates come from
-parsing receipts; cadence is inferred from the median interval between charges
-rather than from subject-line keywords.
+Evidence is never model-generated. Amounts, cadence and dates come from parsing receipts, and
+cadence is the median interval between real charges rather than whatever a subject line
+claims. 165 services in the registry, including iROKOtv, Showmax and Boomplay alongside
+Netflix and Figma, priced across naira, dollars, euros and pounds.
 
-**Judgment** returns a structured blast radius — data loss, shared access,
-repurchase price — not a score.
+Reasoning fails over from Groq to NVIDIA to a deterministic decision, and the response says
+which path it took. Dry-run is the default everywhere; `apply: true` has to be asked for. A
+real dispatch is recorded `reversible: false`, because an email to a merchant cannot be undone
+by editing a database row.
 
-**Guardrails** run after every decision, model-sourced or not:
-
-- permanent data loss → `cancel` is downgraded to `remind`
-- irreversible below 85% confidence → downgraded to `remind`
-- an amount that could not be parsed → never cancelled, at any confidence
-
-Each downgrade writes its own reason into the decision, so the trail shows the
-agent overruling itself.
-
----
-
-## Reliability
-
-Every external dependency degrades rather than failing the run, and says which
-path it took.
-
-| Failure | Behaviour |
-|---|---|
-| Model provider down | Fails over to the second provider, then to a deterministic decision. Response reports `fell_back: N` |
-| No model configured at all | Server still boots; reasoning degrades, nothing crashes |
-| Telegram unreachable | Last known halt state stands — an unreadable control channel does not grant permission |
-| Cancellation already sent | `skipped_duplicate`; a dispatched, unreversed cancellation is never sent twice |
-| Calendar write conflict | Deterministic event ids mean a re-run updates rather than duplicates |
-| Resend rejects the send | No attestation is written — a failed send leaves no record claiming success |
-| Authorization absent | `blocked_unauthorized`; nothing is dispatched |
-
-Dry-run is the default everywhere. `apply: true` must be asked for explicitly.
-
-A real dispatch is recorded `reversible: false`, because an email to a merchant
-cannot be undone by changing a database row.
-
----
+| Service | What the agent does | Code |
+|---|---|---|
+| Gmail | Scans receipts for recurring charges, amounts and cadence | `server/src/routes/gmail.ts` |
+| Google Calendar | Writes each renewal date, and the date a cancellation went out | `server/src/lib/calendar.ts` |
+| Resend | Sends the cancellation to the merchant's billing address | `server/src/lib/dispatch.ts` |
+| Telegram | Asks before each renewal, reports every dispatch, halts on `/stop` | `server/src/lib/telegram.ts` |
+| Base | Reads the grant before acting | `server/src/lib/agent.ts` |
 
 ## Running it
 
-Requires Node 20+, a Postgres database (Neon), and a Resend account with a
-verified sending domain.
+Node 20 or later, Postgres, and a Resend account with a verified sending domain.
 
 ```bash
 git clone https://github.com/jadonamite/SHAMAR && cd SHAMAR
 
-# server
 cd server && npm install
-cp .env.example .env     # fill in the values below
-npx tsx src/index.ts     # http://localhost:3001
+cp .env.example .env
+npx tsx src/index.ts          # http://localhost:3001
 
-# frontend, in a second shell
-cd frontend && npm install
-npm run dev              # http://localhost:3000/run
+cd ../frontend && npm install
+npm run dev                   # http://localhost:3000/run
 ```
 
-### Environment
-
-```bash
-# required
-NEON_DATABASE_URL=          # Postgres connection string
-RESEND_API_KEY=             # resend.com
-RESEND_FROM=                # must be a verified sending domain
-
-# reasoning — without these every decision falls back to deterministic logic
-GROQ_API_KEY=
-NVIDIA_API_KEY=             # optional second provider
-
-# Gmail + Calendar (one OAuth client, both scopes)
-GMAIL_CLIENT_ID=
-GMAIL_CLIENT_SECRET=
-GMAIL_REDIRECT_URI=http://localhost:3001/gmail/callback
-
-# Telegram control channel
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-
-# on-chain authorization
-SAM_POLICY_CONTRACT=0x18fbb7eec6e7a48f4a1ea265ace191e845b8ea9a
-AGENT_ADDRESS=
-AGENT_PRIVATE_KEY=
-
-# where cancellations go during a demo, instead of real merchants
-DISPATCH_RECIPIENT=
-```
-
-Apply `server/src/schema/migrations.sql` and the numbered migrations, then:
-
-```sql
-CREATE TABLE IF NOT EXISTS kv (
-  key TEXT PRIMARY KEY, value JSONB NOT NULL,
-  expires_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-### Endpoints
-
-```
-POST /gmail/scan                detect subscriptions from receipts
-GET  /intelligence/evidence     the facts reasoning runs on
-POST /intelligence/reason       reason over everything, dry-run by default
-POST /execute                   reason → authorize → dispatch
-GET  /execute/authorization     current on-chain grant
-GET  /execute/control           halt state
-```
-
-`DISPATCH_RECIPIENT` redirects every cancellation to one address. Set it before
-running `apply: true` against real data unless you intend to email merchants.
-
----
-
-## License
-
-MIT
+Environment, endpoints and migrations are in `TECHNICAL_ARCHITECTURE.md`.

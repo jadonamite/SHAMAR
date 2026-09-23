@@ -103,7 +103,7 @@ export async function dispatchCancellation(opts: {
   }
 
   if (!authorized) {
-    return { ...base, status: 'blocked_unauthorized', recipient, reason: 'On-chain authorization for sam.cancel is absent or expired' }
+    return { ...base, status: 'blocked_unauthorized', recipient, reason: 'On-chain authorization for shamar.cancel is absent or expired' }
   }
 
   const [sub] = await sql`

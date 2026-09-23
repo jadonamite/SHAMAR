@@ -1,22 +1,22 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createPublicClient, http, keccak256, toBytes } from 'viem'
-import { celo } from 'viem/chains'
+import { base } from 'viem/chains'
 
 const AGENT_PRIVATE_KEY = (process.env.AGENT_PRIVATE_KEY ?? '') as `0x${string}`
 const AGENT_ADDRESS     = process.env.AGENT_ADDRESS ?? '0x0000000000000000000000000000000000000000'
-const POLICY_CONTRACT   = (process.env.SAM_POLICY_CONTRACT ?? '') as `0x${string}`
+const POLICY_CONTRACT   = (process.env.SHAMAR_POLICY_CONTRACT ?? '') as `0x${string}`
 
 const account = AGENT_PRIVATE_KEY
   ? privateKeyToAccount(AGENT_PRIVATE_KEY)
   : null
 
 const publicClient = createPublicClient({
-  chain: celo,
-  transport: http('https://forno.celo.org'),
+  chain: base,
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 })
 
-const SAM_POLICY_ABI = [
+const SHAMAR_POLICY_ABI = [
   {
     name: 'isAuthorized',
     type: 'function',
@@ -30,12 +30,13 @@ const SAM_POLICY_ABI = [
   },
 ] as const
 
-// Scope hashes — must match keccak256 values in SAMPolicy.sol
+// Scope hashes — must match keccak256 values in SHAMARPolicy.sol
 export const SCOPES = {
-  CANCEL:  keccak256(toBytes('sam.cancel'))  as `0x${string}`,
-  PAUSE:   keccak256(toBytes('sam.pause'))   as `0x${string}`,
-  REMIND:  keccak256(toBytes('sam.remind'))  as `0x${string}`,
-  ANALYZE: keccak256(toBytes('sam.analyze')) as `0x${string}`,
+  CANCEL:  keccak256(toBytes('shamar.cancel'))  as `0x${string}`,
+  PAUSE:   keccak256(toBytes('shamar.pause'))   as `0x${string}`,
+  REMIND:  keccak256(toBytes('shamar.remind'))  as `0x${string}`,
+  ANALYZE: keccak256(toBytes('shamar.analyze')) as `0x${string}`,
+  PAY:     keccak256(toBytes('shamar.pay'))     as `0x${string}`,
 } as const
 
 export type AttestationPayload = {
@@ -66,7 +67,7 @@ export function buildAttestationId(subId: string, actionType: string, timestamp:
     .slice(0, 32)
 }
 
-// EIP-191 personal_sign — verifiable on Celoscan and 8004scan
+// EIP-191 personal_sign — verifiable with any EVM signature checker
 export async function signAttestation(payload: AttestationPayload): Promise<string> {
   if (!account) return 'unsigned:no_key'
   const canonical = JSON.stringify(payload, Object.keys(payload).sort())
@@ -91,7 +92,7 @@ export async function buildAttestation(
   return { payload, signature }
 }
 
-// Check onchain SAMPolicy authorization. Falls back to false if contract not set.
+// Check onchain SHAMARPolicy authorization. Falls back to false if contract not set.
 // userWalletAddress is the user's EVM wallet (stored in users.wallet_address).
 export async function checkOnchainAuthorization(
   userWalletAddress: string,
@@ -101,7 +102,7 @@ export async function checkOnchainAuthorization(
   try {
     return await publicClient.readContract({
       address: POLICY_CONTRACT,
-      abi: SAM_POLICY_ABI,
+      abi: SHAMAR_POLICY_ABI,
       functionName: 'isAuthorized',
       args: [
         userWalletAddress as `0x${string}`,

@@ -142,7 +142,7 @@ app.post('/evaluate', async (c) => {
   `) as DBSub[]
 
   // Normalize every subscription to a USD monthly figure so spend across mixed
-  // currencies (₦, $, €, CELO …) aggregates to a comparable number.
+  // currencies (₦, $, €, ETH …) aggregates to a comparable number.
   const monthlyTotal = subs.reduce((sum: number, s: DBSub) => {
     const usd = toUsd(s.amount, s.currency)
     if (s.cadence === 'yearly') return sum + usd / 12

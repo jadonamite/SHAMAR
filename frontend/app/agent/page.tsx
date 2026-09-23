@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { createWalletClient, custom } from 'viem'
-import { celo } from 'viem/chains'
+import { base } from 'viem/chains'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -63,9 +63,9 @@ const SCOPE_LABELS: Record<string, string> = {
   analyze: 'Run analysis',
 }
 
-const SAM_POLICY_ADDRESS = '0xae0b9b78419fe19b84152be75b4333bbbfd6f158' as const
-const SAM_AGENT_ADDRESS  = '0x3ea23aa1d53eb5209f014f02ca889a6a7b37eed0' as const
-const SAM_POLICY_ABI = [
+// Contract and agent addresses come from /agent/status, so the grant is always
+// written to the contract the server checks.
+const SHAMAR_POLICY_ABI = [
   {
     name: 'grantDefaultScopes',
     type: 'function',
@@ -135,18 +135,21 @@ export default function AgentPage() {
     setGranting(true)
     try {
       const wallet = wallets[0]
-      if (wallet) {
+      const contract = status?.agent?.policyContract as `0x${string}` | undefined
+      const agentAddress = status?.agent?.address as `0x${string}` | undefined
+      if (wallet && contract && agentAddress) {
         const provider = await wallet.getEthereumProvider()
         const walletClient = createWalletClient({
-          chain: celo,
+          chain: base,
           transport: custom(provider),
         })
+        await walletClient.switchChain({ id: base.id })
         const [account] = await walletClient.getAddresses()
         await walletClient.writeContract({
-          address: SAM_POLICY_ADDRESS,
-          abi: SAM_POLICY_ABI,
+          address: contract,
+          abi: SHAMAR_POLICY_ABI,
           functionName: 'grantDefaultScopes',
-          args: [SAM_AGENT_ADDRESS],
+          args: [agentAddress],
           account,
         })
       }
@@ -177,7 +180,7 @@ export default function AgentPage() {
       userId: user.id,
       sessionId: crypto.randomUUID(),
       devMode: process.env.NODE_ENV !== 'production',
-      chainID: 42220, // Celo mainnet
+      chainID: 42220, // Self Protocol verifies on Celo; unrelated to SHAMARPolicy on Base
     }).build()
   }, [user?.id])
 
@@ -260,7 +263,7 @@ export default function AgentPage() {
               { label: 'Agent Address', value: <ShortAddress address={agent?.address ?? ''} /> },
               { label: 'Policy Contract', value: agent?.policyContract ? <ShortAddress address={agent.policyContract} /> : <span style={{ color: '#525252' }}>Not deployed</span> },
               { label: 'Signing', value: <span style={{ color: isConfigured ? '#16A34A' : '#525252' }}>{isConfigured ? 'EIP-191 personal_sign' : 'No key set'}</span> },
-              { label: 'Chain', value: <span style={{ color: '#A3A3A3' }}>Celo Mainnet</span> },
+              { label: 'Chain', value: <span style={{ color: '#A3A3A3' }}>Base Mainnet</span> },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1">
                 <span style={{ fontFamily: 'var(--font-geist-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>

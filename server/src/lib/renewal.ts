@@ -9,8 +9,8 @@ const API = `https://api.telegram.org/bot${TOKEN}`
 
 // Notices go out at these hours before renewal. Silence escalates; the last
 // window belongs to the agent.
-export const NOTICE_HOURS = [120, 72, 48, 36]
-export const AUTO_CANCEL_HOURS = 24
+export const NOTICE_HOURS = [120, 72, 48]
+export const AUTO_CANCEL_HOURS = 36
 
 export type NoticeState = {
   subscription_id: string
@@ -211,7 +211,7 @@ export async function tick(dbUserId: string, opts: { apply?: boolean } = {}): Pr
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             chat_id: CHAT_ID,
-            text: `*${sub.merchant}* cancelled.\n\nFour notices went unanswered, so SHAMAR acted ${AUTO_CANCEL_HOURS}h before renewal rather than let it charge.`,
+            text: `*${sub.merchant}* cancelled.\n\n${NOTICE_HOURS.length} notices went unanswered, so SHAMAR acted ${AUTO_CANCEL_HOURS}h before renewal rather than let it charge.`,
             parse_mode: 'Markdown',
           }),
         }).catch(() => {})

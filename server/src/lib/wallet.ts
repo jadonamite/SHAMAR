@@ -1,9 +1,9 @@
 // Etherscan V2 unified API — one key works across all chains via `chainid`.
-// Celo = 42220. The standalone Celoscan API is deprecated.
+// Base = 8453.
 const ETHERSCAN_API = 'https://api.etherscan.io/v2/api'
-const CELO_CHAIN_ID = '42220'
+const BASE_CHAIN_ID = '8453'
 
-type CeloscanTx = {
+type ExplorerTx = {
   hash: string
   from: string
   to: string
@@ -12,7 +12,7 @@ type CeloscanTx = {
   isError: string
 }
 
-type CeloscanTokenTx = {
+type ExplorerTokenTx = {
   hash: string
   from: string
   to: string
@@ -35,13 +35,12 @@ export type WalletPattern = {
   lastCharged: string
 }
 
-// Known contract addresses on Celo mainnet (lowercase)
+// Known token contracts on Base mainnet (lowercase)
 const KNOWN_CONTRACTS: Record<string, string> = {
-  '0x765de816845861e75a25fca122bb6898b8b1282a': 'cUSD',
-  '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73': 'cEUR',
-  '0xe8537a3d056da446677b9e9d6c5db704eaab4787': 'cREAL',
-  '0xef4229c8c3250c675f21bcefa42f58efbff6002a': 'USDC',
-  '0x471ece3750da237f93b8e339c536989b8978a438': 'CELO Token',
+  '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': 'USDC',
+  '0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca': 'USDbC',
+  '0x50c5725949a6f0c72e6c4a641f24049a917db0cb': 'DAI',
+  '0x4200000000000000000000000000000000000006': 'WETH',
 }
 
 // DEX routers, bridges, and other non-subscription contracts to skip
@@ -51,7 +50,7 @@ const SKIP_ADDRESSES = new Set([
   '0x0000000000000000000000000000000000000000',
 ])
 
-const STABLECOINS = new Set(['cUSD', 'USDC', 'USDT', 'DAI', 'cEUR', 'cREAL'])
+const STABLECOINS = new Set(['USDC', 'USDbC', 'USDT', 'DAI'])
 
 function merchantName(address: string, tokenSymbol?: string): string {
   const lower = address.toLowerCase()
@@ -87,7 +86,7 @@ function confidence(txCount: number, amountCV: number, intervalCV: number): numb
 async function etherscanFetch(params: Record<string, string>): Promise<unknown[]> {
   const apiKey = process.env.ETHERSCAN_API_KEY ?? ''
   const query = new URLSearchParams({
-    chainid: CELO_CHAIN_ID,
+    chainid: BASE_CHAIN_ID,
     ...params,
     ...(apiKey ? { apikey: apiKey } : {}),
   })
@@ -110,7 +109,7 @@ export async function detectWalletSubscriptions(walletAddress: string): Promise<
       page: '1',
       offset: '500',
       sort: 'asc',
-    }) as Promise<CeloscanTx[]>,
+    }) as Promise<ExplorerTx[]>,
     etherscanFetch({
       module: 'account',
       action: 'tokentx',
@@ -118,13 +117,13 @@ export async function detectWalletSubscriptions(walletAddress: string): Promise<
       page: '1',
       offset: '500',
       sort: 'asc',
-    }) as Promise<CeloscanTokenTx[]>,
+    }) as Promise<ExplorerTokenTx[]>,
   ])
 
   const patterns: WalletPattern[] = []
 
-  // Native CELO — group outgoing by recipient
-  const nativeByRecipient = new Map<string, CeloscanTx[]>()
+  // Native ETH — group outgoing by recipient
+  const nativeByRecipient = new Map<string, ExplorerTx[]>()
   for (const tx of nativeTxs) {
     if (tx.from.toLowerCase() !== address) continue
     if (tx.isError !== '0') continue
@@ -151,7 +150,7 @@ export async function detectWalletSubscriptions(walletAddress: string): Promise<
       merchantName: merchantName(toAddr),
       txCount: group.length,
       avgAmount: parseFloat(avgAmount.toFixed(4)),
-      currency: 'CELO',
+      currency: 'ETH',
       cadence,
       confidence: confidence(group.length, cv(amounts), cv(intervals)),
       lastCharged: new Date(Number(sorted.at(-1)!.timeStamp) * 1000).toISOString(),
@@ -159,7 +158,7 @@ export async function detectWalletSubscriptions(walletAddress: string): Promise<
   }
 
   // ERC20 tokens — group outgoing by (recipient, contract)
-  const tokenByKey = new Map<string, CeloscanTokenTx[]>()
+  const tokenByKey = new Map<string, ExplorerTokenTx[]>()
   for (const tx of tokenTxs) {
     if (tx.from.toLowerCase() !== address) continue
     const to = tx.to.toLowerCase()

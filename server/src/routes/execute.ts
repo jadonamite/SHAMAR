@@ -11,7 +11,7 @@ import { currencySymbol } from '../lib/currency.js'
 const app = new Hono()
 
 type Authorization = {
-  scope: 'sam.cancel'
+  scope: 'shamar.cancel'
   granted: boolean
   checked: boolean
   source: 'onchain' | 'local' | 'none'
@@ -35,7 +35,7 @@ function localGrant(): { granted: boolean; expiresAt: string | null } {
 
 async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
   const base = {
-    scope: 'sam.cancel' as const,
+    scope: 'shamar.cancel' as const,
     agent: getAgentAddress(),
     contract: getPolicyContract(),
   }
@@ -53,10 +53,10 @@ async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
       const granted = await checkOnchainAuthorization(wallet as string, SCOPES.CANCEL)
       if (granted) {
         return { ...base, granted: true, checked: true, source: 'onchain', wallet, expires_at: null,
-          reason: 'sam.cancel granted on-chain and unexpired' }
+          reason: 'shamar.cancel granted on-chain and unexpired' }
       }
       return { ...base, granted: false, checked: true, source: 'onchain', wallet, expires_at: null,
-        reason: 'sam.cancel not granted, expired, or revoked on-chain' }
+        reason: 'shamar.cancel not granted, expired, or revoked on-chain' }
     } catch (err) {
       // Chain unreachable — fall through to the local grant rather than
       // treating an RPC failure as a denial.
@@ -75,7 +75,7 @@ async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
     : !isAgentConfigured()
     ? 'Agent key not configured'
     : !base.contract
-      ? 'SAM_POLICY_CONTRACT not set'
+      ? 'SHAMAR_POLICY_CONTRACT not set'
       : !wallet
         ? 'User has no wallet address on record'
         : 'No grant on-chain and no local grant configured'
@@ -161,7 +161,7 @@ app.post('/', async (c) => {
   const dbUserId = await getOrCreateUser(userId)
   const [authorization, control, calendar] = await Promise.all([
     withTimeout(resolveAuthorization(dbUserId), 6000,
-      { scope: 'sam.cancel' as const, granted: false, checked: false, source: 'none' as const,
+      { scope: 'shamar.cancel' as const, granted: false, checked: false, source: 'none' as const,
         agent: getAgentAddress(), contract: getPolicyContract(), wallet: null, expires_at: null,
         reason: 'Authorization check timed out; refusing rather than assuming permission' },
       'authorization'),
