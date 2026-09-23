@@ -74,6 +74,14 @@ Done: Switzer self-hosted with its italic; `components/ui/Logo.tsx`; old SAM fil
 - The footer should be about 45% of the viewport and use the same SHAMAR background as the
   hero. The watermark text is gone; the pattern replaces it.
 
+## Round 7: the background, settled
+
+- "Spell SHAMAR in an abstract way" was misread twice: first as a giant readable word, then
+  offered as letter-fragment and tiled-letter wallpapers. The owner rejected all of those.
+- Promised three previews and delivered two. Say so plainly when an option fails.
+- Chosen: the owner's own purple pattern, recoloured to SHAMAR red, at reduced opacity and
+  zoomed in. Used behind both the hero and the footer.
+
 ## Standing rules drawn from all of the above
 
 1. Pitch, not specs. If a sentence needs a technical term to make sense, it belongs in the
@@ -84,3 +92,5 @@ Done: Switzer self-hosted with its italic; `components/ui/Logo.tsx`; old SAM fil
 5. "Hug" means fit the content.
 6. Light theme only.
 7. Check the result in a browser at desktop and phone widths before calling anything done.
+8. When the owner supplies an asset (a pattern, a logo), start from that asset. Don't
+   reinterpret it.

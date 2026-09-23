@@ -33,9 +33,9 @@ function describeAction(a: AgentAction): string {
   const t = a.type.toLowerCase()
   if (t.includes('cancel')) return `Cancelled ${a.merchant}`
   if (t.includes('pause')) return `Paused ${a.merchant}`
-  if (t.includes('remind')) return `Set reminder for ${a.merchant}`
+  if (t.includes('remind')) return `Set renewal reminder for ${a.merchant}`
   if (t.includes('analyze')) return `Analyzed ${a.merchant}`
-  if (t.includes('detect')) return `Detected ${a.merchant}`
+  if (t.includes('detect')) return `Discovered ${a.merchant}`
   return `${a.type} · ${a.merchant}`
 }
 
@@ -58,94 +58,54 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
     }
   }, [userId])
 
-  if (loading) return null
-  if (actions.length === 0) return null
+  if (loading || actions.length === 0) return null
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-col gap-3"
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col gap-4 rounded-[var(--radius-card)] bg-inverse p-6 text-on-inverse shadow-md border border-white/10"
     >
-      <div className="flex items-center justify-between">
-        <span
-          style={{
-            fontFamily: 'var(--font-sans)',
-            color: '#525252',
-            fontSize: '10px',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Agent Activity
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: '#3a3a3a',
-            fontSize: '10px',
-          }}
-        >
-          {actions.length} action{actions.length !== 1 ? 's' : ''}
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-accent animate-pulse" />
+          <h4 className="type-eyebrow font-semibold tracking-wider text-white">
+            Agent Dispatch Ledger
+          </h4>
+        </div>
+        <span className="type-caption font-mono text-white/50">
+          {actions.length} action{actions.length !== 1 ? 's' : ''} on Base
         </span>
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col divide-y divide-white/10">
         {actions.slice(0, 5).map((a, i) => (
           <motion.div
             key={a.id}
             initial={{ opacity: 0, x: -6 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="flex items-center gap-3 py-2.5 border-b"
-            style={{ borderColor: 'rgba(255,255,255,0.04)' }}
+            transition={{ delay: i * 0.04 }}
+            className="flex items-center justify-between gap-3 py-3 text-white/90"
           >
-            {/* indicator */}
-            <div
-              style={{
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                background: a.triggered_by === 'policy' ? '#E50914' : '#525252',
-                flexShrink: 0,
-              }}
-            />
-
-            {/* label */}
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#A3A3A3',
-                fontSize: '12px',
-                flex: 1,
-              }}
-            >
-              <span style={{ color: '#fff' }}>Shamar</span> {describeAction(a)}
+            <div className="flex items-center gap-3 min-w-0">
+              <span
+                className={`size-1.5 shrink-0 rounded-full ${
+                  a.triggered_by === 'policy' ? 'bg-accent' : 'bg-success'
+                }`}
+              />
+              <span className="type-footnote truncate">
+                <strong className="text-white font-semibold">SHAMAR</strong>{' '}
+                {describeAction(a)}
+              </span>
               {a.triggered_by === 'policy' && (
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    color: '#E50914',
-                    fontSize: '9px',
-                    marginLeft: '8px',
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  · POLICY
+                <span className="type-caption rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent-text uppercase tracking-wider">
+                  SafePolicy
                 </span>
               )}
-            </span>
+            </div>
 
-            {/* time */}
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#525252',
-                fontSize: '11px',
-                flexShrink: 0,
-              }}
-            >
+            <span className="type-caption font-mono text-white/50 shrink-0">
               {formatRelative(a.executed_at)}
             </span>
           </motion.div>

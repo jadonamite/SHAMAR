@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import ConnectGmail from '@/components/app/ConnectGmail'
 import SubscriptionRow, {
   type Subscription,
@@ -16,6 +17,7 @@ import RenewalsTimeline from '@/components/app/RenewalsTimeline'
 import AgentActivity from '@/components/app/AgentActivity'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import Logo from '@/components/ui/Logo'
 import { useToast } from '@/components/providers/ToastProvider'
 import { normalizeSubscription } from '@/lib/normalize'
 import {
@@ -23,7 +25,6 @@ import {
   formatAggregate,
   type CurrencyMap,
 } from '@/lib/format'
-import Link from 'next/link'
 
 function monthlyOf(s: Subscription): number {
   if (s.cadence === 'yearly') return s.amount / 12
@@ -90,7 +91,6 @@ function DashboardInner() {
       const raw = ((await subsRes.json()).subscriptions ?? []) as Subscription[]
       const list = raw.map(normalizeSubscription)
       setSubs(list)
-      // derive lastScan from most recent detected_at
       const latest = list
         .map((s) => s.detected_at)
         .filter(Boolean)
@@ -148,69 +148,30 @@ function DashboardInner() {
           updated: data.updated,
           source: 'Gmail',
         })
+        setLastScan(new Date().toISOString())
         showToast(
-          `Gmail scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`,
+          `Scan complete: ${data.created} found, ${data.updated} updated`,
           'success'
         )
-        const subsRes = await fetch('/api/subscriptions', {
-          headers: { 'x-user-id': user.id },
-        })
-        if (subsRes.ok)
-          setSubs(
-            ((await subsRes.json()).subscriptions ?? []).map(
-              normalizeSubscription
-            )
-          )
+        await fetchSubs(user.id)
       } else {
-        showToast(data.error ?? `Gmail scan failed (${res.status})`, 'error')
+        showToast(data.error ?? 'Scan failed', 'error')
       }
     } catch {
-      showToast('Could not reach server', 'error')
+      showToast('Scan request failed', 'error')
     } finally {
       setScanning(false)
     }
   }
 
-  async function debugScan() {
-    if (!user?.id || debugScanning) return
-    setDebugScanning(true)
-    setDebugOutput('Running scan… (up to 60s)')
-    try {
-      await fetch('/api/gmail/scan-lock', {
-        method: 'DELETE',
-        headers: { 'x-user-id': user.id },
-      }).catch(() => {})
-      const t0 = Date.now()
-      const res = await fetch('/api/gmail/scan?debug=1', {
-        method: 'POST',
-        headers: { 'x-user-id': user.id },
-      })
-      const data = await res.json()
-      const wall = Date.now() - t0
-      setDebugOutput(
-        JSON.stringify(
-          { http_status: res.status, wall_ms: wall, ...data },
-          null,
-          2
-        )
-      )
-    } catch (e) {
-      setDebugOutput(`Network error: ${(e as Error).message}`)
-    } finally {
-      setDebugScanning(false)
-    }
-  }
-
   async function triggerWalletScan() {
-    const address = user?.wallet?.address
-    if (!address || walletScanning) return
+    if (!user?.id || walletScanning) return
     setWalletScanning(true)
     setScanResult(null)
     try {
       const res = await fetch('/api/wallet/scan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id },
-        body: JSON.stringify({ address }),
+        headers: { 'x-user-id': user.id },
       })
       const data = await res.json()
       if (res.ok) {
@@ -219,26 +180,43 @@ function DashboardInner() {
           updated: data.updated,
           source: 'Wallet',
         })
+        setLastScan(new Date().toISOString())
         showToast(
-          `Wallet scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`,
+          `Wallet scan complete: ${data.created} found, ${data.updated} updated`,
           'success'
         )
-        const subsRes = await fetch('/api/subscriptions', {
-          headers: { 'x-user-id': user!.id },
-        })
-        if (subsRes.ok)
-          setSubs(
-            ((await subsRes.json()).subscriptions ?? []).map(
-              normalizeSubscription
-            )
-          )
+        await fetchSubs(user.id)
       } else {
-        showToast(data.error ?? `Wallet scan failed (${res.status})`, 'error')
+        showToast(data.error ?? 'Wallet scan failed', 'error')
       }
     } catch {
-      showToast('Could not reach server', 'error')
+      showToast('Wallet scan request failed', 'error')
     } finally {
       setWalletScanning(false)
+    }
+  }
+
+  async function debugScan() {
+    if (!user?.id || debugScanning) return
+    setDebugScanning(true)
+    setDebugOutput(null)
+    try {
+      const res = await fetch('/api/gmail/scan/debug', {
+        method: 'POST',
+        headers: { 'x-user-id': user.id },
+      })
+      const text = await res.text()
+      try {
+        const json = JSON.parse(text)
+        setDebugOutput(JSON.stringify(json, null, 2))
+      } catch {
+        setDebugOutput(text)
+      }
+      await fetchSubs(user.id)
+    } catch (e) {
+      setDebugOutput(String(e))
+    } finally {
+      setDebugScanning(false)
     }
   }
 
@@ -261,51 +239,52 @@ function DashboardInner() {
 
   if (!ready) {
     return (
-      <main className="min-h-screen bg-void flex items-center justify-center">
-        <div className="w-1 h-1 bg-sam-red rounded-full animate-pulse" />
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-2 rounded-full bg-accent animate-pulse" />
       </main>
     )
   }
 
   if (!authenticated) {
     return (
-      <main className="min-h-screen bg-void flex flex-col items-center justify-center gap-6 px-6">
-        <h1
-          className="text-3xl font-bold text-white text-center"
-          style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.03em' }}
-        >
-          Shamar
-        </h1>
-        <p
-          style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
-          className="text-sm text-center"
-        >
-          Connect your wallet to get started
-        </p>
-        <motion.button
-          onClick={login}
-          whileHover={{ scale: 1.02, filter: 'brightness(1.1)' }}
-          whileTap={{ scale: 0.98 }}
-          className="px-8 py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
-          style={{
-            fontFamily: 'var(--font-sans)',
-            background: '#E50914',
-            color: '#fff',
-            borderRadius: '2px',
-            letterSpacing: '0.08em',
-          }}
-        >
-          Connect Wallet
-        </motion.button>
+      <main className="min-h-screen bg-canvas flex flex-col justify-between p-4 sm:p-6 md:p-8">
+        <header className="mx-auto w-full max-w-7xl flex items-center justify-between py-2">
+          <Logo variant="lockup" size={24} />
+        </header>
+
+        <div className="mx-auto w-full max-w-md my-auto flex flex-col items-center gap-6 rounded-[var(--radius-section)] bg-surface p-8 sm:p-10 border border-separator/80 shadow-md text-center">
+          <Logo variant="mark" size={48} />
+          <div className="flex flex-col gap-2">
+            <h1 className="type-title-1 font-[600] text-label tracking-tight">
+              Sign in to SHAMAR
+            </h1>
+            <p className="type-callout text-label-2">
+              Connect your wallet or email to manage, monitor, and protect your
+              subscriptions.
+            </p>
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={login}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="touch-target flex min-h-[48px] w-full items-center justify-center rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
+          >
+            Connect Wallet
+          </motion.button>
+        </div>
+
+        <AppFooter />
       </main>
     )
   }
 
   const stats = calcStats(subs)
-  const activeSubs = subs.filter((s) => s.status === 'active').slice(0, 5)
+  const activeSubs = subs.filter((s) => s.status === 'active').slice(0, 6)
 
   return (
-    <main className="min-h-screen bg-void flex flex-col justify-between">
+    <main className="min-h-screen bg-canvas flex flex-col justify-between">
       <TopNav
         gmailConnected={gmailConnected}
         scanning={scanning}
@@ -315,78 +294,41 @@ function DashboardInner() {
         onScanWallet={triggerWalletScan}
         onDebugScan={debugScan}
         actions={
-          <>
+          <div className="flex items-center gap-2">
             {user?.wallet?.address && (
-              <motion.button
+              <button
+                type="button"
                 onClick={triggerWalletScan}
                 disabled={walletScanning}
-                whileHover={{ scale: walletScanning ? 1 : 1.02 }}
-                whileTap={{ scale: walletScanning ? 1 : 0.98 }}
-                className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  background: 'transparent',
-                  color: walletScanning ? '#525252' : '#A3A3A3',
-                  border: `1px solid ${walletScanning ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)'}`,
-                  borderRadius: '2px',
-                  letterSpacing: '0.08em',
-                }}
+                className="touch-target min-h-[38px] px-3.5 rounded-full border border-separator bg-surface text-label type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-40"
               >
-                {walletScanning ? 'Scanning...' : 'Scan Wallet'}
-              </motion.button>
+                {walletScanning ? 'Scanning…' : 'Scan Wallet'}
+              </button>
             )}
             {gmailConnected && (
-              <motion.button
+              <button
+                type="button"
                 onClick={triggerScan}
                 disabled={scanning}
-                whileHover={{ scale: scanning ? 1 : 1.02 }}
-                whileTap={{ scale: scanning ? 1 : 0.98 }}
-                className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  background: 'transparent',
-                  color: scanning ? '#525252' : '#E50914',
-                  border: `1px solid ${scanning ? 'rgba(255,255,255,0.08)' : 'rgba(229,9,20,0.4)'}`,
-                  borderRadius: '2px',
-                  letterSpacing: '0.08em',
-                }}
+                className="touch-target min-h-[38px] px-4 rounded-full bg-accent text-on-accent type-footnote font-semibold shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
-                {scanning ? 'Scanning...' : 'Scan Gmail'}
-              </motion.button>
+                {scanning ? 'Scanning Receipts…' : 'Scan Receipts'}
+              </button>
             )}
-            {process.env.NODE_ENV !== 'production' && (
-              <motion.button
-                onClick={debugScan}
-                disabled={debugScanning}
-                whileHover={{ scale: debugScanning ? 1 : 1.02 }}
-                whileTap={{ scale: debugScanning ? 1 : 0.98 }}
-                className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  background: 'transparent',
-                  color: debugScanning ? '#525252' : '#FACC15',
-                  border: `1px solid ${debugScanning ? 'rgba(255,255,255,0.08)' : 'rgba(250,204,21,0.4)'}`,
-                  borderRadius: '2px',
-                  letterSpacing: '0.08em',
-                }}
-                title="Run a Gmail scan with full diagnostic output"
-              >
-                {debugScanning ? 'Debugging...' : 'Debug Scan'}
-              </motion.button>
-            )}
-          </>
+          </div>
         }
       />
 
-      {/* Agent status bar */}
+      {/* Status Bar */}
       <AgentStatusBar
         scanning={scanning || walletScanning}
         lastScan={lastScan}
         subCount={subs.filter((s) => s.status === 'active').length}
+        userId={user?.id}
       />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col gap-6 sm:gap-10">
-        {/* Onboarding progress — only when not all steps done */}
+      <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 md:px-8 py-8 flex flex-col gap-8">
+        {/* Onboarding progress when incomplete */}
         <OnboardingProgress
           wallet={Boolean(user?.wallet?.address)}
           gmail={gmailConnected}
@@ -394,207 +336,163 @@ function DashboardInner() {
           policies={hasPolicies}
         />
 
-        {/* Monthly bleed hero */}
-        {subs.length > 0 && <MonthlyBleed byCurrency={stats.byCurrency} />}
-
-        {/* Stats row */}
+        {/* Dashboard Hero Bento */}
         {subs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="grid grid-cols-3 gap-2 sm:gap-4"
-          >
-            {[
-              {
-                label: 'Active Subscriptions',
-                value: String(stats.count),
-                alert: false,
-              },
-              {
-                label: 'High Risk',
-                value: String(stats.highRisk),
-                alert: stats.highRisk > 0,
-              },
-              {
-                label: 'Yearly Projection',
-                value: formatAggregate(
-                  Object.fromEntries(
-                    Object.entries(stats.byCurrency).map(([c, v]) => [
-                      c,
-                      v * 12,
-                    ])
-                  )
-                ),
-                alert: false,
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="flex flex-col gap-1 p-4"
-                style={{
-                  background: '#141414',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: '2px',
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    color: stat.alert ? '#E50914' : '#fff',
-                    fontSize: '24px',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1,
-                  }}
-                >
-                  {stat.value}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: '#525252',
-                    fontSize: '11px',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {stat.label}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Primary monthly bleed card */}
+            <div className="lg:col-span-2 rounded-[var(--radius-section)] bg-surface p-6 sm:p-8 border border-separator/70 shadow-xs flex flex-col justify-between gap-6">
+              <div className="flex items-center justify-between border-b border-separator/50 pb-4">
+                <p className="type-eyebrow inline-flex items-center gap-2 text-label font-semibold">
+                  <span className="size-2 rounded-full bg-accent" />
+                  Monthly Outflow
+                </p>
+                <span className="type-caption font-semibold text-label-3">
+                  Updated{' '}
+                  {lastScan
+                    ? new Date(lastScan).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                    : 'recently'}
                 </span>
               </div>
-            ))}
-          </motion.div>
+
+              <MonthlyBleed byCurrency={stats.byCurrency} />
+            </div>
+
+            {/* Quick Stats Column */}
+            <div className="flex flex-col gap-4">
+              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
+                  Active Subscriptions
+                </span>
+                <p className="type-display text-3xl font-[600] text-label tabular">
+                  {stats.count}
+                </p>
+                <p className="type-caption text-label-2">
+                  Recognized recurring services
+                </p>
+              </div>
+
+              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
+                  Blast Radius Alerts
+                </span>
+                <p
+                  className={`type-display text-3xl font-[600] tabular ${stats.highRisk > 0 ? 'text-accent-text' : 'text-label'}`}
+                >
+                  {stats.highRisk}
+                </p>
+                <p className="type-caption text-label-2">
+                  {stats.highRisk > 0
+                    ? 'High impact tools protected'
+                    : 'Safe to manage'}
+                </p>
+              </div>
+
+              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
+                  Yearly Projection
+                </span>
+                <p className="type-display text-2xl font-[600] text-label tabular">
+                  {formatAggregate(
+                    Object.fromEntries(
+                      Object.entries(stats.byCurrency).map(([c, v]) => [
+                        c,
+                        v * 12,
+                      ])
+                    )
+                  )}
+                </p>
+                <p className="type-caption text-label-2">
+                  Estimated 12-month commitment
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* AI insights carousel */}
+        {/* AI Insights & Timeline */}
         {subs.length > 0 && <InsightsCarousel subs={subs} />}
-
-        {/* Renewals timeline */}
         {subs.length > 0 && <RenewalsTimeline subs={subs} />}
 
-        {/* Gmail connect or subscription list */}
+        {/* Subscriptions List or Connect Card */}
         {!gmailConnected ? (
           <ConnectGmail />
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#525252',
-                fontSize: '12px',
-              }}
-            >
-              Loading...
+            <span className="type-caption font-semibold text-label-3">
+              Scanning your receipts…
             </span>
           </div>
         ) : subs.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p
-              style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
-              className="text-sm"
-            >
-              No subscriptions detected yet.
+          <div className="flex flex-col items-center gap-4 py-16 text-center rounded-[var(--radius-card)] bg-surface p-8 border border-separator/70 shadow-xs">
+            <p className="type-callout text-label-2">
+              No subscriptions detected in your receipts yet.
             </p>
-            <motion.button
+            <button
+              type="button"
               onClick={triggerScan}
               disabled={scanning}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-6 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
-              style={{
-                fontFamily: 'var(--font-sans)',
-                background: '#E50914',
-                color: '#fff',
-                borderRadius: '2px',
-              }}
+              className="touch-target rounded-full bg-accent px-6 py-2.5 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
             >
-              {scanning ? 'Scanning...' : 'Scan Now'}
-            </motion.button>
+              {scanning ? 'Scanning…' : 'Scan Receipts Now'}
+            </button>
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col gap-2"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#525252',
-                  fontSize: '11px',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Recent Subscriptions
-              </span>
+          <div className="flex flex-col gap-4 rounded-[var(--radius-section)] bg-surface p-6 sm:p-8 border border-separator/70 shadow-xs">
+            <div className="flex items-center justify-between border-b border-separator/50 pb-4">
+              <div className="flex items-center gap-2">
+                <h3 className="type-title-2 font-[600] text-label">
+                  Subscriptions
+                </h3>
+                <span className="type-caption rounded-full bg-surface-2 px-2.5 py-0.5 font-bold text-label-2">
+                  {subs.filter((s) => s.status === 'active').length}
+                </span>
+              </div>
+
               <Link
                 href="/subscriptions"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#E50914',
-                  fontSize: '11px',
-                }}
+                className="type-footnote font-semibold text-accent-text hover:underline"
               >
-                View all →
+                View all ({subs.length}) →
               </Link>
             </div>
-            <div className="flex flex-col gap-1.5">
-              {activeSubs.map((sub, i) => (
-                <motion.div
+
+            <div className="flex flex-col gap-2.5">
+              {activeSubs.map((sub) => (
+                <SubscriptionRow
                   key={sub.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                >
-                  <SubscriptionRow
-                    sub={sub}
-                    onStatusChange={handleStatusChange}
-                    href={`/subscriptions/${sub.id}`}
-                  />
-                </motion.div>
+                  sub={sub}
+                  onStatusChange={handleStatusChange}
+                  href={`/subscriptions/${sub.id}`}
+                />
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {/* Agent activity feed */}
+        {/* The Black Slab: Agent Activity Dispatch Ledger */}
         {subs.length > 0 && <AgentActivity userId={user?.id} />}
       </div>
 
       {/* Debug scan output modal */}
       {debugOutput !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.85)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
           onClick={() => setDebugOutput(null)}
         >
           <div
-            className="w-full max-w-3xl max-h-[85vh] flex flex-col"
-            style={{
-              background: '#0A0A0A',
-              border: '1px solid rgba(250,204,21,0.3)',
-              borderRadius: '4px',
-            }}
+            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[var(--radius-card)] bg-surface p-6 shadow-2xl border border-separator"
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <span
-                className="text-[11px] font-semibold uppercase tracking-widest"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#FACC15',
-                  letterSpacing: '0.12em',
-                }}
-              >
-                Debug Scan Output
+            <div className="flex items-center justify-between pb-3 border-b border-separator">
+              <span className="type-headline font-semibold text-label">
+                Diagnostic Scan Output
               </span>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={async () => {
                     if (debugOutput) {
                       try {
@@ -605,46 +503,26 @@ function DashboardInner() {
                       }
                     }
                   }}
-                  className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    background: 'transparent',
-                    color: '#A3A3A3',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '2px',
-                    letterSpacing: '0.1em',
-                  }}
+                  className="type-caption touch-target min-h-[36px] px-3 rounded-full border border-separator bg-surface text-label font-semibold hover:bg-surface-2"
                 >
                   Copy
                 </button>
                 <button
+                  type="button"
                   onClick={() => setDebugOutput(null)}
-                  className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    background: 'transparent',
-                    color: '#A3A3A3',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: '2px',
-                    letterSpacing: '0.1em',
-                  }}
+                  className="type-caption touch-target min-h-[36px] px-3 rounded-full bg-surface-2 text-label font-semibold hover:bg-surface"
                 >
                   Close
                 </button>
               </div>
             </div>
-            <pre
-              className="px-4 py-3 overflow-auto flex-1 text-[11px] leading-relaxed"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#D4D4D4',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
+            <pre className="mt-3 p-3 overflow-auto flex-1 text-xs font-mono rounded-[var(--radius-tile)] bg-surface-2 text-label-2 leading-relaxed">
               {debugOutput}
             </pre>
           </div>
         </div>
       )}
+
       <AppFooter />
     </main>
   )

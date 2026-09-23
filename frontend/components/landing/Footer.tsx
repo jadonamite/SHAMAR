@@ -36,7 +36,7 @@ export default function Footer() {
     <section className="relative isolate flex min-h-[45svh] flex-col justify-between gap-8 overflow-hidden rounded-[var(--radius-section)] bg-surface px-6 py-8 md:px-10 md:py-10">
       {/* Same pattern as the hero, so the page opens and closes on it */}
       <Image
-        src="/brand/hero-bg.webp"
+        src="/brand/red-pattern.webp"
         alt=""
         fill
         className="-z-10 scale-[1.6] object-cover opacity-[0.14]"

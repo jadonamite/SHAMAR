@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatMoney } from '@/lib/format'
+import BrandLogo, { type BrandName } from '@/components/ui/BrandLogo'
 
 export type Subscription = {
   id: string
@@ -29,11 +30,43 @@ interface SubscriptionRowProps {
   href?: string
 }
 
-const ACTION_COLORS: Record<string, string> = {
-  cancel: '#E50914',
-  pause: '#D97706',
-  remind: '#3B82F6',
-  keep: '#16A34A',
+const KNOWN_BRANDS: Record<string, BrandName> = {
+  netflix: 'netflix',
+  spotify: 'spotify',
+  claude: 'claude',
+  anthropic: 'claude',
+  figma: 'figma',
+  youtube: 'youtube',
+  google: 'gmail',
+  gmail: 'gmail',
+  chatgpt: 'chatgpt',
+  openai: 'chatgpt',
+  notion: 'notion',
+  duolingo: 'duolingo',
+  dropbox: 'dropbox',
+  canva: 'canva',
+  adobe: 'adobe',
+  telegram: 'telegram',
+}
+
+function resolveBrand(merchant: string): BrandName | null {
+  const clean = merchant.toLowerCase().replace(/[^a-z0-9]/g, '')
+  for (const [key, brand] of Object.entries(KNOWN_BRANDS)) {
+    if (clean.includes(key)) return brand
+  }
+  return null
+}
+
+function FallbackAvatar({ name }: { name: string }) {
+  const initial = name.charAt(0).toUpperCase()
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 size-10 items-center justify-center rounded-[11px] bg-surface-2 ring-1 ring-black/[0.06] text-label font-bold text-sm select-none"
+    >
+      {initial}
+    </span>
+  )
 }
 
 const CADENCE_LABELS: Record<string, string> = {
@@ -43,30 +76,6 @@ const CADENCE_LABELS: Record<string, string> = {
   yearly: '/yr',
 }
 
-function MerchantAvatar({ name }: { name: string }) {
-  return (
-    <div
-      className="w-9 h-9 flex items-center justify-center flex-shrink-0"
-      style={{
-        background: 'rgba(229,9,20,0.12)',
-        border: '1px solid rgba(229,9,20,0.2)',
-        borderRadius: '2px',
-      }}
-    >
-      <span
-        style={{
-          fontFamily: 'var(--font-sans)',
-          color: '#E50914',
-          fontSize: '14px',
-          fontWeight: 700,
-        }}
-      >
-        {name.charAt(0).toUpperCase()}
-      </span>
-    </div>
-  )
-}
-
 export default function SubscriptionRow({
   sub,
   onStatusChange,
@@ -74,170 +83,123 @@ export default function SubscriptionRow({
 }: SubscriptionRowProps) {
   const [hovered, setHovered] = useState(false)
   const router = useRouter()
-  const actionColor = sub.action ? ACTION_COLORS[sub.action] : undefined
+  const brand = resolveBrand(sub.merchant || sub.name)
 
-  const monthlyEquiv =
-    sub.cadence === 'yearly'
-      ? sub.amount / 12
-      : sub.cadence === 'weekly'
-        ? sub.amount * 4.33
-        : sub.cadence === 'daily'
-          ? sub.amount * 30
-          : sub.amount
+  const isHighRisk = (sub.confidence ?? 0) >= 60
 
   return (
     <motion.div
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       onClick={() => href && router.push(href)}
-      animate={{
-        y: hovered ? -2 : 0,
-        borderColor: hovered ? 'rgba(229,9,20,0.25)' : 'rgba(255,255,255,0.06)',
-      }}
-      transition={{ duration: 0.18 }}
-      className="relative flex items-center gap-4 px-4 py-3.5"
-      style={{
-        background: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '2px',
-        cursor: href ? 'pointer' : 'default',
-      }}
+      whileHover={{ y: -1.5, scale: 1.003 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      className={`group relative flex items-center justify-between gap-4 rounded-[var(--radius-tile)] bg-surface p-3.5 sm:p-4 border border-separator/70 transition-all ${
+        hovered
+          ? 'shadow-xs border-separator-strong'
+          : 'shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
+      } ${href ? 'cursor-pointer' : ''}`}
     >
-      {/* Red left border on hover */}
-      <motion.div
-        animate={{ opacity: hovered ? 1 : 0, scaleY: hovered ? 1 : 0.4 }}
-        transition={{ duration: 0.18 }}
-        className="absolute left-0 top-0 bottom-0 w-0.5"
-        style={{ background: '#E50914', transformOrigin: 'center' }}
-      />
+      {/* Left: Avatar + Title info */}
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        {brand ? (
+          <BrandLogo name={brand} size={40} label={sub.merchant} />
+        ) : (
+          <FallbackAvatar name={sub.merchant || sub.name} />
+        )}
 
-      {/* Merchant avatar */}
-      <MerchantAvatar name={sub.merchant} />
-
-      {/* Name + cadence */}
-      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-        <span
-          className="text-sm font-medium text-white truncate"
-          style={{ fontFamily: 'var(--font-sans)' }}
-        >
-          {sub.merchant}
-        </span>
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: '#525252',
-              fontSize: '11px',
-            }}
-          >
-            {sub.cadence}
-          </span>
-          <span style={{ color: '#525252', fontSize: '10px' }}>·</span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: '#525252',
-              fontSize: '11px',
-            }}
-          >
-            {sub.source}
-          </span>
-        </div>
-      </div>
-
-      {/* Confidence badge */}
-      {(sub.confidence != null || sub.action) && (
-        <div className="flex flex-col items-end gap-0.5">
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: actionColor ?? '#A3A3A3',
-              fontSize: '11px',
-              letterSpacing: '0.04em',
-            }}
-          >
-            {sub.confidence != null ? `${sub.confidence}% risk` : '— risk'}
-          </span>
-          {sub.action && (
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: actionColor,
-                fontSize: '9px',
-                letterSpacing: '0.1em',
-                fontWeight: 700,
-              }}
-            >
-              {sub.action.toUpperCase()}
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="type-headline font-semibold text-label truncate">
+              {sub.merchant || sub.name}
             </span>
-          )}
-        </div>
-      )}
 
-      {/* Amount */}
-      <div className="flex flex-col items-end gap-0.5 ml-4">
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: '#fff',
-            fontSize: '15px',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {formatMoney(sub.amount, sub.currency)}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: '#525252',
-            fontSize: '11px',
-          }}
-        >
-          {CADENCE_LABELS[sub.cadence]}
-        </span>
+            {/* Status indicator tag */}
+            {sub.status === 'paused' && (
+              <span className="type-caption rounded-full bg-warning/15 px-2 py-0.5 font-bold text-warning">
+                Paused
+              </span>
+            )}
+            {sub.status === 'cancelled' && (
+              <span className="type-caption rounded-full bg-accent-soft px-2 py-0.5 font-bold text-accent-text">
+                Cancelled
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 type-caption text-label-3">
+            <span className="capitalize">{sub.cadence}</span>
+            <span>·</span>
+            <span className="capitalize">{sub.source}</span>
+            {sub.last_charged && (
+              <>
+                <span>·</span>
+                <span>
+                  Last:{' '}
+                  {new Date(sub.last_charged).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Quick actions (hover only) */}
-      <AnimatePresence>
-        {hovered && onStatusChange && (
-          <motion.div
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.15 }}
-            className="flex items-center gap-2 ml-2"
+      {/* Middle: Blast Radius Risk Badge */}
+      <div className="hidden sm:flex items-center gap-2">
+        {sub.confidence != null && (
+          <span
+            className={`type-caption rounded-full px-2.5 py-1 font-semibold tabular ${
+              isHighRisk
+                ? 'bg-accent-soft text-accent-text'
+                : 'bg-surface-2 text-label-2'
+            }`}
+          >
+            {sub.confidence}% blast radius
+          </span>
+        )}
+
+        {sub.action && (
+          <span className="type-caption uppercase font-bold text-label-3 tracking-wider">
+            {sub.action}
+          </span>
+        )}
+      </div>
+
+      {/* Right: Amount & Quick Action Controls */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right">
+          <span className="type-callout font-[600] tabular text-label block">
+            {formatMoney(sub.amount, sub.currency)}
+          </span>
+          <span className="type-caption text-label-3 block">
+            {CADENCE_LABELS[sub.cadence]}
+          </span>
+        </div>
+
+        {/* Quick actions (visible on hover or focus) */}
+        {onStatusChange && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5"
           >
             {sub.status === 'active' && (
               <>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onStatusChange(sub.id, 'paused')
-                  }}
-                  className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: '#D97706',
-                    border: '1px solid rgba(217,119,6,0.4)',
-                    borderRadius: '2px',
-                    background: 'transparent',
-                  }}
+                  type="button"
+                  onClick={() => onStatusChange(sub.id, 'paused')}
+                  aria-label="Pause subscription"
+                  className="type-caption touch-target min-h-[36px] px-2.5 rounded-full border border-separator/80 bg-surface-2 font-semibold text-warning hover:bg-warning/15 transition-colors"
                 >
                   Pause
                 </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onStatusChange(sub.id, 'cancelled')
-                  }}
-                  className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: '#E50914',
-                    border: '1px solid rgba(229,9,20,0.4)',
-                    borderRadius: '2px',
-                    background: 'transparent',
-                  }}
+                  type="button"
+                  onClick={() => onStatusChange(sub.id, 'cancelled')}
+                  aria-label="Cancel subscription"
+                  className="type-caption touch-target min-h-[36px] px-2.5 rounded-full bg-accent-soft font-semibold text-accent-text hover:bg-accent hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
@@ -245,25 +207,17 @@ export default function SubscriptionRow({
             )}
             {sub.status === 'paused' && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onStatusChange(sub.id, 'active')
-                }}
-                className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#16A34A',
-                  border: '1px solid rgba(22,163,74,0.4)',
-                  borderRadius: '2px',
-                  background: 'transparent',
-                }}
+                type="button"
+                onClick={() => onStatusChange(sub.id, 'active')}
+                aria-label="Resume subscription"
+                className="type-caption touch-target min-h-[36px] px-3 rounded-full bg-success/15 font-semibold text-success hover:bg-success hover:text-white transition-colors"
               >
                 Resume
               </button>
             )}
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </motion.div>
   )
 }

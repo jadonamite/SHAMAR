@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 interface ConnectGmailProps {
   onConnected?: () => void
@@ -19,87 +20,51 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
   if (compact) {
     return (
       <motion.button
+        type="button"
         onClick={handleConnect}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-widest cursor-pointer"
-        style={{
-          fontFamily: 'var(--font-sans)',
-          background: '#E50914',
-          color: '#fff',
-          borderRadius: '2px',
-          letterSpacing: '0.08em',
-        }}
+        className="touch-target inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
       >
-        Connect Gmail
+        <BrandLogo name="gmail" size={20} />
+        <span>Connect Gmail</span>
       </motion.button>
     )
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-col items-center gap-6 py-16 px-8"
-      style={{
-        background: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '4px',
-        maxWidth: '480px',
-        margin: '0 auto',
-      }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="mx-auto flex w-full max-w-md flex-col items-center gap-6 rounded-[var(--radius-card)] bg-surface p-8 sm:p-10 border border-separator/80 shadow-xs text-center"
     >
-      <div
-        className="flex items-center justify-center"
-        style={{
-          width: '300px',
-          height: '300px',
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: '8px',
-        }}
-      >
-        <svg viewBox="0 0 512 512" fill="none" width="150" height="150">
-          <path d="M158 391v-142l-82-63V361q0 30 30 30" fill="#4285f4" />
-          <path d="M154 248l102 77l102-77v-98l-102 77l-102-77" fill="#ea4335" />
-          <path d="M354 391v-142l82-63V361q0 30-30 30" fill="#34a853" />
-          <path d="M76 188l82 63v-98l-30-23c-27-21-52 0-52 26" fill="#c5221f" />
-          <path d="M436 188l-82 63v-98l30-23c27-21 52 0 52 26" fill="#fbbc04" />
-        </svg>
+      <div className="relative">
+        <BrandLogo name="gmail" size={72} />
+        <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-success text-white text-[11px] font-bold ring-2 ring-surface">
+          ✓
+        </span>
       </div>
 
-      <div className="text-center flex flex-col gap-2">
-        <h3
-          className="text-xl font-bold text-white"
-          style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.02em' }}
-        >
-          Connect Gmail
+      <div className="flex flex-col gap-2">
+        <h3 className="type-title-2 font-[600] text-label tracking-tight">
+          Connect your Gmail
         </h3>
-        <p
-          style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
-          className="text-sm leading-relaxed"
-        >
-          Shamar reads your inbox to detect recurring subscriptions.
-          <br />
-          Read-only access. Shamar cannot send or delete emails.
+        <p className="type-callout text-label-2 leading-relaxed">
+          SHAMAR scans your receipts to find recurring charges. Read-only
+          access; your personal mail is never read, sent, or altered.
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 w-full">
+      <div className="flex flex-col gap-2.5 w-full text-left rounded-[var(--radius-tile)] bg-surface-2 p-4">
         {[
-          'Read-only Gmail access',
-          'Detected in under 30 seconds',
-          'No manual entry required',
+          'Read-only access strictly scoped to billing keywords',
+          'Finds 12 months of receipts in under 30 seconds',
+          'Zero passwords or credentials ever stored',
         ].map((item) => (
-          <div key={item} className="flex items-center gap-3">
-            <div
-              className="w-1 h-1 rounded-full"
-              style={{ background: '#E50914', flexShrink: 0 }}
-            />
-            <span
-              style={{ fontFamily: 'var(--font-sans)', color: '#525252' }}
-              className="text-xs"
-            >
+          <div key={item} className="flex items-center gap-2.5">
+            <span className="size-1.5 shrink-0 rounded-full bg-accent" />
+            <span className="type-caption font-medium text-label-2">
               {item}
             </span>
           </div>
@@ -107,26 +72,18 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
       </div>
 
       <motion.button
+        type="button"
         onClick={handleConnect}
-        whileHover={{ scale: 1.02, filter: 'brightness(1.1)' }}
+        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
-        style={{
-          fontFamily: 'var(--font-sans)',
-          background: '#E50914',
-          color: '#fff',
-          borderRadius: '2px',
-          letterSpacing: '0.08em',
-        }}
+        className="touch-target flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
       >
-        Connect & Scan Gmail
+        <span>Connect & Scan Receipts</span>
+        <span>→</span>
       </motion.button>
 
-      <p
-        style={{ fontFamily: 'var(--font-mono)', color: '#525252' }}
-        className="text-[10px] text-center"
-      >
-        You will be redirected to Google's secure sign-in page
+      <p className="type-caption text-label-3">
+        Redirects to Google&rsquo;s official OAuth consent screen
       </p>
     </motion.div>
   )

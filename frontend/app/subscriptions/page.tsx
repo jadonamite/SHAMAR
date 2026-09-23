@@ -38,16 +38,6 @@ function filterAndSortSubscriptions(
   })
 }
 
-function groupByCategory(subs: Subscription[]): Record<string, Subscription[]> {
-  const groups: Record<string, Subscription[]> = {}
-  for (const sub of subs) {
-    const key = 'Subscriptions'
-    if (!groups[key]) groups[key] = []
-    groups[key].push(sub)
-  }
-  return groups
-}
-
 export default function SubscriptionsPage() {
   const { ready, authenticated, user } = usePrivy()
   const router = useRouter()
@@ -78,7 +68,6 @@ export default function SubscriptionsPage() {
     () => filterAndSortSubscriptions(subs, filter, sort),
     [subs, filter, sort]
   )
-  const groups = groupByCategory(filtered)
   const activeSubs = subs.filter((s) => s.status === 'active')
   const totalMonthlyStr = formatAggregate(
     aggregateByCurrency(
@@ -93,64 +82,107 @@ export default function SubscriptionsPage() {
     )
   )
 
-  if (!ready) return null
-  if (!authenticated) return null
+  const handleStatusChange = async (
+    id: string,
+    status: 'active' | 'paused' | 'cancelled'
+  ) => {
+    if (!user?.id) return
+    try {
+      await fetch(`/api/subscriptions/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        body: JSON.stringify({ status }),
+      })
+      setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))
+    } catch {
+      // offline
+    }
+  }
+
+  if (!ready || !authenticated) {
+    return (
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-2 rounded-full bg-accent animate-pulse" />
+      </main>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-void text-white flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col justify-between">
       <TopNav title="Subscriptions" />
-      <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1
-              className="text-2xl font-bold"
-              style={{ fontFamily: 'var(--font-sans)' }}
-            >
-              Subscriptions
-            </h1>
-            <p
-              className="text-muted text-sm"
-              style={{ fontFamily: 'var(--font-mono)' }}
-            >
-              {activeSubs.length} active · {totalMonthlyStr}/mo
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {(['all', 'monthly', 'yearly', 'high-risk'] as Filter[]).map(
-              (f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1 text-xs rounded uppercase font-medium tracking-wider ${
-                    filter === f
-                      ? 'bg-white text-black'
-                      : 'bg-neutral-900 text-neutral-400 hover:text-white'
-                  }`}
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
-                  {f}
-                </button>
-              )
-            )}
-          </div>
-        </div>
 
-        {loading ? (
-          <div className="py-20 text-center text-neutral-500 font-mono text-xs">
-            Loading...
+      <main className="flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 md:px-8 py-8 flex flex-col gap-6">
+        {/* Main Bento Card */}
+        <div className="flex flex-col gap-6 rounded-[var(--radius-section)] bg-surface p-6 sm:p-8 border border-separator/70 shadow-xs">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-separator/50 pb-5">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="type-title-1 font-[600] text-label tracking-tight">
+                  Subscriptions
+                </h1>
+                <span className="type-caption rounded-full bg-surface-2 px-2.5 py-0.5 font-bold text-label-2 tabular">
+                  {activeSubs.length} active
+                </span>
+              </div>
+              <p className="type-callout text-label-2 mt-0.5">
+                Total monthly commitment:{' '}
+                <strong className="text-label font-semibold tabular">
+                  {totalMonthlyStr} / mo
+                </strong>
+              </p>
+            </div>
+
+            {/* Segmented Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 rounded-full bg-surface-2 p-1 ring-1 ring-black/[0.04]">
+              {(
+                [
+                  { id: 'all', label: 'All' },
+                  { id: 'monthly', label: 'Monthly' },
+                  { id: 'yearly', label: 'Yearly' },
+                  { id: 'high-risk', label: 'High Risk' },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFilter(f.id)}
+                  className={`type-footnote min-h-[34px] px-3.5 py-1 rounded-full font-semibold transition-all ${
+                    filter === f.id
+                      ? 'bg-surface text-label shadow-xs ring-1 ring-black/[0.06]'
+                      : 'text-label-2 hover:text-label'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="py-20 text-center text-neutral-500 text-sm">
-            No subscriptions found.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {filtered.map((sub) => (
-              <SubscriptionRow key={sub.id} sub={sub} />
-            ))}
-          </div>
-        )}
-      </div>
+
+          {/* Subscriptions List */}
+          {loading ? (
+            <div className="py-20 text-center type-footnote font-semibold text-label-3">
+              Loading subscriptions…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-20 text-center type-callout text-label-3">
+              No subscriptions found matching this filter.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {filtered.map((sub) => (
+                <SubscriptionRow
+                  key={sub.id}
+                  sub={sub}
+                  onStatusChange={handleStatusChange}
+                  href={`/subscriptions/${sub.id}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
       <AppFooter />
     </div>
   )

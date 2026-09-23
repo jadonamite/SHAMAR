@@ -52,7 +52,7 @@ export default function Hero() {
     <section className="relative isolate flex min-h-[calc(100svh-32px)] flex-col overflow-hidden rounded-[var(--radius-section)] bg-surface p-3">
       {/* The owner's blob pattern, recoloured to SHAMAR red, faded and zoomed in */}
       <Image
-        src="/brand/hero-bg.webp"
+        src="/brand/red-pattern.webp"
         alt=""
         fill
         priority

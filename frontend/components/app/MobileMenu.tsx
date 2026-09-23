@@ -37,199 +37,128 @@ export default function MobileMenu({
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="lg:hidden min-h-[44px] min-w-[44px] flex flex-col items-center justify-center gap-1.5 p-2 cursor-pointer"
-        style={{ background: 'none', border: 'none' }}
+        className="touch-target flex flex-col items-center justify-center gap-1.5 p-2 rounded-full hover:bg-surface-2 transition-colors cursor-pointer"
       >
-        <span
-          style={{
-            width: '20px',
-            height: '1.5px',
-            background: '#A3A3A3',
-            display: 'block',
-          }}
-        />
-        <span
-          style={{
-            width: '20px',
-            height: '1.5px',
-            background: '#A3A3A3',
-            display: 'block',
-          }}
-        />
+        <span className="w-5 h-[2px] bg-label rounded-full block" />
+        <span className="w-5 h-[2px] bg-label rounded-full block" />
       </button>
 
       <AnimatePresence>
         {open && (
           <>
-            {/* backdrop */}
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40"
-              style={{
-                background: 'rgba(0,0,0,0.7)',
-                backdropFilter: 'blur(4px)',
-              }}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xs"
             />
 
-            {/* drawer */}
+            {/* Drawer */}
             <motion.aside
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
-              className="fixed top-0 right-0 bottom-0 z-50 flex flex-col bg-surface border-l border-separator"
-              style={{
-                width: 'min(320px, 85vw)',
-              }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed top-0 right-0 bottom-0 z-50 flex flex-col bg-surface border-l border-separator shadow-2xl w-[min(340px,85vw)]"
             >
-              {/* drawer header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-separator">
+              {/* Drawer header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-separator/60">
                 <Logo variant="lockup" size={22} />
                 <button
+                  type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
-                  className="touch-target text-label-2 hover:text-label text-2xl leading-none cursor-pointer"
-                  style={{ background: 'none', border: 'none' }}
+                  className="touch-target flex size-9 items-center justify-center rounded-full hover:bg-surface-2 text-label text-xl leading-none transition-colors"
                 >
-                  ×
+                  ✕
                 </button>
               </div>
 
-              {/* user identity */}
-              <div
-                className="px-5 py-4 border-b flex flex-col gap-1"
-                style={{ borderColor: 'rgba(255,255,255,0.04)' }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: '#525252',
-                    fontSize: '10px',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Signed in as
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    color: '#fff',
-                    fontSize: '12px',
-                    wordBreak: 'break-all',
-                  }}
-                >
-                  {email ??
-                    walletAddress?.slice(0, 6) +
-                      '...' +
-                      walletAddress?.slice(-4)}
-                </span>
-              </div>
+              {/* User Identity Chip */}
+              {(email || walletAddress) && (
+                <div className="p-4 mx-4 mt-3 rounded-[var(--radius-tile)] bg-surface-2 border border-separator/60 flex flex-col gap-1">
+                  <span className="type-caption uppercase tracking-wider text-label-3 font-semibold">
+                    Signed in as
+                  </span>
+                  <span className="type-caption font-mono text-label truncate font-medium">
+                    {email ??
+                      `${walletAddress?.slice(0, 6)}…${walletAddress?.slice(-4)}`}
+                  </span>
+                </div>
+              )}
 
-              {/* nav links */}
-              <nav className="flex flex-col py-2 flex-1">
+              {/* Navigation links */}
+              <nav className="flex flex-col py-3 px-3 flex-1 overflow-y-auto">
                 {NAV_LINKS.map((link) => {
                   const active =
                     pathname === link.href ||
-                    pathname?.startsWith(link.href + '/')
+                    (link.href !== '/dashboard' &&
+                      pathname?.startsWith(link.href + '/'))
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={() => setOpen(false)}
                       aria-current={active ? 'page' : undefined}
-                      className="px-5 py-3"
-                      style={{
-                        fontFamily: 'var(--font-sans)',
-                        color: active ? '#fff' : '#A3A3A3',
-                        fontSize: '14px',
-                        letterSpacing: '-0.01em',
-                        borderLeft: active
-                          ? '2px solid #E50914'
-                          : '2px solid transparent',
-                      }}
+                      className={`flex min-h-[44px] items-center justify-between px-4 py-2.5 rounded-xl type-footnote font-semibold transition-colors ${
+                        active
+                          ? 'bg-surface-2 text-label font-bold'
+                          : 'text-label-2 hover:text-label hover:bg-surface-2/60'
+                      }`}
                     >
-                      {link.label}
+                      <span>{link.label}</span>
+                      {active && (
+                        <span className="size-2 rounded-full bg-accent" />
+                      )}
                     </Link>
                   )
                 })}
               </nav>
 
-              {/* action buttons */}
-              <div
-                className="px-5 py-4 flex flex-col gap-2 border-t"
-                style={{ borderColor: 'rgba(255,255,255,0.04)' }}
-              >
-                {walletAddress && onScanWallet && (
-                  <button
-                    onClick={() => {
-                      onScanWallet()
-                      setOpen(false)
-                    }}
-                    disabled={walletScanning}
-                    className="w-full py-3 cursor-pointer"
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      background: 'transparent',
-                      color: walletScanning ? '#525252' : '#fff',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '2px',
-                      fontSize: '12px',
-                      letterSpacing: '0.08em',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {walletScanning ? 'Scanning…' : 'Scan Wallet'}
-                  </button>
-                )}
+              {/* Action buttons */}
+              <div className="p-4 border-t border-separator/60 flex flex-col gap-2.5 bg-surface-2/40">
                 {gmailConnected && onScanGmail && (
                   <button
+                    type="button"
                     onClick={() => {
                       onScanGmail()
                       setOpen(false)
                     }}
                     disabled={scanning}
-                    className="w-full py-3 cursor-pointer"
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      background: scanning ? '#2a2a2a' : '#E50914',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '2px',
-                      fontSize: '12px',
-                      letterSpacing: '0.08em',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                    }}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-full bg-accent text-on-accent type-footnote font-semibold shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-50"
                   >
-                    {scanning ? 'Scanning…' : 'Scan Gmail'}
+                    {scanning ? 'Scanning Receipts…' : 'Scan Gmail Receipts'}
                   </button>
                 )}
+
+                {walletAddress && onScanWallet && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onScanWallet()
+                      setOpen(false)
+                    }}
+                    disabled={walletScanning}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-separator bg-surface text-label type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
+                  >
+                    {walletScanning ? 'Scanning…' : 'Scan Base Wallet'}
+                  </button>
+                )}
+
                 {onDebugScan && showDebug && (
                   <button
+                    type="button"
                     onClick={() => {
                       onDebugScan()
                       setOpen(false)
                     }}
                     disabled={debugScanning}
-                    className="w-full py-3 cursor-pointer"
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      background: 'transparent',
-                      color: debugScanning ? '#525252' : '#FACC15',
-                      border: `1px solid ${debugScanning ? 'rgba(255,255,255,0.08)' : 'rgba(250,204,21,0.4)'}`,
-                      borderRadius: '2px',
-                      fontSize: '12px',
-                      letterSpacing: '0.08em',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                    }}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-separator bg-surface text-label-2 type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
                   >
                     {debugScanning ? 'Debugging…' : 'Debug Scan'}
                   </button>
