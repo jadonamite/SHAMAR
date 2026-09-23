@@ -35,12 +35,7 @@ export default function CookieBanner() {
     <div
       role="region"
       aria-label="Cookie consent banner"
-      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 p-4 rounded border shadow-lg transition-all"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderColor: 'var(--border-strong)',
-        color: 'var(--text-primary)',
-      }}
+      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 p-5 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-[var(--shadow-card)] text-label transition-all"
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
@@ -71,33 +66,29 @@ export default function CookieBanner() {
             </svg>
           </button>
         </div>
-        <p
-          className="text-xs leading-relaxed text-secondary"
-          style={{ fontFamily: 'var(--font-sans)' }}
-        >
-          We use local storage for authentication tokens and your theme
-          preference. We do not use third-party marketing or tracking cookies.
-          Read our{' '}
+        <p className="type-footnote leading-relaxed text-label-2">
+          We use local storage strictly for essential authentication tokens.
+          We do not use third-party marketing or tracking cookies. Read our{' '}
           <Link
             href="/cookies"
-            className="underline hover:text-white transition-colors"
+            className="font-medium text-label underline hover:text-accent-text transition-colors"
           >
             cookie policy
           </Link>{' '}
           for details.
         </p>
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-2.5 pt-1">
           <button
+            type="button"
             onClick={accept}
-            className="min-h-[44px] px-5 py-2 text-xs font-semibold uppercase tracking-wider rounded text-white bg-sam-red hover:bg-sam-dim transition-colors"
-            style={{ fontFamily: 'var(--font-sans)' }}
+            className="touch-target min-h-[40px] px-5 rounded-full type-footnote font-semibold text-on-accent bg-accent hover:bg-accent-hover shadow-xs transition-colors"
           >
             Accept
           </button>
           <button
+            type="button"
             onClick={decline}
-            className="min-h-[44px] px-4 py-2 text-xs font-semibold uppercase tracking-wider rounded border border-subtle text-secondary hover:text-white transition-colors"
-            style={{ fontFamily: 'var(--font-sans)' }}
+            className="touch-target min-h-[40px] px-4 rounded-full type-footnote font-semibold text-label-2 border border-separator bg-surface-2 hover:bg-surface transition-colors"
           >
             Essential only
           </button>

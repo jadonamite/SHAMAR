@@ -56,7 +56,7 @@ export default function Hero() {
         alt=""
         fill
         priority
-        className="-z-10 scale-[1.6] object-cover opacity-[0.14]"
+        className="-z-10 scale-[1.25] object-cover opacity-20"
       />
 
       <header className="flex items-center justify-between gap-4 px-3 pt-2 md:px-6">

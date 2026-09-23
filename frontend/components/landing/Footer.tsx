@@ -39,7 +39,7 @@ export default function Footer() {
         src="/brand/red-pattern.webp"
         alt=""
         fill
-        className="-z-10 scale-[1.6] object-cover opacity-[0.14]"
+        className="-z-10 scale-[1.25] object-cover opacity-20"
       />
 
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
