@@ -1,6 +1,13 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { detectMiniPay } from '@/lib/minipay'
 
 interface MiniPayContextType {
@@ -22,7 +29,11 @@ export const useMiniPay = () => useContext(MiniPayContext)
 // on the injected provider. The resolved address is surfaced via miniPayAddress.
 // Components should check isMiniPay and use miniPayAddress instead of Privy user
 // when inside the MiniPay environment.
-export default function MiniPayProvider({ children }: { children: React.ReactNode }) {
+export default function MiniPayProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [isMiniPay, setIsMiniPay] = useState(false)
   const [isAutoConnecting, setIsAutoConnecting] = useState(false)
   const [miniPayAddress, setMiniPayAddress] = useState<string | null>(null)
@@ -59,11 +70,14 @@ export default function MiniPayProvider({ children }: { children: React.ReactNod
       setMiniPayAddress(list[0] ?? null)
     }
     window.ethereum.on('accountsChanged', handleAccountsChanged)
-    return () => window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
+    return () =>
+      window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
   }, [isMiniPay])
 
   return (
-    <MiniPayContext.Provider value={{ isMiniPay, isAutoConnecting, miniPayAddress }}>
+    <MiniPayContext.Provider
+      value={{ isMiniPay, isAutoConnecting, miniPayAddress }}
+    >
       {children}
     </MiniPayContext.Provider>
   )

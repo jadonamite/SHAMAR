@@ -30,8 +30,14 @@ export default function AgentStatusBar({
   subCount = 0,
   userId,
 }: AgentStatusBarProps) {
-  const [controlState, setControlState] = useState<{ halted: boolean; reason: string } | null>(null)
-  const [authState, setAuthState] = useState<{ granted: boolean; reason: string } | null>(null)
+  const [controlState, setControlState] = useState<{
+    halted: boolean
+    reason: string
+  } | null>(null)
+  const [authState, setAuthState] = useState<{
+    granted: boolean
+    reason: string
+  } | null>(null)
 
   useEffect(() => {
     // Check Telegram control state
@@ -50,8 +56,8 @@ export default function AgentStatusBar({
             reason: d.onchainAuthorized
               ? 'shamar.cancel authorized on Base'
               : d.user?.policy_granted
-              ? 'Local grant active'
-              : 'Not authorized',
+                ? 'Local grant active'
+                : 'Not authorized',
           })
         })
         .catch(() => {})
@@ -61,12 +67,12 @@ export default function AgentStatusBar({
   const agentStateKind: AgentStateKind = controlState?.halted
     ? 'halted'
     : authState
-    ? authState.granted
-      ? 'authorized'
-      : 'blocked'
-    : scanning
-    ? 'checking'
-    : 'authorized'
+      ? authState.granted
+        ? 'authorized'
+        : 'blocked'
+      : scanning
+        ? 'checking'
+        : 'authorized'
 
   return (
     <div
@@ -82,7 +88,11 @@ export default function AgentStatusBar({
         <div className="flex items-center gap-2 flex-shrink-0">
           <motion.span
             animate={scanning ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
-            transition={scanning ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } : {}}
+            transition={
+              scanning
+                ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
+                : {}
+            }
             style={{
               display: 'inline-block',
               width: '6px',
@@ -115,7 +125,9 @@ export default function AgentStatusBar({
         <Divider />
 
         <Field label="POLICY">
-          <span className="text-[10px] text-green-500 font-mono">SHAMARPolicy (Base)</span>
+          <span className="text-[10px] text-green-500 font-mono">
+            SHAMARPolicy (Base)
+          </span>
         </Field>
       </div>
 
@@ -123,7 +135,11 @@ export default function AgentStatusBar({
       <div className="flex items-center gap-2 shrink-0 pl-3">
         <AgentStateBadge
           state={agentStateKind}
-          reason={controlState?.halted ? 'Halted via Telegram /stop' : authState?.reason}
+          reason={
+            controlState?.halted
+              ? 'Halted via Telegram /stop'
+              : authState?.reason
+          }
           compact
         />
       </div>
@@ -132,10 +148,18 @@ export default function AgentStatusBar({
 }
 
 function Divider() {
-  return <span style={{ color: 'var(--border-strong)', fontSize: '10px' }}>·</span>
+  return (
+    <span style={{ color: 'var(--border-strong)', fontSize: '10px' }}>·</span>
+  )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <div className="flex items-center gap-1.5 flex-shrink-0">
       <span
@@ -149,7 +173,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       >
         {label}
       </span>
-      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '11px' }}>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--text-secondary)',
+          fontSize: '11px',
+        }}
+      >
         {children}
       </span>
     </div>

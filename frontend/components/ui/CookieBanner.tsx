@@ -75,7 +75,9 @@ export default function CookieBanner() {
           className="text-xs leading-relaxed text-secondary"
           style={{ fontFamily: 'var(--font-sans)' }}
         >
-          We use local storage for authentication tokens and your theme preference. We do not use third-party marketing or tracking cookies. Read our{' '}
+          We use local storage for authentication tokens and your theme
+          preference. We do not use third-party marketing or tracking cookies.
+          Read our{' '}
           <Link
             href="/cookies"
             className="underline hover:text-white transition-colors"

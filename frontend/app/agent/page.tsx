@@ -23,8 +23,14 @@ type SelfQRcodeProps = {
 
 // SSR-safe — SelfQRcodeWrapper uses browser WebSocket APIs
 const SelfQRcodeWrapper = dynamic<SelfQRcodeProps>(
-  () => import('@selfxyz/qrcode').then((m) => ({ default: m.SelfQRcodeWrapper })),
-  { ssr: false, loading: () => <div style={{ width: 200, height: 200, background: '#1C1C1C' }} /> }
+  () =>
+    import('@selfxyz/qrcode').then((m) => ({ default: m.SelfQRcodeWrapper })),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ width: 200, height: 200, background: '#1C1C1C' }} />
+    ),
+  }
 )
 
 type AgentStatus = {
@@ -110,7 +116,10 @@ export default function AgentPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) { router.replace('/dashboard'); return }
+    if (!authenticated) {
+      router.replace('/dashboard')
+      return
+    }
     if (!user?.id) return
     load()
   }, [ready, authenticated, user?.id])
@@ -136,7 +145,9 @@ export default function AgentPage() {
     setGranting(true)
     try {
       const wallet = wallets[0]
-      const contract = status?.agent?.policyContract as `0x${string}` | undefined
+      const contract = status?.agent?.policyContract as
+        | `0x${string}`
+        | undefined
       const agentAddress = status?.agent?.address as `0x${string}` | undefined
       if (wallet && contract && agentAddress) {
         const provider = await wallet.getEthereumProvider()
@@ -161,11 +172,20 @@ export default function AgentPage() {
       if (res.ok) {
         setStatus((prev) =>
           prev
-            ? { ...prev, user: { ...prev.user!, policy_granted: true, policy_granted_at: new Date().toISOString() }, onchainAuthorized: true }
+            ? {
+                ...prev,
+                user: {
+                  ...prev.user!,
+                  policy_granted: true,
+                  policy_granted_at: new Date().toISOString(),
+                },
+                onchainAuthorized: true,
+              }
             : prev
         )
       }
-    } catch {} finally {
+    } catch {
+    } finally {
       setGranting(false)
     }
   }
@@ -196,7 +216,16 @@ export default function AgentPage() {
         body: JSON.stringify({ userId: user!.id }),
       })
       setStatus((prev) =>
-        prev ? { ...prev, user: { ...prev.user!, self_verified: true, self_verified_at: new Date().toISOString() } } : prev
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user!,
+                self_verified: true,
+                self_verified_at: new Date().toISOString(),
+              },
+            }
+          : prev
       )
     } catch {}
   }
@@ -204,13 +233,17 @@ export default function AgentPage() {
   async function revokePolicy() {
     if (!user?.id) return
     try {
-      await fetch('/api/agent/revoke-policy', { method: 'POST', headers: { 'x-user-id': user.id } })
+      await fetch('/api/agent/revoke-policy', {
+        method: 'POST',
+        headers: { 'x-user-id': user.id },
+      })
       setStatus((prev) =>
-        prev ? { ...prev, user: { ...prev.user!, policy_granted: false } } : prev
+        prev
+          ? { ...prev, user: { ...prev.user!, policy_granted: false } }
+          : prev
       )
     } catch {}
   }
-
 
   if (!ready || loading) {
     return (
@@ -248,27 +281,76 @@ export default function AgentPage() {
       />
 
       <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-6">
-
         {/* Agent wallet card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col gap-4 p-5"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+          style={{
+            background: '#141414',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '2px',
+          }}
         >
-          <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-sans)',
+              color: '#525252',
+              fontSize: '11px',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}
+          >
             Shamar Agent
           </span>
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: 'Agent Address', value: <ShortAddress address={agent?.address ?? ''} /> },
-              { label: 'Policy Contract', value: agent?.policyContract ? <ShortAddress address={agent.policyContract} /> : <span style={{ color: '#525252' }}>Not deployed</span> },
-              { label: 'Signing', value: <span style={{ color: isConfigured ? '#16A34A' : '#525252' }}>{isConfigured ? 'EIP-191 personal_sign' : 'No key set'}</span> },
-              { label: 'Chain', value: <span style={{ color: '#A3A3A3' }}>Base Mainnet</span> },
+              {
+                label: 'Agent Address',
+                value: <ShortAddress address={agent?.address ?? ''} />,
+              },
+              {
+                label: 'Policy Contract',
+                value: agent?.policyContract ? (
+                  <ShortAddress address={agent.policyContract} />
+                ) : (
+                  <span style={{ color: '#525252' }}>Not deployed</span>
+                ),
+              },
+              {
+                label: 'Signing',
+                value: (
+                  <span style={{ color: isConfigured ? '#16A34A' : '#525252' }}>
+                    {isConfigured ? 'EIP-191 personal_sign' : 'No key set'}
+                  </span>
+                ),
+              },
+              {
+                label: 'Chain',
+                value: <span style={{ color: '#A3A3A3' }}>Base Mainnet</span>,
+              },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-1">
-                <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', color: '#A3A3A3', fontSize: '12px' }}>{value}</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '10px',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {label}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: '#A3A3A3',
+                    fontSize: '12px',
+                  }}
+                >
+                  {value}
+                </span>
               </div>
             ))}
           </div>
@@ -280,9 +362,21 @@ export default function AgentPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
           className="flex flex-col gap-4 p-5"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+          style={{
+            background: '#141414',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '2px',
+          }}
         >
-          <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-sans)',
+              color: '#525252',
+              fontSize: '11px',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}
+          >
             Trust Level
           </span>
           <div className="flex flex-col gap-3">
@@ -293,11 +387,25 @@ export default function AgentPage() {
             ].map(({ label, done }) => (
               <div key={label} className="flex items-center gap-3">
                 <StatusDot ok={done} />
-                <span style={{ fontFamily: 'var(--font-sans)', color: done ? '#A3A3A3' : '#525252', fontSize: '13px' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: done ? '#A3A3A3' : '#525252',
+                    fontSize: '13px',
+                  }}
+                >
                   {label}
                 </span>
                 {done && (
-                  <span style={{ fontFamily: 'var(--font-mono)', color: '#3a3a3a', fontSize: '10px' }}>✓</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      color: '#3a3a3a',
+                      fontSize: '10px',
+                    }}
+                  >
+                    ✓
+                  </span>
                 )}
               </div>
             ))}
@@ -317,39 +425,94 @@ export default function AgentPage() {
           }}
         >
           <div className="flex items-center justify-between">
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
               SELF Protocol
             </span>
             {isVerified && (
-              <span style={{ fontFamily: 'var(--font-mono)', color: '#16A34A', fontSize: '11px' }}>Verified</span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: '#16A34A',
+                  fontSize: '11px',
+                }}
+              >
+                Verified
+              </span>
             )}
           </div>
 
           {isVerified || selfSuccess ? (
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
-              Identity verified. Shamar logs attributable attestations tied to your ZK proof.
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '13px',
+              }}
+            >
+              Identity verified. Shamar logs attributable attestations tied to
+              your ZK proof.
             </p>
           ) : selfApp ? (
             <div className="flex flex-col gap-3">
-              <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#A3A3A3',
+                  fontSize: '13px',
+                  lineHeight: 1.6,
+                }}
+              >
                 Scan with the SELF app to generate a ZK proof of identity.
               </p>
-              <div style={{ background: '#fff', padding: '12px', borderRadius: '2px', width: 'fit-content' }}>
+              <div
+                style={{
+                  background: '#fff',
+                  padding: '12px',
+                  borderRadius: '2px',
+                  width: 'fit-content',
+                }}
+              >
                 <SelfQRcodeWrapper
                   selfApp={selfApp}
                   onSuccess={onSelfSuccess}
-                  onError={(data: { error_code?: string; reason?: string }) => setSelfError(data.reason ?? data.error_code ?? 'Verification failed')}
+                  onError={(data: { error_code?: string; reason?: string }) =>
+                    setSelfError(
+                      data.reason ?? data.error_code ?? 'Verification failed'
+                    )
+                  }
                   type="websocket"
                   size={180}
                   darkMode={false}
                 />
               </div>
               {selfError && (
-                <p style={{ fontFamily: 'var(--font-mono)', color: '#E50914', fontSize: '11px' }}>{selfError}</p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: '#E50914',
+                    fontSize: '11px',
+                  }}
+                >
+                  {selfError}
+                </p>
               )}
             </div>
           ) : (
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '13px',
+              }}
+            >
               Connect wallet to enable SELF verification.
             </p>
           )}
@@ -368,10 +531,24 @@ export default function AgentPage() {
           }}
         >
           <div className="flex items-center justify-between">
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
               ERC8004 Policy
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: isPolicyGranted ? '#E50914' : '#525252', fontSize: '11px' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: isPolicyGranted ? '#E50914' : '#525252',
+                fontSize: '11px',
+              }}
+            >
               {isPolicyGranted ? 'Active' : 'Not granted'}
             </span>
           </div>
@@ -380,7 +557,15 @@ export default function AgentPage() {
             {Object.entries(SCOPE_LABELS).map(([scope, label]) => (
               <div key={scope} className="flex items-center gap-2">
                 <StatusDot ok={isPolicyGranted} />
-                <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '12px' }}>{label}</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '12px',
+                  }}
+                >
+                  {label}
+                </span>
               </div>
             ))}
           </div>
@@ -388,8 +573,16 @@ export default function AgentPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <StatusDot ok={status?.onchainAuthorized ?? false} />
-              <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '12px' }}>
-                {status?.onchainAuthorized ? 'Onchain authorized' : 'Not onchain authorized'}
+              <span
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#525252',
+                  fontSize: '12px',
+                }}
+              >
+                {status?.onchainAuthorized
+                  ? 'Onchain authorized'
+                  : 'Not onchain authorized'}
               </span>
             </div>
             {status?.agent?.scan8004Url && (
@@ -397,7 +590,12 @@ export default function AgentPage() {
                 href={status.agent.scan8004Url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '10px', textDecoration: 'none' }}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: '#525252',
+                  fontSize: '10px',
+                  textDecoration: 'none',
+                }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#A3A3A3')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#525252')}
               >
@@ -450,7 +648,15 @@ export default function AgentPage() {
             transition={{ delay: 0.22 }}
             className="flex flex-col gap-3"
           >
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
               Attestation Log
             </span>
             <div className="flex flex-col gap-1.5">
@@ -458,21 +664,54 @@ export default function AgentPage() {
                 <div
                   key={action.id}
                   className="flex items-center justify-between px-4 py-3"
-                  style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '2px' }}
+                  style={{
+                    background: '#141414',
+                    border: '1px solid rgba(255,255,255,0.04)',
+                    borderRadius: '2px',
+                  }}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '12px' }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#A3A3A3',
+                        fontSize: '12px',
+                      }}
+                    >
                       {action.merchant} — {action.type}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: '#3a3a3a', fontSize: '10px' }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        color: '#3a3a3a',
+                        fontSize: '10px',
+                      }}
+                    >
                       {action.signature.slice(0, 24)}…
                     </span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5">
-                    <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
-                      {new Date(action.executed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        color: '#525252',
+                        fontSize: '11px',
+                      }}
+                    >
+                      {new Date(action.executed_at).toLocaleDateString(
+                        'en-US',
+                        { month: 'short', day: 'numeric' }
+                      )}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-sans)', color: '#3a3a3a', fontSize: '9px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#3a3a3a',
+                        fontSize: '9px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
                       {action.triggered_by}
                     </span>
                   </div>

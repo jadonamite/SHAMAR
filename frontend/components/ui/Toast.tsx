@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/components/providers/ToastProvider'
 
 const COLORS = {
-  error:   { border: 'rgba(229,9,20,0.35)',   text: '#E50914',  dot: '#E50914'  },
-  success: { border: 'rgba(22,163,74,0.35)',   text: '#16A34A',  dot: '#16A34A'  },
-  info:    { border: 'rgba(255,255,255,0.12)', text: '#A3A3A3',  dot: '#525252'  },
+  error: { border: 'rgba(229,9,20,0.35)', text: '#E50914', dot: '#E50914' },
+  success: { border: 'rgba(22,163,74,0.35)', text: '#16A34A', dot: '#16A34A' },
+  info: { border: 'rgba(255,255,255,0.12)', text: '#A3A3A3', dot: '#525252' },
 }
 
 export default function Toast() {
@@ -27,8 +27,8 @@ export default function Toast() {
         <motion.div
           key={toast.id}
           initial={{ opacity: 0, y: -16, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0,   scale: 1     }}
-          exit={{    opacity: 0, y: -12,  scale: 0.97  }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -12, scale: 0.97 }}
           transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
           style={{
             position: 'fixed',

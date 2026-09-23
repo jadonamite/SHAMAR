@@ -52,14 +52,19 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
     >
       <div
         className="flex items-center justify-center"
-        style={{ width: '300px', height: '300px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}
+        style={{
+          width: '300px',
+          height: '300px',
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '8px',
+        }}
       >
         <svg viewBox="0 0 512 512" fill="none" width="150" height="150">
-          <path d="M158 391v-142l-82-63V361q0 30 30 30" fill="#4285f4"/>
-          <path d="M154 248l102 77l102-77v-98l-102 77l-102-77" fill="#ea4335"/>
-          <path d="M354 391v-142l82-63V361q0 30-30 30" fill="#34a853"/>
-          <path d="M76 188l82 63v-98l-30-23c-27-21-52 0-52 26" fill="#c5221f"/>
-          <path d="M436 188l-82 63v-98l30-23c27-21 52 0 52 26" fill="#fbbc04"/>
+          <path d="M158 391v-142l-82-63V361q0 30 30 30" fill="#4285f4" />
+          <path d="M154 248l102 77l102-77v-98l-102 77l-102-77" fill="#ea4335" />
+          <path d="M354 391v-142l82-63V361q0 30-30 30" fill="#34a853" />
+          <path d="M76 188l82 63v-98l-30-23c-27-21-52 0-52 26" fill="#c5221f" />
+          <path d="M436 188l-82 63v-98l30-23c27-21 52 0 52 26" fill="#fbbc04" />
         </svg>
       </div>
 
@@ -70,7 +75,10 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         >
           Connect Gmail
         </h3>
-        <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm leading-relaxed">
+        <p
+          style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
+          className="text-sm leading-relaxed"
+        >
           Shamar reads your inbox to detect recurring subscriptions.
           <br />
           Read-only access. Shamar cannot send or delete emails.
@@ -78,10 +86,20 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
       </div>
 
       <div className="flex flex-col gap-2 w-full">
-        {['Read-only Gmail access', 'Detected in under 30 seconds', 'No manual entry required'].map((item) => (
+        {[
+          'Read-only Gmail access',
+          'Detected in under 30 seconds',
+          'No manual entry required',
+        ].map((item) => (
           <div key={item} className="flex items-center gap-3">
-            <div className="w-1 h-1 rounded-full" style={{ background: '#E50914', flexShrink: 0 }} />
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#525252' }} className="text-xs">
+            <div
+              className="w-1 h-1 rounded-full"
+              style={{ background: '#E50914', flexShrink: 0 }}
+            />
+            <span
+              style={{ fontFamily: 'var(--font-sans)', color: '#525252' }}
+              className="text-xs"
+            >
               {item}
             </span>
           </div>
@@ -104,7 +122,10 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         Connect & Scan Gmail
       </motion.button>
 
-      <p style={{ fontFamily: 'var(--font-mono)', color: '#525252' }} className="text-[10px] text-center">
+      <p
+        style={{ fontFamily: 'var(--font-mono)', color: '#525252' }}
+        className="text-[10px] text-center"
+      >
         You will be redirected to Google's secure sign-in page
       </p>
     </motion.div>

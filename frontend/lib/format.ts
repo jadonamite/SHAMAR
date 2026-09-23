@@ -16,7 +16,10 @@ function decimalsFor(currency: string): number {
   return currency === 'NGN' ? 0 : 2
 }
 
-export function formatMoney(amount: number, currency: Currency = 'USD'): string {
+export function formatMoney(
+  amount: number,
+  currency: Currency = 'USD'
+): string {
   const symbol = SYMBOLS[currency] ?? ''
   const decimals = decimalsFor(currency)
   const formatted = amount.toLocaleString('en-US', {
@@ -33,7 +36,7 @@ export type CurrencyMap = Record<string, number>
 export function aggregateByCurrency<T>(
   items: T[],
   amountFn: (item: T) => number,
-  currencyFn: (item: T) => string,
+  currencyFn: (item: T) => string
 ): CurrencyMap {
   const out: CurrencyMap = {}
   for (const item of items) {

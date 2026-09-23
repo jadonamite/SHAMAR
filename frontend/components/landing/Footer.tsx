@@ -2,14 +2,27 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { CookieIcon, GitHubIcon, TelegramIcon, XIcon } from '@/components/ui/SocialIcons'
+import {
+  CookieIcon,
+  GitHubIcon,
+  TelegramIcon,
+  XIcon,
+} from '@/components/ui/SocialIcons'
 import { PrimaryButton } from '@/components/landing/primitives'
 import { useStart } from '@/components/landing/Hero'
 
 const SOCIAL = [
   { href: 'https://x.com/jadonamite', label: 'SHAMAR on X', icon: <XIcon /> },
-  { href: 'https://github.com/jadonamite/SHAMAR', label: 'SHAMAR on GitHub', icon: <GitHubIcon /> },
-  { href: 'https://t.me/jadonamite', label: 'SHAMAR on Telegram', icon: <TelegramIcon /> },
+  {
+    href: 'https://github.com/jadonamite/SHAMAR',
+    label: 'SHAMAR on GitHub',
+    icon: <GitHubIcon />,
+  },
+  {
+    href: 'https://t.me/jadonamite',
+    label: 'SHAMAR on Telegram',
+    icon: <TelegramIcon />,
+  },
 ]
 
 const LEGAL = [
@@ -21,8 +34,13 @@ export default function Footer() {
   const { start, loading } = useStart()
   return (
     <section className="relative isolate flex min-h-[45svh] flex-col justify-between gap-8 overflow-hidden rounded-[var(--radius-section)] bg-surface px-6 py-8 md:px-10 md:py-10">
-      {/* Same SHAMAR pattern as the hero, so the page opens and closes on it */}
-      <Image src="/brand/hero-pattern.svg" alt="" fill className="-z-10 object-cover" />
+      {/* Same pattern as the hero, so the page opens and closes on it */}
+      <Image
+        src="/brand/hero-bg.webp"
+        alt=""
+        fill
+        className="-z-10 scale-[1.6] object-cover opacity-[0.14]"
+      />
 
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col items-start gap-5">
@@ -61,12 +79,17 @@ export default function Footer() {
               {l.label}
             </Link>
           ))}
-          <Link href="/cookies" className="type-footnote inline-flex min-h-[44px] items-center gap-1.5 text-label hover:underline">
+          <Link
+            href="/cookies"
+            className="type-footnote inline-flex min-h-[44px] items-center gap-1.5 text-label hover:underline"
+          >
             <CookieIcon size={16} />
             Cookies
           </Link>
         </nav>
-        <p className="type-caption pb-3 text-label md:pb-0">© {new Date().getFullYear()} SHAMAR</p>
+        <p className="type-caption pb-3 text-label md:pb-0">
+          © {new Date().getFullYear()} SHAMAR
+        </p>
       </div>
     </section>
   )

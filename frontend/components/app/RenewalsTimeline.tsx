@@ -13,9 +13,9 @@ interface Renewal {
 }
 
 function cadenceDays(c: Subscription['cadence']): number {
-  if (c === 'daily')   return 1
-  if (c === 'weekly')  return 7
-  if (c === 'yearly')  return 365
+  if (c === 'daily') return 1
+  if (c === 'weekly') return 7
+  if (c === 'yearly') return 365
   return 30
 }
 
@@ -47,7 +47,11 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
   if (renewals.length === 0) return null
 
   const totalStr = formatAggregate(
-    aggregateByCurrency(renewals, (r) => r.sub.amount, (r) => r.sub.currency ?? 'USD')
+    aggregateByCurrency(
+      renewals,
+      (r) => r.sub.amount,
+      (r) => r.sub.currency ?? 'USD'
+    )
   )
 
   return (
@@ -111,7 +115,8 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
                 fontSize: '12px',
               }}
             >
-              {formatMoney(hovered.sub.amount, hovered.sub.currency)} · {hovered.daysFromNow}d
+              {formatMoney(hovered.sub.amount, hovered.sub.currency)} ·{' '}
+              {hovered.daysFromNow}d
             </span>
           </div>
         )}
@@ -163,7 +168,9 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
             key={r.sub.id}
             onMouseEnter={() => setHovered(r)}
             onMouseLeave={() => setHovered(null)}
-            onClick={() => setHovered((cur) => (cur?.sub.id === r.sub.id ? null : r))}
+            onClick={() =>
+              setHovered((cur) => (cur?.sub.id === r.sub.id ? null : r))
+            }
             whileHover={{ scale: 1.6 }}
             transition={{ duration: 0.18 }}
             className="absolute"

@@ -10,7 +10,9 @@ function numOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export function normalizeSubscription<T extends Record<string, unknown>>(raw: T): T {
+export function normalizeSubscription<T extends Record<string, unknown>>(
+  raw: T
+): T {
   return {
     ...raw,
     amount: num(raw.amount),

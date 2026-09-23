@@ -1,6 +1,13 @@
 'use client'
 
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from 'framer-motion'
 import { useEffect, useState } from 'react'
 import BrandLogo, { type BrandName } from '@/components/ui/BrandLogo'
 
@@ -13,15 +20,48 @@ type Notification = {
 }
 
 const NOTIFICATIONS: Notification[] = [
-  { brand: 'claude', name: 'Claude Pro', amount: 20.0, charged: 'Renews in 9 days', forgotten: false },
-  { brand: 'netflix', name: 'Netflix', amount: 15.49, charged: 'Renews in 5 days', forgotten: false },
-  { brand: 'figma', name: 'Figma Professional', amount: 15.0, charged: 'Renews in 36 hours', forgotten: true },
-  { brand: 'spotify', name: 'Spotify Premium', amount: 11.99, charged: 'Renews in 12 days', forgotten: false },
-  { brand: 'duolingo', name: 'Duolingo Super', amount: 12.99, charged: 'Renews in 36 hours', forgotten: true },
+  {
+    brand: 'claude',
+    name: 'Claude Pro',
+    amount: 20.0,
+    charged: 'Renews in 9 days',
+    forgotten: false,
+  },
+  {
+    brand: 'netflix',
+    name: 'Netflix',
+    amount: 15.49,
+    charged: 'Renews in 5 days',
+    forgotten: false,
+  },
+  {
+    brand: 'figma',
+    name: 'Figma Professional',
+    amount: 15.0,
+    charged: 'Renews in 36 hours',
+    forgotten: true,
+  },
+  {
+    brand: 'spotify',
+    name: 'Spotify Premium',
+    amount: 11.99,
+    charged: 'Renews in 12 days',
+    forgotten: false,
+  },
+  {
+    brand: 'duolingo',
+    name: 'Duolingo Super',
+    amount: 12.99,
+    charged: 'Renews in 36 hours',
+    forgotten: true,
+  },
 ]
 
 const TOTAL = NOTIFICATIONS.reduce((s, n) => s + n.amount, 0)
-const KEPT = NOTIFICATIONS.filter((n) => !n.forgotten).reduce((s, n) => s + n.amount, 0)
+const KEPT = NOTIFICATIONS.filter((n) => !n.forgotten).reduce(
+  (s, n) => s + n.amount,
+  0
+)
 
 // Phase machine, each entry is ms until the next phase.
 // 0 empty, 1..5 show receipts, 6 scan, 7 cancel, 8 hold, 9 reset
@@ -56,14 +96,19 @@ export default function NotificationCascade() {
 
   useEffect(() => {
     let target = 0
-    if (phase >= 1 && phase <= 5) target = NOTIFICATIONS.slice(0, phase).reduce((s, n) => s + n.amount, 0)
+    if (phase >= 1 && phase <= 5)
+      target = NOTIFICATIONS.slice(0, phase).reduce((s, n) => s + n.amount, 0)
     else if (phase === 6) target = TOTAL
     else if (phase === 7 || phase === 8) target = KEPT
-    const controls = animate(total, target, { duration: phase === 7 ? 0.9 : 0.5, ease: [0.25, 0.1, 0.25, 1] })
+    const controls = animate(total, target, {
+      duration: phase === 7 ? 0.9 : 0.5,
+      ease: [0.25, 0.1, 0.25, 1],
+    })
     return controls.stop
   }, [phase, total])
 
-  const visibleCount = phase >= 1 && phase <= 5 ? phase : phase >= 6 && phase <= 8 ? 5 : 0
+  const visibleCount =
+    phase >= 1 && phase <= 5 ? phase : phase >= 6 && phase <= 8 ? 5 : 0
   const scanning = phase === 6
   const flagged = phase >= 6 && phase <= 8
   const cleaning = phase >= 7 && phase <= 8
@@ -71,7 +116,9 @@ export default function NotificationCascade() {
   return (
     <div className="flex w-full flex-col gap-3" aria-hidden>
       <div className="flex items-center justify-between px-2 pt-1">
-        <span className="type-caption text-on-inverse/60">Coming up this month</span>
+        <span className="type-caption text-on-inverse/60">
+          Coming up this month
+        </span>
         <motion.span
           animate={reduce ? undefined : { opacity: [1, 0.3, 1] }}
           transition={{ duration: 1.2, repeat: Number.POSITIVE_INFINITY }}
@@ -80,7 +127,12 @@ export default function NotificationCascade() {
       </div>
 
       <div className="relative" style={{ minHeight: ROWS_HEIGHT }}>
-        {scanning && <div key={`scan-${phase}`} className="cascade-scanner pointer-events-none absolute inset-x-0 z-10" />}
+        {scanning && (
+          <div
+            key={`scan-${phase}`}
+            className="cascade-scanner pointer-events-none absolute inset-x-0 z-10"
+          />
+        )}
 
         <div className="flex flex-col gap-2.5">
           <AnimatePresence>
@@ -98,7 +150,10 @@ export default function NotificationCascade() {
                     x: 0,
                     scale: isFlagged && !isRemoved ? 1.01 : 1,
                   }}
-                  exit={{ x: '-115%', transition: { duration: 0.45, ease: [0.7, 0, 0.84, 0] } }}
+                  exit={{
+                    x: '-115%',
+                    transition: { duration: 0.45, ease: [0.7, 0, 0.84, 0] },
+                  }}
                   transition={{
                     duration: isRemoved ? 0.55 : 0.6,
                     ease: [0.16, 1, 0.3, 1],
@@ -111,7 +166,11 @@ export default function NotificationCascade() {
                   <BrandLogo name={n.brand} size={44} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className={`type-footnote truncate font-semibold ${isRemoved ? 'line-through' : ''}`}>{n.name}</p>
+                      <p
+                        className={`type-footnote truncate font-semibold ${isRemoved ? 'line-through' : ''}`}
+                      >
+                        {n.name}
+                      </p>
                       {isFlagged && !isRemoved && (
                         <motion.span
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -123,12 +182,16 @@ export default function NotificationCascade() {
                         </motion.span>
                       )}
                       {isRemoved && (
-                        <span className="type-caption shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">Cancelled</span>
+                        <span className="type-caption shrink-0 rounded-full bg-accent px-2 py-0.5 text-on-accent">
+                          Cancelled
+                        </span>
                       )}
                     </div>
                     <p className="type-caption text-label-3">{n.charged}</p>
                   </div>
-                  <p className={`type-footnote tabular font-semibold ${isFlagged ? 'text-accent-text' : ''}`}>
+                  <p
+                    className={`type-footnote tabular font-semibold ${isFlagged ? 'text-accent-text' : ''}`}
+                  >
                     ${n.amount.toFixed(2)}
                   </p>
                 </motion.div>
@@ -141,7 +204,9 @@ export default function NotificationCascade() {
       <div className="flex items-end justify-between rounded-[var(--radius-tile)] bg-inverse-raised px-4 py-3">
         <div>
           <p className="type-caption text-on-inverse/60">You pay each month</p>
-          <motion.p className="type-title-2 tabular text-on-inverse">{totalText}</motion.p>
+          <motion.p className="type-title-2 tabular text-on-inverse">
+            {totalText}
+          </motion.p>
         </div>
         <AnimatePresence>
           {cleaning && (
@@ -156,7 +221,9 @@ export default function NotificationCascade() {
               <p className="type-footnote font-semibold text-success-on-inverse">
                 Saved ${(TOTAL - KEPT).toFixed(2)} a month
               </p>
-              <p className="type-caption text-on-inverse/60">2 you ignored, both cancelled</p>
+              <p className="type-caption text-on-inverse/60">
+                2 you ignored, both cancelled
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

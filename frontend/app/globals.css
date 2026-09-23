@@ -6,8 +6,11 @@
  */
 
 @theme {
-  --font-sans: var(--font-switzer), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans:
+    var(--font-switzer), -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Semantic colours, swapped per theme below */
   --color-canvas: var(--canvas);
@@ -16,8 +19,8 @@
   --color-inverse: var(--inverse);
   --color-on-inverse: var(--on-inverse);
   /* Tiles and success text on the black slab */
-  --color-inverse-raised: #1C1C1F;
-  --color-success-on-inverse: #3DD17A;
+  --color-inverse-raised: #1c1c1f;
+  --color-success-on-inverse: #3dd17a;
   --color-label: var(--label);
   --color-label-2: var(--label-2);
   --color-label-3: var(--label-3);
@@ -27,7 +30,7 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
-  --color-on-accent: #FFFFFF;
+  --color-on-accent: #ffffff;
   --color-success: var(--success);
   --color-warning: var(--warning);
 
@@ -58,23 +61,24 @@
   color-scheme: light;
 
   /* Light only, by the owner's call (2026-09-23). Contrast ratios are in DESIGN.md. */
-  --canvas: #EEEEF2;
-  --surface: #FFFFFF;
-  --surface-2: #F5F5F8;
-  --inverse: #0B0B0C;
-  --on-inverse: #FFFFFF;
-  --label: #0B0B0C;
-  --label-2: #5C5C66;
-  --label-3: #6B6B73;
+  --canvas: #eeeef2;
+  --surface: #ffffff;
+  --surface-2: #f5f5f8;
+  --inverse: #0b0b0c;
+  --on-inverse: #ffffff;
+  --label: #0b0b0c;
+  --label-2: #5c5c66;
+  --label-3: #6b6b73;
   --separator: rgba(11, 11, 12, 0.08);
   --separator-strong: rgba(11, 11, 12, 0.16);
-  --accent-fill: #D90012;
-  --accent-hover: #BC0010;
-  --accent-text: #D90012;
+  --accent-fill: #d90012;
+  --accent-hover: #bc0010;
+  --accent-text: #d90012;
   --accent-soft: rgba(217, 0, 18, 0.08);
-  --success: #107C3A;
-  --warning: #A15C00;
-  --shadow-float: 0 12px 32px -12px rgba(11, 11, 12, 0.18), 0 2px 6px rgba(11, 11, 12, 0.06);
+  --success: #107c3a;
+  --warning: #a15c00;
+  --shadow-float:
+    0 12px 32px -12px rgba(11, 11, 12, 0.18), 0 2px 6px rgba(11, 11, 12, 0.06);
 
   /* Motion durations */
   --motion-quick: 150ms;
@@ -113,7 +117,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   min-height: 100vh;
-  font-feature-settings: "ss01", "tnum" 0;
+  font-feature-settings:
+    "ss01",
+    "tnum" 0;
 }
 
 ::selection {

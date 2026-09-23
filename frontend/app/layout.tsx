@@ -10,15 +10,28 @@ import './globals.css'
 // Switzer by Indian Type Foundry, ITF Free Font License (app/fonts/Switzer-LICENSE.txt).
 const switzer = localFont({
   src: [
-    { path: './fonts/Switzer-Variable.woff2', weight: '100 900', style: 'normal' },
-    { path: './fonts/Switzer-VariableItalic.woff2', weight: '100 900', style: 'italic' },
+    {
+      path: './fonts/Switzer-Variable.woff2',
+      weight: '100 900',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Switzer-VariableItalic.woff2',
+      weight: '100 900',
+      style: 'italic',
+    },
   ],
   variable: '--font-switzer',
   display: 'swap',
 })
 
 // The wordmark face. Downloaded at build time and served from our own domain.
-const archivo = Archivo({ subsets: ['latin'], axes: ['wdth'], variable: '--font-wordmark', display: 'swap' })
+const archivo = Archivo({
+  subsets: ['latin'],
+  axes: ['wdth'],
+  variable: '--font-wordmark',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://shamar.namite.xyz'),
@@ -29,7 +42,14 @@ export const metadata: Metadata = {
     title: 'SHAMAR: an agent you can hand a recurring bill to',
     description: 'It decides what cancelling costs, not just what it saves.',
     siteName: 'SHAMAR',
-    images: [{ url: '/brand/shamar-mark-512.png', width: 512, height: 349, alt: 'The SHAMAR mark' }],
+    images: [
+      {
+        url: '/brand/shamar-mark-512.png',
+        width: 512,
+        height: 349,
+        alt: 'The SHAMAR mark',
+      },
+    ],
   },
   other: {
     'talentapp:project_verification':
@@ -37,7 +57,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html
       lang="en"

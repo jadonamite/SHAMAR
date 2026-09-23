@@ -5,7 +5,9 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import ConnectGmail from '@/components/app/ConnectGmail'
-import SubscriptionRow, { type Subscription } from '@/components/app/SubscriptionRow'
+import SubscriptionRow, {
+  type Subscription,
+} from '@/components/app/SubscriptionRow'
 import AgentStatusBar from '@/components/app/AgentStatusBar'
 import MonthlyBleed from '@/components/app/MonthlyBleed'
 import OnboardingProgress from '@/components/app/OnboardingProgress'
@@ -16,7 +18,11 @@ import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
 import { useToast } from '@/components/providers/ToastProvider'
 import { normalizeSubscription } from '@/lib/normalize'
-import { aggregateByCurrency, formatAggregate, type CurrencyMap } from '@/lib/format'
+import {
+  aggregateByCurrency,
+  formatAggregate,
+  type CurrencyMap,
+} from '@/lib/format'
 import Link from 'next/link'
 
 function monthlyOf(s: Subscription): number {
@@ -42,7 +48,11 @@ type SummaryStats = {
 
 function calcStats(subs: Subscription[]): SummaryStats {
   const active = subs.filter((s) => s.status === 'active')
-  const byCurrency = aggregateByCurrency(active, monthlyOf, (s) => s.currency ?? 'USD')
+  const byCurrency = aggregateByCurrency(
+    active,
+    monthlyOf,
+    (s) => s.currency ?? 'USD'
+  )
   const highRisk = active.filter((s) => (s.confidence ?? 0) >= 60).length
   return { byCurrency, count: active.length, highRisk }
 }
@@ -58,7 +68,11 @@ function DashboardInner() {
   const [hasPolicies, setHasPolicies] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [walletScanning, setWalletScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ created: number; updated: number; source: string } | null>(null)
+  const [scanResult, setScanResult] = useState<{
+    created: number
+    updated: number
+    source: string
+  } | null>(null)
   const [lastScan, setLastScan] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [debugScanning, setDebugScanning] = useState(false)
@@ -94,14 +108,17 @@ function DashboardInner() {
   useEffect(() => {
     if (!ready || !authenticated || !user?.id) return
     setLoading(true)
-    fetchSubs(user.id).catch(() => {}).finally(() => setLoading(false))
+    fetchSubs(user.id)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [ready, authenticated, user?.id])
 
   // Poll every 30s while tab is visible
   useEffect(() => {
     if (!authenticated || !user?.id) return
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible') fetchSubs(user!.id).catch(() => {})
+      if (document.visibilityState === 'visible')
+        fetchSubs(user!.id).catch(() => {})
     }, 30_000)
     return () => clearInterval(id)
   }, [authenticated, user?.id])
@@ -126,10 +143,24 @@ function DashboardInner() {
       })
       const data = await res.json()
       if (res.ok) {
-        setScanResult({ created: data.created, updated: data.updated, source: 'Gmail' })
-        showToast(`Gmail scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`, 'success')
-        const subsRes = await fetch('/api/subscriptions', { headers: { 'x-user-id': user.id } })
-        if (subsRes.ok) setSubs(((await subsRes.json()).subscriptions ?? []).map(normalizeSubscription))
+        setScanResult({
+          created: data.created,
+          updated: data.updated,
+          source: 'Gmail',
+        })
+        showToast(
+          `Gmail scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`,
+          'success'
+        )
+        const subsRes = await fetch('/api/subscriptions', {
+          headers: { 'x-user-id': user.id },
+        })
+        if (subsRes.ok)
+          setSubs(
+            ((await subsRes.json()).subscriptions ?? []).map(
+              normalizeSubscription
+            )
+          )
       } else {
         showToast(data.error ?? `Gmail scan failed (${res.status})`, 'error')
       }
@@ -145,7 +176,10 @@ function DashboardInner() {
     setDebugScanning(true)
     setDebugOutput('Running scan… (up to 60s)')
     try {
-      await fetch('/api/gmail/scan-lock', { method: 'DELETE', headers: { 'x-user-id': user.id } }).catch(() => {})
+      await fetch('/api/gmail/scan-lock', {
+        method: 'DELETE',
+        headers: { 'x-user-id': user.id },
+      }).catch(() => {})
       const t0 = Date.now()
       const res = await fetch('/api/gmail/scan?debug=1', {
         method: 'POST',
@@ -153,7 +187,13 @@ function DashboardInner() {
       })
       const data = await res.json()
       const wall = Date.now() - t0
-      setDebugOutput(JSON.stringify({ http_status: res.status, wall_ms: wall, ...data }, null, 2))
+      setDebugOutput(
+        JSON.stringify(
+          { http_status: res.status, wall_ms: wall, ...data },
+          null,
+          2
+        )
+      )
     } catch (e) {
       setDebugOutput(`Network error: ${(e as Error).message}`)
     } finally {
@@ -174,10 +214,24 @@ function DashboardInner() {
       })
       const data = await res.json()
       if (res.ok) {
-        setScanResult({ created: data.created, updated: data.updated, source: 'Wallet' })
-        showToast(`Wallet scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`, 'success')
-        const subsRes = await fetch('/api/subscriptions', { headers: { 'x-user-id': user!.id } })
-        if (subsRes.ok) setSubs(((await subsRes.json()).subscriptions ?? []).map(normalizeSubscription))
+        setScanResult({
+          created: data.created,
+          updated: data.updated,
+          source: 'Wallet',
+        })
+        showToast(
+          `Wallet scan complete — ${data.created} subscription${data.created !== 1 ? 's' : ''} found`,
+          'success'
+        )
+        const subsRes = await fetch('/api/subscriptions', {
+          headers: { 'x-user-id': user!.id },
+        })
+        if (subsRes.ok)
+          setSubs(
+            ((await subsRes.json()).subscriptions ?? []).map(
+              normalizeSubscription
+            )
+          )
       } else {
         showToast(data.error ?? `Wallet scan failed (${res.status})`, 'error')
       }
@@ -188,7 +242,10 @@ function DashboardInner() {
     }
   }
 
-  async function handleStatusChange(id: string, status: 'active' | 'paused' | 'cancelled') {
+  async function handleStatusChange(
+    id: string,
+    status: 'active' | 'paused' | 'cancelled'
+  ) {
     if (!user?.id) return
     try {
       await fetch(`/api/subscriptions/${id}/status`, {
@@ -219,7 +276,10 @@ function DashboardInner() {
         >
           Shamar
         </h1>
-        <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm text-center">
+        <p
+          style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
+          className="text-sm text-center"
+        >
           Connect your wallet to get started
         </p>
         <motion.button
@@ -346,13 +406,24 @@ function DashboardInner() {
             className="grid grid-cols-3 gap-2 sm:gap-4"
           >
             {[
-              { label: 'Active Subscriptions', value: String(stats.count), alert: false },
-              { label: 'High Risk',            value: String(stats.highRisk), alert: stats.highRisk > 0 },
+              {
+                label: 'Active Subscriptions',
+                value: String(stats.count),
+                alert: false,
+              },
+              {
+                label: 'High Risk',
+                value: String(stats.highRisk),
+                alert: stats.highRisk > 0,
+              },
               {
                 label: 'Yearly Projection',
                 value: formatAggregate(
                   Object.fromEntries(
-                    Object.entries(stats.byCurrency).map(([c, v]) => [c, v * 12])
+                    Object.entries(stats.byCurrency).map(([c, v]) => [
+                      c,
+                      v * 12,
+                    ])
                   )
                 ),
                 alert: false,
@@ -405,13 +476,22 @@ function DashboardInner() {
           <ConnectGmail />
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
-            <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '12px' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: '#525252',
+                fontSize: '12px',
+              }}
+            >
               Loading...
             </span>
           </div>
         ) : subs.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }} className="text-sm">
+            <p
+              style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3' }}
+              className="text-sm"
+            >
               No subscriptions detected yet.
             </p>
             <motion.button
@@ -451,7 +531,11 @@ function DashboardInner() {
               </span>
               <Link
                 href="/subscriptions"
-                style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '11px' }}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#E50914',
+                  fontSize: '11px',
+                }}
               >
                 View all →
               </Link>
@@ -464,7 +548,11 @@ function DashboardInner() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
                 >
-                  <SubscriptionRow sub={sub} onStatusChange={handleStatusChange} href={`/subscriptions/${sub.id}`} />
+                  <SubscriptionRow
+                    sub={sub}
+                    onStatusChange={handleStatusChange}
+                    href={`/subscriptions/${sub.id}`}
+                  />
                 </motion.div>
               ))}
             </div>
@@ -491,10 +579,17 @@ function DashboardInner() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div
+              className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+            >
               <span
                 className="text-[11px] font-semibold uppercase tracking-widest"
-                style={{ fontFamily: 'var(--font-sans)', color: '#FACC15', letterSpacing: '0.12em' }}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#FACC15',
+                  letterSpacing: '0.12em',
+                }}
               >
                 Debug Scan Output
               </span>

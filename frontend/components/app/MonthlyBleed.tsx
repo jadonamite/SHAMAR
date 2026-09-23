@@ -35,7 +35,9 @@ export default function MonthlyBleed({ byCurrency }: MonthlyBleedProps) {
   const primaryAmount = byCurrency[primary] ?? 0
   const display = useCountUp(primaryAmount)
 
-  const extras = Object.entries(byCurrency).filter(([c, v]) => c !== primary && v > 0)
+  const extras = Object.entries(byCurrency).filter(
+    ([c, v]) => c !== primary && v > 0
+  )
   const yearlyPrimary = primaryAmount * 12
 
   return (

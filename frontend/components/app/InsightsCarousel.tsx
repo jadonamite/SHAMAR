@@ -14,9 +14,32 @@ interface Insight {
 }
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  Productivity: ['Notion AI', 'Linear', 'Airtable', 'Zapier', 'Loom', 'Grammarly'],
-  Entertainment: ['Netflix', 'Spotify', 'Hulu', 'Disney+', 'YouTube Premium', 'Paramount+', 'Amazon Prime'],
-  Developer: ['GitHub', 'GitHub Copilot', 'Vercel', 'Supabase', 'PlanetScale', 'DigitalOcean', 'AWS'],
+  Productivity: [
+    'Notion AI',
+    'Linear',
+    'Airtable',
+    'Zapier',
+    'Loom',
+    'Grammarly',
+  ],
+  Entertainment: [
+    'Netflix',
+    'Spotify',
+    'Hulu',
+    'Disney+',
+    'YouTube Premium',
+    'Paramount+',
+    'Amazon Prime',
+  ],
+  Developer: [
+    'GitHub',
+    'GitHub Copilot',
+    'Vercel',
+    'Supabase',
+    'PlanetScale',
+    'DigitalOcean',
+    'AWS',
+  ],
   Design: ['Figma', 'Adobe', 'Canva', 'Midjourney'],
   AI: ['OpenAI', 'Anthropic', 'ChatGPT Plus', 'Midjourney'],
   Cloud: ['Dropbox', 'iCloud', 'Google Cloud', 'AWS'],
@@ -33,7 +56,7 @@ function getCategory(merchant: string): string {
 function monthly(s: Subscription) {
   if (s.cadence === 'yearly') return s.amount / 12
   if (s.cadence === 'weekly') return s.amount * 4.33
-  if (s.cadence === 'daily')  return s.amount * 30
+  if (s.cadence === 'daily') return s.amount * 30
   return s.amount
 }
 
@@ -55,7 +78,9 @@ function computeInsights(subs: Subscription[]): Insight[] {
 
   for (const [cat, items] of Object.entries(byCategory)) {
     if (items.length >= 2) {
-      const total = formatAggregate(aggregateByCurrency(items, monthly, currencyOf))
+      const total = formatAggregate(
+        aggregateByCurrency(items, monthly, currencyOf)
+      )
       const names = items.map((s) => s.merchant).join(' + ')
       insights.push({
         id: `dup-${cat}`,
@@ -70,7 +95,9 @@ function computeInsights(subs: Subscription[]): Insight[] {
   // 2. High-risk (confidence >= 60)
   const highRisk = active.filter((s) => (s.confidence ?? 0) >= 60)
   if (highRisk.length > 0) {
-    const total = formatAggregate(aggregateByCurrency(highRisk, monthly, currencyOf))
+    const total = formatAggregate(
+      aggregateByCurrency(highRisk, monthly, currencyOf)
+    )
     insights.push({
       id: 'high-risk',
       tag: 'AT RISK',
@@ -94,16 +121,22 @@ function computeInsights(subs: Subscription[]): Insight[] {
     const totalStr = formatAggregate(top.map)
     // Percentage uses the dominant currency in the top category against the
     // same currency's grand total, falling back to absolute share if absent.
-    const dominantCurrency = Object.entries(top.map).sort((a, b) => b[1] - a[1])[0][0]
+    const dominantCurrency = Object.entries(top.map).sort(
+      (a, b) => b[1] - a[1]
+    )[0][0]
     const grandSame = grandByCurrency[dominantCurrency] ?? 0
-    const pct = grandSame > 0 ? Math.round((top.map[dominantCurrency] / grandSame) * 100) : null
+    const pct =
+      grandSame > 0
+        ? Math.round((top.map[dominantCurrency] / grandSame) * 100)
+        : null
     insights.push({
       id: 'top-spend',
       tag: 'SPEND BREAKDOWN',
       title: `${top.cat} is your largest recurring cost`,
-      detail: pct != null
-        ? `${totalStr}/mo — ${pct}% of total ${dominantCurrency} spend.`
-        : `${totalStr}/mo across this category.`,
+      detail:
+        pct != null
+          ? `${totalStr}/mo — ${pct}% of total ${dominantCurrency} spend.`
+          : `${totalStr}/mo across this category.`,
       tone: 'info',
     })
   }
@@ -111,7 +144,9 @@ function computeInsights(subs: Subscription[]): Insight[] {
   // 4. Yearly cadence — often overlooked
   const yearly = active.filter((s) => s.cadence === 'yearly')
   if (yearly.length > 0) {
-    const total = formatAggregate(aggregateByCurrency(yearly, (s) => s.amount, currencyOf))
+    const total = formatAggregate(
+      aggregateByCurrency(yearly, (s) => s.amount, currencyOf)
+    )
     insights.push({
       id: 'yearly',
       tag: 'YEARLY BILLING',
@@ -125,9 +160,9 @@ function computeInsights(subs: Subscription[]): Insight[] {
 }
 
 const TONE_COLORS = {
-  warn:  { border: 'rgba(217,119,6,0.3)',  tag: '#D97706' },
-  alert: { border: 'rgba(229,9,20,0.35)',  tag: '#E50914' },
-  info:  { border: 'rgba(255,255,255,0.1)', tag: '#A3A3A3' },
+  warn: { border: 'rgba(217,119,6,0.3)', tag: '#D97706' },
+  alert: { border: 'rgba(229,9,20,0.35)', tag: '#E50914' },
+  info: { border: 'rgba(255,255,255,0.1)', tag: '#A3A3A3' },
 }
 
 export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
@@ -137,7 +172,10 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
 
   useEffect(() => {
     if (insights.length <= 1 || paused) return
-    const id = setInterval(() => setIndex((i) => (i + 1) % insights.length), 6000)
+    const id = setInterval(
+      () => setIndex((i) => (i + 1) % insights.length),
+      6000
+    )
     return () => clearInterval(id)
   }, [insights.length, paused])
 
@@ -191,7 +229,7 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
           key={current.id}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{    opacity: 0, y: -6 }}
+          exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
           className="p-5"
           style={{

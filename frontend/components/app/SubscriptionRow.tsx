@@ -22,7 +22,10 @@ export type Subscription = {
 
 interface SubscriptionRowProps {
   sub: Subscription
-  onStatusChange?: (id: string, status: 'active' | 'paused' | 'cancelled') => void
+  onStatusChange?: (
+    id: string,
+    status: 'active' | 'paused' | 'cancelled'
+  ) => void
   href?: string
 }
 
@@ -51,7 +54,12 @@ function MerchantAvatar({ name }: { name: string }) {
       }}
     >
       <span
-        style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '14px', fontWeight: 700 }}
+        style={{
+          fontFamily: 'var(--font-sans)',
+          color: '#E50914',
+          fontSize: '14px',
+          fontWeight: 700,
+        }}
       >
         {name.charAt(0).toUpperCase()}
       </span>
@@ -59,7 +67,11 @@ function MerchantAvatar({ name }: { name: string }) {
   )
 }
 
-export default function SubscriptionRow({ sub, onStatusChange, href }: SubscriptionRowProps) {
+export default function SubscriptionRow({
+  sub,
+  onStatusChange,
+  href,
+}: SubscriptionRowProps) {
   const [hovered, setHovered] = useState(false)
   const router = useRouter()
   const actionColor = sub.action ? ACTION_COLORS[sub.action] : undefined
@@ -68,10 +80,10 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
     sub.cadence === 'yearly'
       ? sub.amount / 12
       : sub.cadence === 'weekly'
-      ? sub.amount * 4.33
-      : sub.cadence === 'daily'
-      ? sub.amount * 30
-      : sub.amount
+        ? sub.amount * 4.33
+        : sub.cadence === 'daily'
+          ? sub.amount * 30
+          : sub.amount
 
   return (
     <motion.div
@@ -112,13 +124,21 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
         </span>
         <div className="flex items-center gap-2">
           <span
-            style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: '#525252',
+              fontSize: '11px',
+            }}
           >
             {sub.cadence}
           </span>
           <span style={{ color: '#525252', fontSize: '10px' }}>·</span>
           <span
-            style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: '#525252',
+              fontSize: '11px',
+            }}
           >
             {sub.source}
           </span>
@@ -157,12 +177,21 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
       {/* Amount */}
       <div className="flex flex-col items-end gap-0.5 ml-4">
         <span
-          style={{ fontFamily: 'var(--font-mono)', color: '#fff', fontSize: '15px', letterSpacing: '-0.01em' }}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: '#fff',
+            fontSize: '15px',
+            letterSpacing: '-0.01em',
+          }}
         >
           {formatMoney(sub.amount, sub.currency)}
         </span>
         <span
-          style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: '#525252',
+            fontSize: '11px',
+          }}
         >
           {CADENCE_LABELS[sub.cadence]}
         </span>
@@ -181,7 +210,10 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
             {sub.status === 'active' && (
               <>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'paused') }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onStatusChange(sub.id, 'paused')
+                  }}
                   className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                   style={{
                     fontFamily: 'var(--font-sans)',
@@ -194,7 +226,10 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
                   Pause
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'cancelled') }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onStatusChange(sub.id, 'cancelled')
+                  }}
                   className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                   style={{
                     fontFamily: 'var(--font-sans)',
@@ -210,7 +245,10 @@ export default function SubscriptionRow({ sub, onStatusChange, href }: Subscript
             )}
             {sub.status === 'paused' && (
               <button
-                onClick={(e) => { e.stopPropagation(); onStatusChange(sub.id, 'active') }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onStatusChange(sub.id, 'active')
+                }}
                 className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
                 style={{
                   fontFamily: 'var(--font-sans)',

@@ -69,14 +69,41 @@ type RunResult = {
   dispatches: Dispatch[]
 }
 
-const ACTION_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  cancel: { bg: 'rgba(229, 9, 20, 0.15)', text: '#E50914', border: 'rgba(229, 9, 20, 0.4)' },
-  pause: { bg: 'rgba(217, 119, 6, 0.15)', text: '#D97706', border: 'rgba(217, 119, 6, 0.4)' },
-  remind: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3B82F6', border: 'rgba(59, 130, 246, 0.4)' },
-  keep: { bg: 'rgba(255, 255, 255, 0.05)', text: '#A3A3A3', border: 'rgba(255, 255, 255, 0.1)' },
+const ACTION_STYLE: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  cancel: {
+    bg: 'rgba(229, 9, 20, 0.15)',
+    text: '#E50914',
+    border: 'rgba(229, 9, 20, 0.4)',
+  },
+  pause: {
+    bg: 'rgba(217, 119, 6, 0.15)',
+    text: '#D97706',
+    border: 'rgba(217, 119, 6, 0.4)',
+  },
+  remind: {
+    bg: 'rgba(59, 130, 246, 0.15)',
+    text: '#3B82F6',
+    border: 'rgba(59, 130, 246, 0.4)',
+  },
+  keep: {
+    bg: 'rgba(255, 255, 255, 0.05)',
+    text: '#A3A3A3',
+    border: 'rgba(255, 255, 255, 0.1)',
+  },
 }
 
-function IntegrationBadge({ name, live, detail }: { name: string; live: boolean; detail?: string }) {
+function IntegrationBadge({
+  name,
+  live,
+  detail,
+}: {
+  name: string
+  live: boolean
+  detail?: string
+}) {
   return (
     <div
       className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wide border transition-colors"
@@ -123,12 +150,17 @@ function TelemetryStat({
       </div>
       <div
         className="text-2xl font-bold tabular-nums"
-        style={{ color: accent ?? 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}
+        style={{
+          color: accent ?? 'var(--text-primary)',
+          fontFamily: 'var(--font-mono)',
+        }}
       >
         {value}
       </div>
       {sublabel && (
-        <div className="text-[10px] text-muted font-mono mt-0.5">{sublabel}</div>
+        <div className="text-[10px] text-muted font-mono mt-0.5">
+          {sublabel}
+        </div>
       )}
     </div>
   )
@@ -139,7 +171,9 @@ export default function RunPage() {
   const [result, setResult] = useState<RunResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [halt, setHalt] = useState<{ halted: boolean; reason: string } | null>(null)
+  const [halt, setHalt] = useState<{ halted: boolean; reason: string } | null>(
+    null
+  )
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('user')
@@ -187,10 +221,10 @@ export default function RunPage() {
   const agentStateKind = halt?.halted
     ? 'halted'
     : r
-    ? r.authorization.granted
-      ? 'authorized'
-      : 'blocked'
-    : 'checking'
+      ? r.authorization.granted
+        ? 'authorized'
+        : 'blocked'
+      : 'checking'
 
   return (
     <main
@@ -205,7 +239,10 @@ export default function RunPage() {
 
       <div className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 md:px-10 space-y-8">
         {/* Navigation & Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+        <header
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b"
+          style={{ borderColor: 'var(--border-subtle)' }}
+        >
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider text-secondary font-mono">
@@ -219,14 +256,19 @@ export default function RunPage() {
               SHAMAR Operational Run
             </h1>
             <p className="text-secondary text-sm mt-1">
-              Autonomous pipeline: Evidence → Judgment → Guardrails → Authorization → Dispatch.
+              Autonomous pipeline: Evidence → Judgment → Guardrails →
+              Authorization → Dispatch.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <AgentStateBadge
               state={agentStateKind}
-              reason={halt?.halted ? 'Halted via Telegram /stop' : r?.authorization.reason}
+              reason={
+                halt?.halted
+                  ? 'Halted via Telegram /stop'
+                  : r?.authorization.reason
+              }
               source={r?.authorization.contract ? 'onchain' : 'local'}
             />
           </div>
@@ -238,13 +280,29 @@ export default function RunPage() {
             Integrations
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <IntegrationBadge name="Gmail (Receipts)" live={Boolean(r)} detail="Read-only billing scan" />
-            <IntegrationBadge name="Google Calendar" live={Boolean(r?.calendar_connected)} detail="Renewal and verification events" />
-            <IntegrationBadge name="Resend" live={Boolean(r && r.dispatched > 0)} detail="Cancellation email dispatch" />
+            <IntegrationBadge
+              name="Gmail (Receipts)"
+              live={Boolean(r)}
+              detail="Read-only billing scan"
+            />
+            <IntegrationBadge
+              name="Google Calendar"
+              live={Boolean(r?.calendar_connected)}
+              detail="Renewal and verification events"
+            />
+            <IntegrationBadge
+              name="Resend"
+              live={Boolean(r && r.dispatched > 0)}
+              detail="Cancellation email dispatch"
+            />
             <IntegrationBadge
               name="Telegram Bot"
               live={Boolean(halt && halt.reason !== 'Telegram not configured')}
-              detail={halt?.halted ? 'Agent currently halted' : 'Listening for /stop and /resume'}
+              detail={
+                halt?.halted
+                  ? 'Agent currently halted'
+                  : 'Listening for /stop and /resume'
+              }
             />
             <IntegrationBadge
               name="Base Mainnet"
@@ -335,7 +393,8 @@ export default function RunPage() {
               Emergency halt active from Telegram
             </div>
             <p className="text-secondary text-xs mt-1">
-              Dispatch is strictly blocked until you send <code>/resume</code> to the Telegram bot.
+              Dispatch is strictly blocked until you send <code>/resume</code>{' '}
+              to the Telegram bot.
             </p>
           </div>
         )}
@@ -368,7 +427,11 @@ export default function RunPage() {
                 label="Model / fallback"
                 value={`${r.reasoned - r.fell_back} / ${r.fell_back}`}
                 accent={r.fell_back === r.reasoned ? '#D97706' : undefined}
-                sublabel={r.fell_back > 0 ? 'Deterministic rules used' : 'All model reasoned'}
+                sublabel={
+                  r.fell_back > 0
+                    ? 'Deterministic rules used'
+                    : 'All model reasoned'
+                }
               />
               <TelemetryStat
                 label="Cancellations"
@@ -411,19 +474,36 @@ export default function RunPage() {
                   </span>
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ background: r.authorization.granted ? '#16A34A' : '#E50914' }}
+                    style={{
+                      background: r.authorization.granted
+                        ? '#16A34A'
+                        : '#E50914',
+                    }}
                   />
                 </div>
                 <div className="font-semibold text-white">
-                  {r.authorization.granted ? 'shamar.cancel scope granted' : 'Authorization denied'}
+                  {r.authorization.granted
+                    ? 'shamar.cancel scope granted'
+                    : 'Authorization denied'}
                 </div>
                 <p className="text-secondary text-xs mt-1 leading-relaxed">
                   {r.authorization.reason}
                 </p>
                 {r.authorization.contract && (
-                  <div className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5" style={{ borderColor: 'var(--border-subtle)' }}>
-                    <div>Contract: {r.authorization.contract.slice(0, 10)}…{r.authorization.contract.slice(-6)}</div>
-                    <div>Signer: {r.authorization.wallet ? `${r.authorization.wallet.slice(0, 10)}…` : 'None'}</div>
+                  <div
+                    className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5"
+                    style={{ borderColor: 'var(--border-subtle)' }}
+                  >
+                    <div>
+                      Contract: {r.authorization.contract.slice(0, 10)}…
+                      {r.authorization.contract.slice(-6)}
+                    </div>
+                    <div>
+                      Signer:{' '}
+                      {r.authorization.wallet
+                        ? `${r.authorization.wallet.slice(0, 10)}…`
+                        : 'None'}
+                    </div>
                   </div>
                 )}
               </div>
@@ -441,7 +521,9 @@ export default function RunPage() {
                   </span>
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ background: r.control.halted ? '#E50914' : '#16A34A' }}
+                    style={{
+                      background: r.control.halted ? '#E50914' : '#16A34A',
+                    }}
                   />
                 </div>
                 <div className="font-semibold text-white">
@@ -450,7 +532,10 @@ export default function RunPage() {
                 <p className="text-secondary text-xs mt-1 leading-relaxed">
                   {r.control.reason}
                 </p>
-                <div className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div
+                  className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5"
+                  style={{ borderColor: 'var(--border-subtle)' }}
+                >
                   <div>Source: {r.control.source}</div>
                   <div>Emergency command: Send /stop or /resume</div>
                 </div>
@@ -461,9 +546,7 @@ export default function RunPage() {
             {r.dispatches.length > 0 && (
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2
-                    className="text-xs uppercase tracking-[0.14em] text-muted font-mono font-semibold"
-                  >
+                  <h2 className="text-xs uppercase tracking-[0.14em] text-muted font-mono font-semibold">
                     Dispatch Ledger ({r.dispatches.length})
                   </h2>
                   <span className="text-[11px] text-muted font-mono">
@@ -493,7 +576,8 @@ export default function RunPage() {
                                 d.status === 'sent'
                                   ? 'rgba(22,163,74,0.15)'
                                   : 'rgba(229,9,20,0.15)',
-                              color: d.status === 'sent' ? '#16A34A' : '#E50914',
+                              color:
+                                d.status === 'sent' ? '#16A34A' : '#E50914',
                             }}
                           >
                             {d.status.replace(/_/g, ' ')}
@@ -510,7 +594,8 @@ export default function RunPage() {
                             className="text-[10px] font-mono text-muted"
                             title={`EIP-191 signature: ${d.signature}`}
                           >
-                            Sig: {d.signature.slice(0, 14)}…{d.signature.slice(-6)}
+                            Sig: {d.signature.slice(0, 14)}…
+                            {d.signature.slice(-6)}
                           </span>
                         )}
                       </div>
@@ -592,7 +677,9 @@ export default function RunPage() {
                             </span>
                           )}
                           <span className="text-[10px] uppercase tracking-wider text-muted font-mono">
-                            {d.reasoned_by === 'model' ? 'AI reasoning' : 'Fallback rule'}
+                            {d.reasoned_by === 'model'
+                              ? 'AI reasoning'
+                              : 'Fallback rule'}
                           </span>
                         </div>
                       </div>
@@ -607,21 +694,37 @@ export default function RunPage() {
                         style={{ borderColor: 'var(--border-subtle)' }}
                       >
                         <div>
-                          <span className="text-muted block text-[10px] uppercase">Data Loss</span>
-                          <span className="text-secondary">{d.blast_radius.data_loss}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted block text-[10px] uppercase">Access Impact</span>
-                          <span className="text-secondary">{d.blast_radius.access_loss}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted block text-[10px] uppercase">Repurchase Cost</span>
-                          <span className="text-secondary">{d.blast_radius.repurchase}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted block text-[10px] uppercase">Door Type</span>
+                          <span className="text-muted block text-[10px] uppercase">
+                            Data Loss
+                          </span>
                           <span className="text-secondary">
-                            {d.blast_radius.irreversible ? 'One-way' : 'Two-way'}
+                            {d.blast_radius.data_loss}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted block text-[10px] uppercase">
+                            Access Impact
+                          </span>
+                          <span className="text-secondary">
+                            {d.blast_radius.access_loss}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted block text-[10px] uppercase">
+                            Repurchase Cost
+                          </span>
+                          <span className="text-secondary">
+                            {d.blast_radius.repurchase}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted block text-[10px] uppercase">
+                            Door Type
+                          </span>
+                          <span className="text-secondary">
+                            {d.blast_radius.irreversible
+                              ? 'One-way'
+                              : 'Two-way'}
                           </span>
                         </div>
                       </div>
@@ -631,12 +734,18 @@ export default function RunPage() {
                         <div className="pt-2">
                           <ul className="space-y-1">
                             {d.blast_radius.notes.map((note, idx) => {
-                              const isDowngrade = note.toLowerCase().includes('downgraded')
+                              const isDowngrade = note
+                                .toLowerCase()
+                                .includes('downgraded')
                               return (
                                 <li
                                   key={idx}
                                   className="text-xs font-mono flex items-center gap-1.5"
-                                  style={{ color: isDowngrade ? '#E50914' : 'var(--text-muted)' }}
+                                  style={{
+                                    color: isDowngrade
+                                      ? '#E50914'
+                                      : 'var(--text-muted)',
+                                  }}
                                 >
                                   <span>·</span>
                                   <span>{note}</span>

@@ -42,8 +42,22 @@ export default function MobileMenu({
         className="lg:hidden min-h-[44px] min-w-[44px] flex flex-col items-center justify-center gap-1.5 p-2 cursor-pointer"
         style={{ background: 'none', border: 'none' }}
       >
-        <span style={{ width: '20px', height: '1.5px', background: '#A3A3A3', display: 'block' }} />
-        <span style={{ width: '20px', height: '1.5px', background: '#A3A3A3', display: 'block' }} />
+        <span
+          style={{
+            width: '20px',
+            height: '1.5px',
+            background: '#A3A3A3',
+            display: 'block',
+          }}
+        />
+        <span
+          style={{
+            width: '20px',
+            height: '1.5px',
+            background: '#A3A3A3',
+            display: 'block',
+          }}
+        />
       </button>
 
       <AnimatePresence>
@@ -56,7 +70,10 @@ export default function MobileMenu({
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
               className="fixed inset-0 z-40"
-              style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+              style={{
+                background: 'rgba(0,0,0,0.7)',
+                backdropFilter: 'blur(4px)',
+              }}
             />
 
             {/* drawer */}
@@ -107,14 +124,19 @@ export default function MobileMenu({
                     wordBreak: 'break-all',
                   }}
                 >
-                  {email ?? (walletAddress?.slice(0, 6) + '...' + walletAddress?.slice(-4))}
+                  {email ??
+                    walletAddress?.slice(0, 6) +
+                      '...' +
+                      walletAddress?.slice(-4)}
                 </span>
               </div>
 
               {/* nav links */}
               <nav className="flex flex-col py-2 flex-1">
                 {NAV_LINKS.map((link) => {
-                  const active = pathname === link.href || pathname?.startsWith(link.href + '/')
+                  const active =
+                    pathname === link.href ||
+                    pathname?.startsWith(link.href + '/')
                   return (
                     <Link
                       key={link.href}
@@ -127,7 +149,9 @@ export default function MobileMenu({
                         color: active ? '#fff' : '#A3A3A3',
                         fontSize: '14px',
                         letterSpacing: '-0.01em',
-                        borderLeft: active ? '2px solid #E50914' : '2px solid transparent',
+                        borderLeft: active
+                          ? '2px solid #E50914'
+                          : '2px solid transparent',
                       }}
                     >
                       {link.label}

@@ -3,7 +3,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
-import SubscriptionRow, { type Subscription } from '@/components/app/SubscriptionRow'
+import SubscriptionRow, {
+  type Subscription,
+} from '@/components/app/SubscriptionRow'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
 import { normalizeSubscription } from '@/lib/normalize'
@@ -12,17 +14,26 @@ import { aggregateByCurrency, formatAggregate } from '@/lib/format'
 type Filter = 'all' | 'monthly' | 'yearly' | 'high-risk'
 type Sort = 'spend' | 'risk' | 'detected'
 
-function filterAndSortSubscriptions(subs: Subscription[], filter: Filter, sort: Sort) {
+function filterAndSortSubscriptions(
+  subs: Subscription[],
+  filter: Filter,
+  sort: Sort
+) {
   let list = subs.filter((s) => s.status === 'active')
   if (filter === 'monthly') list = list.filter((s) => s.cadence === 'monthly')
   if (filter === 'yearly') list = list.filter((s) => s.cadence === 'yearly')
-  if (filter === 'high-risk') list = list.filter((s) => (s.confidence ?? 0) >= 60)
+  if (filter === 'high-risk')
+    list = list.filter((s) => (s.confidence ?? 0) >= 60)
   return [...list].sort((a, b) => {
     if (sort === 'risk') return (b.confidence ?? 0) - (a.confidence ?? 0)
-    if (sort === 'detected') return (b.id > a.id ? 1 : -1)
+    if (sort === 'detected') return b.id > a.id ? 1 : -1
     // spend
     const toMonthly = (s: Subscription) =>
-      s.cadence === 'yearly' ? s.amount / 12 : s.cadence === 'weekly' ? s.amount * 4.33 : s.amount
+      s.cadence === 'yearly'
+        ? s.amount / 12
+        : s.cadence === 'weekly'
+          ? s.amount * 4.33
+          : s.amount
     return toMonthly(b) - toMonthly(a)
   })
 }
@@ -47,16 +58,26 @@ export default function SubscriptionsPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) { router.replace('/dashboard'); return }
+    if (!authenticated) {
+      router.replace('/dashboard')
+      return
+    }
     if (!user?.id) return
     fetch('/api/subscriptions', { headers: { 'x-user-id': user.id } })
       .then((r) => r.json())
-      .then((d) => setSubs(((d.subscriptions ?? []) as Subscription[]).map(normalizeSubscription)))
+      .then((d) =>
+        setSubs(
+          ((d.subscriptions ?? []) as Subscription[]).map(normalizeSubscription)
+        )
+      )
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [ready, authenticated, user?.id, router])
 
-  const filtered = useMemo(() => filterAndSortSubscriptions(subs, filter, sort), [subs, filter, sort])
+  const filtered = useMemo(
+    () => filterAndSortSubscriptions(subs, filter, sort),
+    [subs, filter, sort]
+  )
   const groups = groupByCategory(filtered)
   const activeSubs = subs.filter((s) => s.status === 'active')
   const totalMonthlyStr = formatAggregate(
@@ -68,8 +89,8 @@ export default function SubscriptionsPage() {
         if (s.cadence === 'daily') return s.amount * 30
         return s.amount
       },
-      (s: Subscription) => s.currency ?? 'USD',
-    ),
+      (s: Subscription) => s.currency ?? 'USD'
+    )
   )
 
   if (!ready) return null
@@ -81,33 +102,47 @@ export default function SubscriptionsPage() {
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-sans)' }}>
+            <h1
+              className="text-2xl font-bold"
+              style={{ fontFamily: 'var(--font-sans)' }}
+            >
               Subscriptions
             </h1>
-            <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
+            <p
+              className="text-muted text-sm"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
               {activeSubs.length} active · {totalMonthlyStr}/mo
             </p>
           </div>
           <div className="flex gap-2">
-            {(['all', 'monthly', 'yearly', 'high-risk'] as Filter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 text-xs rounded uppercase font-medium tracking-wider ${
-                  filter === f ? 'bg-white text-black' : 'bg-neutral-900 text-neutral-400 hover:text-white'
-                }`}
-                style={{ fontFamily: 'var(--font-mono)' }}
-              >
-                {f}
-              </button>
-            ))}
+            {(['all', 'monthly', 'yearly', 'high-risk'] as Filter[]).map(
+              (f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1 text-xs rounded uppercase font-medium tracking-wider ${
+                    filter === f
+                      ? 'bg-white text-black'
+                      : 'bg-neutral-900 text-neutral-400 hover:text-white'
+                  }`}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {f}
+                </button>
+              )
+            )}
           </div>
         </div>
 
         {loading ? (
-          <div className="py-20 text-center text-neutral-500 font-mono text-xs">Loading...</div>
+          <div className="py-20 text-center text-neutral-500 font-mono text-xs">
+            Loading...
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="py-20 text-center text-neutral-500 text-sm">No subscriptions found.</div>
+          <div className="py-20 text-center text-neutral-500 text-sm">
+            No subscriptions found.
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((sub) => (

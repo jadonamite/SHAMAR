@@ -10,14 +10,18 @@ interface OnboardingProgressProps {
 }
 
 const STEPS = [
-  { key: 'wallet',    label: 'WALLET',     description: 'Identity connected' },
-  { key: 'gmail',     label: 'GMAIL',      description: 'Inbox access granted' },
-  { key: 'firstScan', label: 'FIRST SCAN', description: 'Subscriptions detected' },
-  { key: 'policies',  label: 'POLICIES',   description: 'Automation rules set' },
+  { key: 'wallet', label: 'WALLET', description: 'Identity connected' },
+  { key: 'gmail', label: 'GMAIL', description: 'Inbox access granted' },
+  {
+    key: 'firstScan',
+    label: 'FIRST SCAN',
+    description: 'Subscriptions detected',
+  },
+  { key: 'policies', label: 'POLICIES', description: 'Automation rules set' },
 ] as const
 
 export default function OnboardingProgress(props: OnboardingProgressProps) {
-  const completed = (k: typeof STEPS[number]['key']) => props[k]
+  const completed = (k: (typeof STEPS)[number]['key']) => props[k]
   const allDone = STEPS.every((s) => completed(s.key))
   if (allDone) return null
 
@@ -73,14 +77,26 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
           const dotColor = done ? '#E50914' : active ? '#E50914' : '#2a2a2a'
 
           return (
-            <div key={step.key} className="flex flex-col items-center gap-2 relative flex-1 z-10">
+            <div
+              key={step.key}
+              className="flex flex-col items-center gap-2 relative flex-1 z-10"
+            >
               <motion.div
                 animate={
                   active
-                    ? { boxShadow: ['0 0 0 0 rgba(229,9,20,0.4)', '0 0 0 6px rgba(229,9,20,0)'] }
+                    ? {
+                        boxShadow: [
+                          '0 0 0 0 rgba(229,9,20,0.4)',
+                          '0 0 0 6px rgba(229,9,20,0)',
+                        ],
+                      }
                     : {}
                 }
-                transition={active ? { duration: 1.6, repeat: Infinity, ease: 'easeOut' } : {}}
+                transition={
+                  active
+                    ? { duration: 1.6, repeat: Infinity, ease: 'easeOut' }
+                    : {}
+                }
                 style={{
                   width: '14px',
                   height: '14px',

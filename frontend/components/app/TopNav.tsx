@@ -92,9 +92,7 @@ export default function TopNav({
 
           {/* User Session Pill */}
           {user?.email?.address || user?.wallet?.address ? (
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-separator bg-surface-2/80 text-label-2 type-caption font-mono"
-            >
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-separator bg-surface-2/80 text-label-2 type-caption font-mono">
               {isMiniPay && (
                 <span className="rounded-full bg-success/15 border border-success/30 px-1.5 py-0.5 text-[9px] font-bold text-success uppercase">
                   MiniPay

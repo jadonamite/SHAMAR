@@ -32,7 +32,7 @@ function formatRelative(date: string): string {
 function describeAction(a: AgentAction): string {
   const t = a.type.toLowerCase()
   if (t.includes('cancel')) return `Cancelled ${a.merchant}`
-  if (t.includes('pause'))  return `Paused ${a.merchant}`
+  if (t.includes('pause')) return `Paused ${a.merchant}`
   if (t.includes('remind')) return `Set reminder for ${a.merchant}`
   if (t.includes('analyze')) return `Analyzed ${a.merchant}`
   if (t.includes('detect')) return `Detected ${a.merchant}`

@@ -30,7 +30,11 @@ export function useToast() {
 
 let counter = 0
 
-export default function ToastProvider({ children }: { children: React.ReactNode }) {
+export default function ToastProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [toast, setToast] = useState<ToastData | null>(null)
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {

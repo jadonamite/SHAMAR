@@ -34,7 +34,8 @@ export default function AgentStateBadge({
       dotColor: '#E50914',
       badgeBg: 'rgba(229, 9, 20, 0.15)',
       badgeBorder: 'rgba(229, 9, 20, 0.4)',
-      defaultReason: 'Emergency halt triggered via Telegram /stop. Dispatches refused until /resume.',
+      defaultReason:
+        'Emergency halt triggered via Telegram /stop. Dispatches refused until /resume.',
     },
     blocked: {
       label: 'Blocked',
@@ -107,7 +108,10 @@ export default function AgentStateBadge({
           <p className="text-secondary leading-relaxed mb-2">
             {reason || config.defaultReason}
           </p>
-          <div className="pt-2 border-t text-[11px] text-muted space-y-1 font-mono" style={{ borderColor: 'var(--border-subtle)' }}>
+          <div
+            className="pt-2 border-t text-[11px] text-muted space-y-1 font-mono"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
             <div>Scope: {scope}</div>
             <div>Source: {source}</div>
             <div>Control: Telegram /stop</div>

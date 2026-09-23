@@ -22,8 +22,18 @@ const ACTION_LABELS = {
   keep: 'KEEP',
 }
 
-export default function ConfidenceScore({ score, signals = [], action }: ConfidenceScoreProps) {
-  const color = action ? ACTION_COLORS[action] : score >= 70 ? '#E50914' : score >= 40 ? '#D97706' : '#16A34A'
+export default function ConfidenceScore({
+  score,
+  signals = [],
+  action,
+}: ConfidenceScoreProps) {
+  const color = action
+    ? ACTION_COLORS[action]
+    : score >= 70
+      ? '#E50914'
+      : score >= 40
+        ? '#D97706'
+        : '#16A34A'
 
   return (
     <div className="flex flex-col gap-3">
@@ -37,7 +47,10 @@ export default function ConfidenceScore({ score, signals = [], action }: Confide
         >
           {score}
         </motion.span>
-        <span style={{ fontFamily: 'var(--font-mono)', color: '#525252' }} className="text-lg mb-1">
+        <span
+          style={{ fontFamily: 'var(--font-mono)', color: '#525252' }}
+          className="text-lg mb-1"
+        >
           %
         </span>
         {action && (
@@ -56,7 +69,10 @@ export default function ConfidenceScore({ score, signals = [], action }: Confide
       </div>
 
       {/* Progress bar */}
-      <div className="h-px w-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+      <div
+        className="h-px w-full"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
+      >
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}

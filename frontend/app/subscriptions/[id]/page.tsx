@@ -16,7 +16,7 @@ type Signal = {
   id: string
   type: string
   value: string
-  weight: number,
+  weight: number
 }
 
 type Recommendation = {
@@ -58,7 +58,11 @@ const formatAmount = formatMoney
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 export default function SubscriptionDetail() {
@@ -76,7 +80,10 @@ export default function SubscriptionDetail() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) { router.replace('/dashboard'); return }
+    if (!authenticated) {
+      router.replace('/dashboard')
+      return
+    }
     if (!user?.id || !id) return
     load()
   }, [ready, authenticated, user?.id, id])
@@ -87,7 +94,10 @@ export default function SubscriptionDetail() {
       const res = await fetch(`/api/subscriptions/${id}`, {
         headers: { 'x-user-id': user!.id },
       })
-      if (!res.ok) { router.replace('/subscriptions'); return }
+      if (!res.ok) {
+        router.replace('/subscriptions')
+        return
+      }
       const json = await res.json()
       setData({
         subscription: normalizeSubscription(json.subscription),
@@ -120,15 +130,22 @@ export default function SubscriptionDetail() {
           prev
             ? {
                 ...prev,
-                signals: json.signals?.map((s: { type: string; label: string; value: number }) => ({
-                  id: s.type,
-                  type: s.type,
-                  value: s.label,
-                  weight: s.value,
-                })) ?? prev.signals,
+                signals:
+                  json.signals?.map(
+                    (s: { type: string; label: string; value: number }) => ({
+                      id: s.type,
+                      type: s.type,
+                      value: s.label,
+                      weight: s.value,
+                    })
+                  ) ?? prev.signals,
                 insight: json.insight ?? prev.insight,
                 recommendation: json.recommendation ?? prev.recommendation,
-                subscription: { ...prev.subscription, confidence: json.confidence, action: json.action },
+                subscription: {
+                  ...prev.subscription,
+                  confidence: json.confidence,
+                  action: json.action,
+                },
               }
             : prev
         )
@@ -144,7 +161,9 @@ export default function SubscriptionDetail() {
     if (!user?.id || reminderSending) return
     setReminderSending(true)
     setReminderError(null)
-    const remindAt = new Date(Date.now() + daysFromNow * 86_400_000).toISOString()
+    const remindAt = new Date(
+      Date.now() + daysFromNow * 86_400_000
+    ).toISOString()
     const email = user.email?.address ?? user.google?.email ?? null
     try {
       const res = await fetch('/api/reminders', {
@@ -181,7 +200,11 @@ export default function SubscriptionDetail() {
         body: JSON.stringify({ status }),
       })
       if (res.ok) {
-        setData((prev) => prev ? { ...prev, subscription: { ...prev.subscription, status } } : prev)
+        setData((prev) =>
+          prev
+            ? { ...prev, subscription: { ...prev.subscription, status } }
+            : prev
+        )
       }
     } catch {
       // offline
@@ -227,14 +250,17 @@ export default function SubscriptionDetail() {
       <div className="max-w-2xl mx-auto px-6 pt-4">
         <Link
           href="/subscriptions"
-          style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '12px' }}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: '#525252',
+            fontSize: '12px',
+          }}
         >
           ← Subscriptions
         </Link>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
-
         {/* Identity block */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -250,21 +276,48 @@ export default function SubscriptionDetail() {
               borderRadius: '2px',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '22px', fontWeight: 700 }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#E50914',
+                fontSize: '22px',
+                fontWeight: 700,
+              }}
+            >
               {sub.merchant.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="flex flex-col gap-1">
             <h1
-              style={{ fontFamily: 'var(--font-sans)', color: '#fff', fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#fff',
+                fontSize: '22px',
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1,
+              }}
             >
               {sub.merchant}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span style={{ fontFamily: 'var(--font-mono)', color: '#fff', fontSize: '20px', letterSpacing: '-0.02em' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: '#fff',
+                  fontSize: '20px',
+                  letterSpacing: '-0.02em',
+                }}
+              >
                 {formatAmount(sub.amount, sub.currency)}
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '14px' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: '#525252',
+                  fontSize: '14px',
+                }}
+              >
                 {CADENCE_LABELS[sub.cadence]}
               </span>
             </div>
@@ -280,11 +333,23 @@ export default function SubscriptionDetail() {
               >
                 {sub.source}
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: '#525252',
+                  fontSize: '11px',
+                }}
+              >
                 Detected {formatDate(sub.detected_at)}
               </span>
               {sub.last_charged && (
-                <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: '#525252',
+                    fontSize: '11px',
+                  }}
+                >
                   Last charged {formatDate(sub.last_charged)}
                 </span>
               )}
@@ -300,11 +365,21 @@ export default function SubscriptionDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
           className="flex flex-col gap-4 p-5"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+          style={{
+            background: '#141414',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '2px',
+          }}
         >
           <div className="flex items-center justify-between">
             <span
-              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
             >
               Intelligence
             </span>
@@ -322,14 +397,28 @@ export default function SubscriptionDetail() {
                 borderRadius: '2px',
               }}
             >
-              {analyzing ? 'Analyzing...' : confidence !== undefined ? 'Re-analyze' : 'Run Analysis'}
+              {analyzing
+                ? 'Analyzing...'
+                : confidence !== undefined
+                  ? 'Re-analyze'
+                  : 'Run Analysis'}
             </motion.button>
           </div>
 
           {confidence !== undefined ? (
-            <ConfidenceScore score={confidence} signals={signalLabels} action={action} />
+            <ConfidenceScore
+              score={confidence}
+              signals={signalLabels}
+              action={action}
+            />
           ) : (
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '13px',
+              }}
+            >
               No analysis yet. Run analysis to score this subscription.
             </p>
           )}
@@ -342,14 +431,31 @@ export default function SubscriptionDetail() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             className="flex flex-col gap-3 p-5"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+            style={{
+              background: '#141414',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '2px',
+            }}
           >
             <span
-              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
             >
               AI Insight
             </span>
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px', lineHeight: 1.6 }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#A3A3A3',
+                fontSize: '13px',
+                lineHeight: 1.6,
+              }}
+            >
               {insight}
             </p>
           </motion.div>
@@ -370,7 +476,13 @@ export default function SubscriptionDetail() {
           >
             <div className="flex items-center justify-between">
               <span
-                style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#525252',
+                  fontSize: '11px',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
               >
                 Recommendation
               </span>
@@ -389,8 +501,20 @@ export default function SubscriptionDetail() {
             {recommendation.evidence.length > 0 && (
               <ul className="flex flex-col gap-1.5">
                 {recommendation.evidence.map((e, i) => (
-                  <li key={i} className="flex items-center gap-2" style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '12px' }}>
-                    <span style={{ color: ACTION_COLORS[action], fontSize: '6px' }}>●</span>
+                  <li
+                    key={i}
+                    className="flex items-center gap-2"
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      color: '#A3A3A3',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span
+                      style={{ color: ACTION_COLORS[action], fontSize: '6px' }}
+                    >
+                      ●
+                    </span>
                     {e}
                   </li>
                 ))}
@@ -406,10 +530,20 @@ export default function SubscriptionDetail() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
             className="flex flex-col gap-3 p-5"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+            style={{
+              background: '#141414',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '2px',
+            }}
           >
             <span
-              style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '11px',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
             >
               Set Reminder
             </span>
@@ -417,7 +551,11 @@ export default function SubscriptionDetail() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{ fontFamily: 'var(--font-sans)', color: '#16A34A', fontSize: '12px' }}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#16A34A',
+                  fontSize: '12px',
+                }}
               >
                 Reminder scheduled.
               </motion.p>
@@ -448,7 +586,13 @@ export default function SubscriptionDetail() {
               </div>
             )}
             {reminderError && (
-              <p style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '11px' }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#E50914',
+                  fontSize: '11px',
+                }}
+              >
                 {reminderError}
               </p>
             )}

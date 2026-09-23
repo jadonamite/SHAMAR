@@ -46,7 +46,8 @@ const ACTION_COLORS: Record<PolicyAction, string> = {
 }
 
 const TRIGGER_DESCRIPTIONS: Record<PolicyTrigger, string> = {
-  trial_cancel: 'Cancel subscriptions that look like trials after a set number of days',
+  trial_cancel:
+    'Cancel subscriptions that look like trials after a set number of days',
   spend_alert: 'Alert when total monthly spend exceeds a threshold',
   inactivity_pause: 'Pause subscriptions with no recent charges',
 }
@@ -73,13 +74,22 @@ const BLANK: DraftPolicy = {
 
 function buildConditions(draft: DraftPolicy) {
   if (draft.trigger === 'trial_cancel') {
-    return { trial_days: Number(draft.trial_days) || 7, ...(draft.merchant ? { merchant: draft.merchant } : {}) }
+    return {
+      trial_days: Number(draft.trial_days) || 7,
+      ...(draft.merchant ? { merchant: draft.merchant } : {}),
+    }
   }
   if (draft.trigger === 'spend_alert') {
-    return { spend_threshold: Number(draft.spend_threshold) || 100, currency: 'USD' }
+    return {
+      spend_threshold: Number(draft.spend_threshold) || 100,
+      currency: 'USD',
+    }
   }
   if (draft.trigger === 'inactivity_pause') {
-    return { inactive_days: Number(draft.inactive_days) || 30, ...(draft.merchant ? { merchant: draft.merchant } : {}) }
+    return {
+      inactive_days: Number(draft.inactive_days) || 30,
+      ...(draft.merchant ? { merchant: draft.merchant } : {}),
+    }
   }
   return {}
 }
@@ -99,7 +109,10 @@ export default function PoliciesPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) { router.replace('/dashboard'); return }
+    if (!authenticated) {
+      router.replace('/dashboard')
+      return
+    }
     if (!user?.id) return
     load()
   }, [ready, authenticated, user?.id])
@@ -107,9 +120,12 @@ export default function PoliciesPage() {
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch('/api/policies', { headers: { 'x-user-id': user!.id } })
+      const res = await fetch('/api/policies', {
+        headers: { 'x-user-id': user!.id },
+      })
       if (res.ok) setPolicies((await res.json()).policies ?? [])
-    } catch {} finally {
+    } catch {
+    } finally {
       setLoading(false)
     }
   }
@@ -134,13 +150,16 @@ export default function PoliciesPage() {
         setShowNew(false)
         setDraft(BLANK)
       }
-    } catch {} finally {
+    } catch {
+    } finally {
       setSaving(false)
     }
   }
 
   async function togglePolicy(id: string, enabled: boolean) {
-    setPolicies((prev) => prev.map((p) => p.id === id ? { ...p, enabled } : p))
+    setPolicies((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, enabled } : p))
+    )
     try {
       await fetch(`/api/policies/${id}`, {
         method: 'PATCH',
@@ -153,7 +172,10 @@ export default function PoliciesPage() {
   async function deletePolicy(id: string) {
     setPolicies((prev) => prev.filter((p) => p.id !== id))
     try {
-      await fetch(`/api/policies/${id}`, { method: 'DELETE', headers: { 'x-user-id': user!.id } })
+      await fetch(`/api/policies/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': user!.id },
+      })
     } catch {}
   }
 
@@ -171,7 +193,8 @@ export default function PoliciesPage() {
         const data = await res.json()
         setEvalResults(data.results ?? [])
       }
-    } catch {} finally {
+    } catch {
+    } finally {
       setEvaluating(false)
     }
   }
@@ -187,7 +210,8 @@ export default function PoliciesPage() {
       })
       setEvalResults(null)
       await load()
-    } catch {} finally {
+    } catch {
+    } finally {
       setApplying(false)
     }
   }
@@ -197,9 +221,18 @@ export default function PoliciesPage() {
   if (!authenticated) {
     return (
       <main className="min-h-screen bg-void flex items-center justify-center">
-        <motion.button onClick={login} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+        <motion.button
+          onClick={login}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           className="px-8 py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
-          style={{ fontFamily: 'var(--font-sans)', background: '#E50914', color: '#fff', borderRadius: '2px' }}>
+          style={{
+            fontFamily: 'var(--font-sans)',
+            background: '#E50914',
+            color: '#fff',
+            borderRadius: '2px',
+          }}
+        >
           Connect Wallet
         </motion.button>
       </main>
@@ -231,7 +264,10 @@ export default function PoliciesPage() {
               </motion.button>
             )}
             <motion.button
-              onClick={() => { setShowNew(true); setDraft(BLANK) }}
+              onClick={() => {
+                setShowNew(true)
+                setDraft(BLANK)
+              }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
@@ -249,7 +285,6 @@ export default function PoliciesPage() {
       />
 
       <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-4">
-
         {/* Eval results */}
         <AnimatePresence>
           {evalResults !== null && (
@@ -258,11 +293,24 @@ export default function PoliciesPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               className="flex flex-col gap-3 p-5"
-              style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px' }}
+              style={{
+                background: '#141414',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '2px',
+              }}
             >
               <div className="flex items-center justify-between">
-                <span style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  Evaluation — {evalResults.length} {evalResults.length === 1 ? 'match' : 'matches'}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '11px',
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Evaluation — {evalResults.length}{' '}
+                  {evalResults.length === 1 ? 'match' : 'matches'}
                 </span>
                 {evalResults.length > 0 && (
                   <motion.button
@@ -283,18 +331,49 @@ export default function PoliciesPage() {
                 )}
               </div>
               {evalResults.length === 0 ? (
-                <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '12px' }}>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '12px',
+                  }}
+                >
                   No policies matched any subscriptions.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {evalResults.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 py-2"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
+                    >
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '12px' }}>
-                          {r.merchant ?? 'Global'} — <span style={{ color: ACTION_COLORS[r.action as PolicyAction] }}>{r.action}</span>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-sans)',
+                            color: '#A3A3A3',
+                            fontSize: '12px',
+                          }}
+                        >
+                          {r.merchant ?? 'Global'} —{' '}
+                          <span
+                            style={{
+                              color: ACTION_COLORS[r.action as PolicyAction],
+                            }}
+                          >
+                            {r.action}
+                          </span>
                         </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '10px' }}>{r.reason}</span>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            color: '#525252',
+                            fontSize: '10px',
+                          }}
+                        >
+                          {r.reason}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -312,17 +391,41 @@ export default function PoliciesPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               className="flex flex-col gap-4 p-5"
-              style={{ background: '#141414', border: '1px solid rgba(229,9,20,0.2)', borderRadius: '2px' }}
+              style={{
+                background: '#141414',
+                border: '1px solid rgba(229,9,20,0.2)',
+                borderRadius: '2px',
+              }}
             >
-              <span style={{ fontFamily: 'var(--font-sans)', color: '#E50914', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  color: '#E50914',
+                  fontSize: '11px',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 New Policy
               </span>
 
               <div className="flex flex-col gap-1">
-                <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Name</label>
+                <label
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '10px',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Name
+                </label>
                 <input
                   value={draft.name}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, name: e.target.value }))
+                  }
                   placeholder="e.g. Cancel free trials"
                   className="w-full px-3 py-2 text-sm outline-none"
                   style={{
@@ -336,24 +439,57 @@ export default function PoliciesPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Trigger</label>
+                <label
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '10px',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Trigger
+                </label>
                 <div className="flex flex-col gap-2">
-                  {(['trial_cancel', 'spend_alert', 'inactivity_pause'] as PolicyTrigger[]).map((t) => (
+                  {(
+                    [
+                      'trial_cancel',
+                      'spend_alert',
+                      'inactivity_pause',
+                    ] as PolicyTrigger[]
+                  ).map((t) => (
                     <button
                       key={t}
                       onClick={() => setDraft((d) => ({ ...d, trigger: t }))}
                       className="flex items-start gap-3 p-3 text-left cursor-pointer"
                       style={{
-                        background: draft.trigger === t ? 'rgba(229,9,20,0.06)' : 'transparent',
+                        background:
+                          draft.trigger === t
+                            ? 'rgba(229,9,20,0.06)'
+                            : 'transparent',
                         border: `1px solid ${draft.trigger === t ? 'rgba(229,9,20,0.3)' : 'rgba(255,255,255,0.06)'}`,
                         borderRadius: '2px',
                       }}
                     >
                       <div>
-                        <div style={{ fontFamily: 'var(--font-sans)', color: draft.trigger === t ? '#fff' : '#A3A3A3', fontSize: '12px', fontWeight: 600 }}>
+                        <div
+                          style={{
+                            fontFamily: 'var(--font-sans)',
+                            color: draft.trigger === t ? '#fff' : '#A3A3A3',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
                           {TRIGGER_LABELS[t]}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '11px', marginTop: '2px' }}>
+                        <div
+                          style={{
+                            fontFamily: 'var(--font-sans)',
+                            color: '#525252',
+                            fontSize: '11px',
+                            marginTop: '2px',
+                          }}
+                        >
                           {TRIGGER_DESCRIPTIONS[t]}
                         </div>
                       </div>
@@ -366,22 +502,60 @@ export default function PoliciesPage() {
               {draft.trigger === 'trial_cancel' && (
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-1 flex-1">
-                    <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Days</label>
+                    <label
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#525252',
+                        fontSize: '10px',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Days
+                    </label>
                     <input
-                      type="number" min={1} value={draft.trial_days}
-                      onChange={(e) => setDraft((d) => ({ ...d, trial_days: e.target.value }))}
+                      type="number"
+                      min={1}
+                      value={draft.trial_days}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, trial_days: e.target.value }))
+                      }
                       className="w-full px-3 py-2 text-sm outline-none"
-                      style={{ fontFamily: 'var(--font-mono)', background: '#0D0D0D', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px', color: '#fff' }}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        background: '#0D0D0D',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                        color: '#fff',
+                      }}
                     />
                   </div>
                   <div className="flex flex-col gap-1 flex-1">
-                    <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Merchant (optional)</label>
+                    <label
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#525252',
+                        fontSize: '10px',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Merchant (optional)
+                    </label>
                     <input
                       value={draft.merchant}
-                      onChange={(e) => setDraft((d) => ({ ...d, merchant: e.target.value }))}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, merchant: e.target.value }))
+                      }
                       placeholder="All"
                       className="w-full px-3 py-2 text-sm outline-none"
-                      style={{ fontFamily: 'var(--font-sans)', background: '#0D0D0D', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px', color: '#fff' }}
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        background: '#0D0D0D',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                        color: '#fff',
+                      }}
                     />
                   </div>
                 </div>
@@ -389,12 +563,35 @@ export default function PoliciesPage() {
 
               {draft.trigger === 'spend_alert' && (
                 <div className="flex flex-col gap-1 w-40">
-                  <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Monthly threshold ($)</label>
+                  <label
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      color: '#525252',
+                      fontSize: '10px',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Monthly threshold ($)
+                  </label>
                   <input
-                    type="number" min={1} value={draft.spend_threshold}
-                    onChange={(e) => setDraft((d) => ({ ...d, spend_threshold: e.target.value }))}
+                    type="number"
+                    min={1}
+                    value={draft.spend_threshold}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        spend_threshold: e.target.value,
+                      }))
+                    }
                     className="w-full px-3 py-2 text-sm outline-none"
-                    style={{ fontFamily: 'var(--font-mono)', background: '#0D0D0D', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px', color: '#fff' }}
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      background: '#0D0D0D',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '2px',
+                      color: '#fff',
+                    }}
                   />
                 </div>
               )}
@@ -402,39 +599,96 @@ export default function PoliciesPage() {
               {draft.trigger === 'inactivity_pause' && (
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-1 flex-1">
-                    <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Inactive days</label>
+                    <label
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#525252',
+                        fontSize: '10px',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Inactive days
+                    </label>
                     <input
-                      type="number" min={1} value={draft.inactive_days}
-                      onChange={(e) => setDraft((d) => ({ ...d, inactive_days: e.target.value }))}
+                      type="number"
+                      min={1}
+                      value={draft.inactive_days}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          inactive_days: e.target.value,
+                        }))
+                      }
                       className="w-full px-3 py-2 text-sm outline-none"
-                      style={{ fontFamily: 'var(--font-mono)', background: '#0D0D0D', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px', color: '#fff' }}
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        background: '#0D0D0D',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                        color: '#fff',
+                      }}
                     />
                   </div>
                   <div className="flex flex-col gap-1 flex-1">
-                    <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Merchant (optional)</label>
+                    <label
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#525252',
+                        fontSize: '10px',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Merchant (optional)
+                    </label>
                     <input
                       value={draft.merchant}
-                      onChange={(e) => setDraft((d) => ({ ...d, merchant: e.target.value }))}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, merchant: e.target.value }))
+                      }
                       placeholder="All"
                       className="w-full px-3 py-2 text-sm outline-none"
-                      style={{ fontFamily: 'var(--font-sans)', background: '#0D0D0D', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px', color: '#fff' }}
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        background: '#0D0D0D',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                        color: '#fff',
+                      }}
                     />
                   </div>
                 </div>
               )}
 
               <div className="flex flex-col gap-1">
-                <label style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Action</label>
+                <label
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    fontSize: '10px',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Action
+                </label>
                 <div className="flex gap-2 flex-wrap">
-                  {(['cancel', 'pause', 'remind', 'alert'] as PolicyAction[]).map((a) => (
+                  {(
+                    ['cancel', 'pause', 'remind', 'alert'] as PolicyAction[]
+                  ).map((a) => (
                     <button
                       key={a}
                       onClick={() => setDraft((d) => ({ ...d, action: a }))}
                       className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest cursor-pointer"
                       style={{
                         fontFamily: 'var(--font-sans)',
-                        background: draft.action === a ? `${ACTION_COLORS[a]}15` : 'transparent',
-                        color: draft.action === a ? ACTION_COLORS[a] : '#525252',
+                        background:
+                          draft.action === a
+                            ? `${ACTION_COLORS[a]}15`
+                            : 'transparent',
+                        color:
+                          draft.action === a ? ACTION_COLORS[a] : '#525252',
                         border: `1px solid ${draft.action === a ? `${ACTION_COLORS[a]}60` : 'rgba(255,255,255,0.06)'}`,
                         borderRadius: '2px',
                       }}
@@ -454,7 +708,10 @@ export default function PoliciesPage() {
                   className="px-5 py-2 text-xs font-semibold uppercase tracking-widest cursor-pointer"
                   style={{
                     fontFamily: 'var(--font-sans)',
-                    background: saving || !draft.name ? 'rgba(255,255,255,0.04)' : '#E50914',
+                    background:
+                      saving || !draft.name
+                        ? 'rgba(255,255,255,0.04)'
+                        : '#E50914',
                     color: saving || !draft.name ? '#525252' : '#fff',
                     borderRadius: '2px',
                   }}
@@ -462,9 +719,17 @@ export default function PoliciesPage() {
                   {saving ? 'Saving...' : 'Create Policy'}
                 </motion.button>
                 <button
-                  onClick={() => { setShowNew(false); setDraft(BLANK) }}
+                  onClick={() => {
+                    setShowNew(false)
+                    setDraft(BLANK)
+                  }}
                   className="px-4 py-2 text-xs cursor-pointer"
-                  style={{ fontFamily: 'var(--font-sans)', color: '#525252', background: 'transparent', border: 'none' }}
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    color: '#525252',
+                    background: 'transparent',
+                    border: 'none',
+                  }}
                 >
                   Cancel
                 </button>
@@ -476,13 +741,36 @@ export default function PoliciesPage() {
         {/* Policy list */}
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '12px' }}>Loading...</span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: '#525252',
+                fontSize: '12px',
+              }}
+            >
+              Loading...
+            </span>
           </div>
         ) : policies.length === 0 && !showNew ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#525252', fontSize: '13px' }}>No policies yet.</p>
-            <p style={{ fontFamily: 'var(--font-sans)', color: '#3a3a3a', fontSize: '12px' }}>
-              Create a policy to let Shamar act automatically on your subscriptions.
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#525252',
+                fontSize: '13px',
+              }}
+            >
+              No policies yet.
+            </p>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#3a3a3a',
+                fontSize: '12px',
+              }}
+            >
+              Create a policy to let Shamar act automatically on your
+              subscriptions.
             </p>
           </div>
         ) : (
@@ -504,7 +792,14 @@ export default function PoliciesPage() {
               >
                 <div className="flex flex-col gap-1.5 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span style={{ fontFamily: 'var(--font-sans)', color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        color: '#fff',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                      }}
+                    >
                       {policy.name}
                     </span>
                     <span
@@ -519,12 +814,28 @@ export default function PoliciesPage() {
                       {policy.action}
                     </span>
                   </div>
-                  <span style={{ fontFamily: 'var(--font-mono)', color: '#525252', fontSize: '11px' }}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      color: '#525252',
+                      fontSize: '11px',
+                    }}
+                  >
                     {TRIGGER_LABELS[policy.trigger]}
                   </span>
                   {policy.last_triggered_at && (
-                    <span style={{ fontFamily: 'var(--font-mono)', color: '#3a3a3a', fontSize: '10px' }}>
-                      Last triggered {new Date(policy.last_triggered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        color: '#3a3a3a',
+                        fontSize: '10px',
+                      }}
+                    >
+                      Last triggered{' '}
+                      {new Date(policy.last_triggered_at).toLocaleDateString(
+                        'en-US',
+                        { month: 'short', day: 'numeric' }
+                      )}
                     </span>
                   )}
                 </div>

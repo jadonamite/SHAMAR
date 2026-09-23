@@ -35,13 +35,18 @@ function monthlyEquiv(amount: number, cadence?: string): number {
 }
 
 function calculateSavings(recs: Rec[]) {
-  const savingsCandidates = recs.filter((r) => r.action === 'cancel' || r.action === 'pause')
+  const savingsCandidates = recs.filter(
+    (r) => r.action === 'cancel' || r.action === 'pause'
+  )
   const savingsByCurrency = aggregateByCurrency(
     savingsCandidates,
     (r) => monthlyEquiv(r.amount, r.cadence),
-    (r) => r.currency ?? 'USD',
+    (r) => r.currency ?? 'USD'
   )
-  const totalSavings = Object.values(savingsByCurrency).reduce((s, v) => s + v, 0)
+  const totalSavings = Object.values(savingsByCurrency).reduce(
+    (s, v) => s + v,
+    0
+  )
   const totalSavingsStr = formatAggregate(savingsByCurrency)
   return { savingsCandidates, savingsByCurrency, totalSavings, totalSavingsStr }
 }
@@ -54,11 +59,16 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) { router.replace('/dashboard'); return }
+    if (!authenticated) {
+      router.replace('/dashboard')
+      return
+    }
     if (!user?.id) return
     fetch('/api/recommendations', { headers: { 'x-user-id': user.id } })
       .then((r) => r.json())
-      .then((d) => setRecs(((d.recommendations ?? []) as Rec[]).map(normalizeRec)))
+      .then((d) =>
+        setRecs(((d.recommendations ?? []) as Rec[]).map(normalizeRec))
+      )
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [ready, authenticated, user?.id, router])
@@ -73,10 +83,16 @@ export default function RecommendationsPage() {
       <TopNav title="Recommendations" />
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h1
+            className="text-2xl font-bold"
+            style={{ fontFamily: 'var(--font-sans)' }}
+          >
             Recommendations
           </h1>
-          <p className="text-muted text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
+          <p
+            className="text-muted text-sm"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
             {recs.length} actionable insights
           </p>
         </div>
@@ -92,31 +108,52 @@ export default function RecommendationsPage() {
               borderRadius: '2px',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-sans)', color: '#A3A3A3', fontSize: '13px' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-sans)',
+                color: '#A3A3A3',
+                fontSize: '13px',
+              }}
+            >
               Potential monthly savings
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: '#E50914', fontSize: '20px', letterSpacing: '-0.02em' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: '#E50914',
+                fontSize: '20px',
+                letterSpacing: '-0.02em',
+              }}
+            >
               {totalSavingsStr}
             </span>
           </motion.div>
         )}
 
         {loading ? (
-          <div className="py-20 text-center text-neutral-500 font-mono text-xs">Loading...</div>
+          <div className="py-20 text-center text-neutral-500 font-mono text-xs">
+            Loading...
+          </div>
         ) : recs.length === 0 ? (
-          <div className="py-20 text-center text-neutral-500 text-sm">No recommendations yet.</div>
+          <div className="py-20 text-center text-neutral-500 text-sm">
+            No recommendations yet.
+          </div>
         ) : (
           <div className="flex flex-col gap-3">
             {recs.map((rec) => (
               <div
                 key={rec.id}
                 className="p-4 flex items-center justify-between rounded border"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
+                style={{
+                  background: '#141414',
+                  borderColor: 'rgba(255,255,255,0.06)',
+                }}
               >
                 <div>
                   <h3 className="font-bold text-white">{rec.merchant}</h3>
                   <p className="text-xs text-neutral-400 font-mono">
-                    {formatMoney(rec.amount, rec.currency)}/{rec.cadence} · Action: {rec.action}
+                    {formatMoney(rec.amount, rec.currency)}/{rec.cadence} ·
+                    Action: {rec.action}
                   </p>
                 </div>
                 <Link

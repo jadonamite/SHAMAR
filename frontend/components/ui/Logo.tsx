@@ -16,7 +16,11 @@ function Mark({ size, priority }: { size: number; priority?: boolean }) {
   const width = Math.round(size * MARK_RATIO)
   return (
     <Image
-      src={size > 64 ? '/brand/shamar-mark-512.webp' : '/brand/shamar-mark-160.webp'}
+      src={
+        size > 64
+          ? '/brand/shamar-mark-512.webp'
+          : '/brand/shamar-mark-160.webp'
+      }
       alt=""
       width={width}
       height={size}
@@ -45,13 +49,22 @@ function Wordmark({ size }: { size: number }) {
   )
 }
 
-export default function Logo({ variant = 'lockup', size = 24, priority, className }: LogoProps) {
+export default function Logo({
+  variant = 'lockup',
+  size = 24,
+  priority,
+  className,
+}: LogoProps) {
   return (
     <span
       role="img"
       aria-label="SHAMAR"
       className={className}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: Math.round(size * 0.42) }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: Math.round(size * 0.42),
+      }}
     >
       {variant !== 'wordmark' && <Mark size={size} priority={priority} />}
       {variant !== 'mark' && <Wordmark size={size} />}

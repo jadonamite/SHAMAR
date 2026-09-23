@@ -25,8 +25,7 @@ export default function Button({
   }
 
   const variantClasses = {
-    primary:
-      'bg-sam-red text-white hover:bg-sam-dim border-transparent',
+    primary: 'bg-sam-red text-white hover:bg-sam-dim border-transparent',
     secondary:
       'bg-transparent text-foreground hover:bg-white/5 border-[var(--border-strong)]',
     destructive:
