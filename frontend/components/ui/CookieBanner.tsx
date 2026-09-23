@@ -67,8 +67,8 @@ export default function CookieBanner() {
           </button>
         </div>
         <p className="type-footnote leading-relaxed text-label-2">
-          We use local storage strictly for essential authentication tokens.
-          We do not use third-party marketing or tracking cookies. Read our{' '}
+          We use local storage strictly for essential authentication tokens. We
+          do not use third-party marketing or tracking cookies. Read our{' '}
           <Link
             href="/cookies"
             className="font-medium text-label underline hover:text-accent-text transition-colors"

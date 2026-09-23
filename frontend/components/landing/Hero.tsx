@@ -50,13 +50,13 @@ export default function Hero() {
 
   return (
     <section className="relative isolate flex min-h-[calc(100svh-32px)] flex-col overflow-hidden rounded-[var(--radius-section)] bg-surface p-3">
-      {/* The owner's blob pattern, recoloured to SHAMAR red, faded and zoomed in */}
+      {/* 3D sculptural fluid ribbon pattern in SHAMAR red */}
       <Image
-        src="/brand/red-pattern.webp"
+        src="/brand/red-pattern.jpg"
         alt=""
         fill
         priority
-        className="-z-10 scale-[1.25] object-cover opacity-20"
+        className="-z-10 object-cover opacity-25"
       />
 
       <header className="flex items-center justify-between gap-4 px-3 pt-2 md:px-6">

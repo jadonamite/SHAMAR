@@ -34,12 +34,12 @@ export default function Footer() {
   const { start, loading } = useStart()
   return (
     <section className="relative isolate flex min-h-[45svh] flex-col justify-between gap-8 overflow-hidden rounded-[var(--radius-section)] bg-surface px-6 py-8 md:px-10 md:py-10">
-      {/* Same pattern as the hero, so the page opens and closes on it */}
+      {/* 3D sculptural fluid ribbon pattern in SHAMAR red */}
       <Image
-        src="/brand/red-pattern.webp"
+        src="/brand/red-pattern.jpg"
         alt=""
         fill
-        className="-z-10 scale-[1.25] object-cover opacity-20"
+        className="-z-10 object-cover opacity-25"
       />
 
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
