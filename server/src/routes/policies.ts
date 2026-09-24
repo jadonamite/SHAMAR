@@ -3,6 +3,8 @@ import { readBody } from '../lib/body.js'
 import { sql, getOrCreateUser } from '../lib/db.js'
 import { logAction } from '../lib/actions.js'
 import { toUsd } from '../lib/currency.js'
+import { executeSubscriptionById } from '../lib/execution.js'
+import { authenticateCaller } from '../lib/auth.js'
 
 const app = new Hono()
 
@@ -10,7 +12,7 @@ type PolicyTrigger = 'trial_cancel' | 'spend_alert' | 'inactivity_pause'
 type PolicyAction = 'cancel' | 'pause' | 'remind' | 'alert'
 
 type PolicyConditions = {
-  // trial_cancel: cancel after N days if merchant matches 'trial' in name or source
+  // trial_cancel: cancel after N days if merchant matches 'trial' in name, zero-price, or trial category
   trial_days?: number
   // spend_alert: fire when monthly spend exceeds threshold
   spend_threshold?: number
@@ -23,24 +25,21 @@ type PolicyConditions = {
 
 // GET /policies — list user's policies
 app.get('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   try {
-    const dbUserId = await getOrCreateUser(userId)
     const rows = await sql`
       SELECT id, name, trigger, conditions, action, enabled,
              created_at, last_evaluated_at, last_triggered_at
       FROM policies
-      WHERE user_id = ${dbUserId}
+      WHERE user_id = ${auth.dbUserId}
       ORDER BY created_at DESC
     `
     return c.json({ policies: rows })
   } catch (err) {
     const msg = (err as Error).message
     console.error('[policies/list] error:', msg)
-    // Table-missing is the expected failure on prod until migration_v4 is applied.
-    // Fail soft so the dashboard's 30s poll doesn't spam 500s.
     if (/relation .*policies.* does not exist/i.test(msg)) {
       return c.json({ policies: [], warning: 'policies_table_missing' })
     }
@@ -50,8 +49,8 @@ app.get('/', async (c) => {
 
 // POST /policies — create a policy
 app.post('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<{
     name: string
@@ -70,10 +69,9 @@ app.post('/', async (c) => {
   if (!VALID_TRIGGERS.includes(trigger)) return c.json({ error: 'Invalid trigger' }, 400)
   if (!VALID_ACTIONS.includes(action)) return c.json({ error: 'Invalid action' }, 400)
 
-  const dbUserId = await getOrCreateUser(userId)
   const [policy] = await sql`
     INSERT INTO policies (user_id, name, trigger, conditions, action)
-    VALUES (${dbUserId}, ${name}, ${trigger}, ${JSON.stringify(conditions)}, ${action})
+    VALUES (${auth.dbUserId}, ${name}, ${trigger}, ${JSON.stringify(conditions)}, ${action})
     RETURNING *
   `
   return c.json({ policy }, 201)
@@ -81,15 +79,14 @@ app.post('/', async (c) => {
 
 // PATCH /policies/:id — toggle enabled or update conditions
 app.patch('/:id', async (c) => {
-  const userId = c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
   const { id } = c.req.param()
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<{ enabled?: boolean; name?: string; conditions?: PolicyConditions }>()
-  const dbUserId = await getOrCreateUser(userId)
 
   const [existing] = await sql`
-    SELECT id FROM policies WHERE id = ${id} AND user_id = ${dbUserId}
+    SELECT id FROM policies WHERE id = ${id} AND user_id = ${auth.dbUserId}
   `
   if (!existing) return c.json({ error: 'Not found' }, 404)
 
@@ -106,43 +103,40 @@ app.patch('/:id', async (c) => {
 
 // DELETE /policies/:id
 app.delete('/:id', async (c) => {
-  const userId = c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
   const { id } = c.req.param()
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const [deleted] = await sql`
-    DELETE FROM policies WHERE id = ${id} AND user_id = ${dbUserId} RETURNING id
+    DELETE FROM policies WHERE id = ${id} AND user_id = ${auth.dbUserId} RETURNING id
   `
   if (!deleted) return c.json({ error: 'Not found' }, 404)
   return c.json({ deleted: true })
 })
 
 // POST /policies/evaluate — run all enabled policies for user against their subscriptions
-// Returns what would fire (dry-run) or executes if { apply: true }
+// Returns what would fire (dry-run) or executes through executeDecision if { apply: true }
 app.post('/evaluate', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await readBody<{ apply: boolean }>(c)
   const apply = body.apply ?? false
-
-  const dbUserId = await getOrCreateUser(userId)
+  const dbUserId = auth.dbUserId
+  const userId = auth.privyDid
 
   type DBPolicy = { id: string; name: string; trigger: string; action: string; conditions: PolicyConditions }
-  type DBSub = { id: string; merchant: string; amount: number; currency: string; cadence: string; status: string; source: string; last_charged: string | null; created_at: string }
+  type DBSub = { id: string; merchant: string; name?: string; amount: number; currency: string; cadence: string; status: string; source: string; category?: string; last_charged: string | null; created_at: string }
   type DBEvent = { policy_id: string; subscription_id: string }
 
   const policies = (await sql`
     SELECT * FROM policies WHERE user_id = ${dbUserId} AND enabled = true
   `) as DBPolicy[]
   const subs = (await sql`
-    SELECT id, merchant, amount, currency, cadence, status, source, last_charged, created_at
+    SELECT id, name, merchant, amount, currency, cadence, status, source, category, last_charged, created_at
     FROM subscriptions WHERE user_id = ${dbUserId} AND status = 'active'
   `) as DBSub[]
 
-  // Normalize every subscription to a USD monthly figure so spend across mixed
-  // currencies (₦, $, €, ETH …) aggregates to a comparable number.
   const monthlyTotal = subs.reduce((sum: number, s: DBSub) => {
     const usd = toUsd(s.amount, s.currency)
     if (s.cadence === 'yearly') return sum + usd / 12
@@ -159,6 +153,7 @@ app.post('/evaluate', async (c) => {
     subscription_id: string | null
     merchant: string | null
     reason: string
+    dispatch_status?: string
   }> = []
 
   const alreadyFired = (await sql`
@@ -166,18 +161,13 @@ app.post('/evaluate', async (c) => {
     WHERE policy_id = ANY(${policies.map((p) => p.id)})
   `) as DBEvent[]
   const firedSet = new Set(alreadyFired.map((e) => `${e.policy_id}:${e.subscription_id}`))
-  // A policy has a single trigger type, so any prior event for a spend_alert
-  // policy means it already fired (it never has per-subscription events).
   const firedPolicyIds = new Set(alreadyFired.map((e) => e.policy_id))
 
   for (const policy of policies) {
     const cond: PolicyConditions = policy.conditions ?? {}
 
     if (policy.trigger === 'spend_alert') {
-      // Threshold is compared in USD; convert it from its stated currency.
       const threshold = toUsd(cond.spend_threshold ?? 0, cond.currency ?? 'USD')
-      // policy_events.subscription_id is NOT NULL, so a global alert needs a
-      // representative subscription to anchor its event row.
       if (subs.length > 0 && monthlyTotal >= threshold && !firedPolicyIds.has(policy.id)) {
         fired.push({
           policy_id: policy.id,
@@ -203,8 +193,42 @@ app.post('/evaluate', async (c) => {
       if (policy.trigger === 'trial_cancel') {
         const days = cond.trial_days ?? 7
         const age = (Date.now() - new Date(sub.created_at).getTime()) / 86_400_000
-        const looksLikeTrial = sub.merchant.toLowerCase().includes('trial') || sub.source === 'gmail'
+        // Precise trial check: requires 'trial' in merchant name or title, zero amount, or trial category.
+        // Never matches solely because source is 'gmail'.
+        const isTrialMerchant = /trial/i.test(sub.merchant) || /trial/i.test(sub.name ?? '')
+        const isZeroAmountTrial = Number(sub.amount) === 0
+        const looksLikeTrial = isTrialMerchant || isZeroAmountTrial || sub.category === 'trial'
+
         if (age >= days && looksLikeTrial) {
+          const reason = `Trial older than ${days} days (age: ${Math.floor(age)}d)`
+          let dispatchStatus: string | undefined
+
+          if (policy.action === 'cancel') {
+            const dispatchRes = await executeSubscriptionById({
+              subscriptionId: sub.id,
+              trigger: 'policy',
+              dbUserId,
+              userPrivyDid: userId,
+              apply,
+              rationale: `Cancelled by policy "${policy.name}": ${reason}`,
+            })
+            dispatchStatus = dispatchRes.status
+            if (apply && dispatchRes.status === 'sent') {
+              await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
+              await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
+            }
+          } else {
+            if (apply) {
+              const newStatus = policy.action === 'pause' ? 'paused' : sub.status
+              if (newStatus !== sub.status) {
+                await sql`UPDATE subscriptions SET status = ${newStatus} WHERE id = ${sub.id}`
+                await logAction({ subscriptionId: sub.id, actionType: policy.action, triggeredBy: 'policy', userPrivyDid: userId, reversible: true })
+              }
+              await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
+              await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
+            }
+          }
+
           fired.push({
             policy_id: policy.id,
             policy_name: policy.name,
@@ -212,17 +236,9 @@ app.post('/evaluate', async (c) => {
             action: policy.action,
             subscription_id: sub.id,
             merchant: sub.merchant,
-            reason: `Trial older than ${days} days (age: ${Math.floor(age)}d)`,
+            reason,
+            dispatch_status: dispatchStatus,
           })
-          if (apply) {
-            const newStatus = policy.action === 'cancel' ? 'cancelled' : policy.action === 'pause' ? 'paused' : sub.status
-            if (newStatus !== sub.status) {
-              await sql`UPDATE subscriptions SET status = ${newStatus} WHERE id = ${sub.id}`
-              await logAction({ subscriptionId: sub.id, actionType: policy.action, triggeredBy: 'policy', userPrivyDid: userId, reversible: true })
-            }
-            await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
-            await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
-          }
         }
       }
 
@@ -231,6 +247,35 @@ app.post('/evaluate', async (c) => {
         if (!sub.last_charged) continue
         const daysSince = (Date.now() - new Date(sub.last_charged).getTime()) / 86_400_000
         if (daysSince >= days) {
+          const reason = `No charge in ${Math.floor(daysSince)} days (threshold: ${days}d)`
+          let dispatchStatus: string | undefined
+
+          if (policy.action === 'cancel') {
+            const dispatchRes = await executeSubscriptionById({
+              subscriptionId: sub.id,
+              trigger: 'policy',
+              dbUserId,
+              userPrivyDid: userId,
+              apply,
+              rationale: `Cancelled by policy "${policy.name}": ${reason}`,
+            })
+            dispatchStatus = dispatchRes.status
+            if (apply && dispatchRes.status === 'sent') {
+              await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
+              await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
+            }
+          } else {
+            if (apply) {
+              const newStatus = 'paused'
+              if (newStatus !== sub.status) {
+                await sql`UPDATE subscriptions SET status = ${newStatus} WHERE id = ${sub.id}`
+                await logAction({ subscriptionId: sub.id, actionType: policy.action, triggeredBy: 'policy', userPrivyDid: userId, reversible: true })
+              }
+              await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
+              await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
+            }
+          }
+
           fired.push({
             policy_id: policy.id,
             policy_name: policy.name,
@@ -238,17 +283,9 @@ app.post('/evaluate', async (c) => {
             action: policy.action,
             subscription_id: sub.id,
             merchant: sub.merchant,
-            reason: `No charge in ${Math.floor(daysSince)} days (threshold: ${days}d)`,
+            reason,
+            dispatch_status: dispatchStatus,
           })
-          if (apply) {
-            const newStatus = policy.action === 'cancel' ? 'cancelled' : 'paused'
-            if (newStatus !== sub.status) {
-              await sql`UPDATE subscriptions SET status = ${newStatus} WHERE id = ${sub.id}`
-              await logAction({ subscriptionId: sub.id, actionType: policy.action, triggeredBy: 'policy', userPrivyDid: userId, reversible: true })
-            }
-            await sql`INSERT INTO policy_events (policy_id, subscription_id, action) VALUES (${policy.id}, ${sub.id}, ${policy.action}) ON CONFLICT DO NOTHING`
-            await sql`UPDATE policies SET last_triggered_at = NOW() WHERE id = ${policy.id}`
-          }
         }
       }
     }

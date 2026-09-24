@@ -63,6 +63,8 @@ function cancellationEmail(opts: {
 
 // A cancellation already dispatched and not reversed must never be sent twice.
 async function alreadyDispatched(subscriptionId: string): Promise<boolean> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subscriptionId)
+  if (!isUuid) return false
   const rows = await sql`
     SELECT id FROM actions
     WHERE subscription_id = ${subscriptionId}

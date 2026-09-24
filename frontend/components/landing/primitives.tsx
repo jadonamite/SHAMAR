@@ -140,7 +140,7 @@ export function PrimaryButton({
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center rounded-full bg-accent text-on-accent transition-colors duration-[var(--motion-quick)] hover:bg-accent-hover disabled:opacity-60 ${
+      className={`group inline-flex items-center rounded-full bg-accent text-on-accent transition-all duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.96] cursor-pointer shadow-sm hover:shadow-[0_8px_20px_-4px_rgba(217,0,18,0.35)] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100 ${
         sm
           ? 'type-footnote min-h-[44px] gap-2 pl-4 pr-1.5 font-semibold'
           : 'type-headline min-h-[48px] gap-3 pl-6 pr-2'
@@ -148,7 +148,7 @@ export function PrimaryButton({
     >
       {loading ? 'Opening…' : children}
       <span
-        className={`inline-flex items-center justify-center rounded-full bg-white/15 ${sm ? 'size-8' : 'size-9'}`}
+        className={`inline-flex items-center justify-center rounded-full bg-white/15 transition-transform duration-200 group-hover:translate-x-0.5 group-active:translate-x-1 ${sm ? 'size-8' : 'size-9'}`}
       >
         <Arrow direction="right" size={sm ? 14 : 16} />
       </span>

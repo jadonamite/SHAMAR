@@ -407,7 +407,7 @@ function WeighArt() {
           onClick={simulateForceCancel}
           className="type-caption shrink-0 rounded-md bg-surface px-2 py-0.5 font-bold text-accent-text shadow-2xs hover:bg-white/90"
         >
-          {testingBlocked ? 'Blocked ✓' : 'Test policy'}
+          {testingBlocked ? 'Blocked' : 'Test policy'}
         </button>
       </motion.div>
     </div>
@@ -434,8 +434,20 @@ function AskArt() {
             <span className="type-caption font-semibold text-white">
               SHAMAR Agent
             </span>
-            <span className="flex size-3.5 items-center justify-center rounded-full bg-accent text-[9px] text-white font-bold">
-              ✓
+            <span className="flex size-3.5 items-center justify-center rounded-full bg-accent text-white">
+              <svg
+                className="size-2.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </span>
           </div>
         </div>
@@ -496,7 +508,7 @@ function AskArt() {
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-warning animate-pulse" />
                 <span className="type-caption text-[11px] font-medium">
-                  Silence rule: cancels at T-36h on Base
+                  Silence rule: cancels at T-36h
                 </span>
               </div>
               <span className="type-caption tabular font-bold text-white/90">
@@ -518,9 +530,21 @@ function AskArt() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: [0, 1.2, 1] }}
-              className="flex size-12 items-center justify-center rounded-full bg-success/20 text-success text-2xl"
+              className="flex size-12 items-center justify-center rounded-full bg-success/20 text-success"
             >
-              ✓
+              <svg
+                className="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </motion.div>
 
             <div>
@@ -528,7 +552,7 @@ function AskArt() {
                 Cancellation Stamped
               </p>
               <p className="type-caption text-white/70 mt-0.5">
-                Duolingo Super cancelled via Base session key. Saved $12.99/mo!
+                Duolingo Super cancelled safely. Saved $12.99/mo!
               </p>
             </div>
 
@@ -537,7 +561,7 @@ function AskArt() {
               onClick={resetDemo}
               className="type-caption mt-1 rounded-full bg-white/15 px-3 py-1 font-semibold text-white hover:bg-white/25"
             >
-              Reset demo ↺
+              Reset demo
             </button>
           </motion.div>
         )}
@@ -550,8 +574,20 @@ function AskArt() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="flex flex-col items-center gap-3 py-3 text-center"
           >
-            <div className="flex size-12 items-center justify-center rounded-full bg-white/20 text-white text-2xl">
-              ✓
+            <div className="flex size-12 items-center justify-center rounded-full bg-white/20 text-white">
+              <svg
+                className="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </div>
             <div>
               <p className="type-footnote font-bold text-white">
@@ -567,7 +603,7 @@ function AskArt() {
               onClick={resetDemo}
               className="type-caption mt-1 rounded-full bg-white/15 px-3 py-1 font-semibold text-white hover:bg-white/25"
             >
-              Reset demo ↺
+              Reset demo
             </button>
           </motion.div>
         )}

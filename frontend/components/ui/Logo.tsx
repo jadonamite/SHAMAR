@@ -37,8 +37,8 @@ function Wordmark({ size }: { size: number }) {
         fontFamily: 'var(--font-wordmark), var(--font-sans)',
         fontVariationSettings: '"wdth" 125',
         fontWeight: 700,
-        fontSize: Math.round(size * 0.72),
-        letterSpacing: '-0.08em',
+        fontSize: Math.round(size * 1),
+        letterSpacing: '-0.05em',
         textTransform: 'uppercase',
         lineHeight: 1.3,
         color: 'currentColor',
@@ -51,7 +51,7 @@ function Wordmark({ size }: { size: number }) {
 
 export default function Logo({
   variant = 'lockup',
-  size = 24,
+  size = 18,
   priority,
   className,
 }: LogoProps) {
@@ -63,7 +63,7 @@ export default function Logo({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: Math.round(size * 0.42),
+        gap: Math.round(size * 0.2),
       }}
     >
       {variant !== 'wordmark' && <Mark size={size} priority={priority} />}

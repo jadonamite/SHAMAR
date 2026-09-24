@@ -15,11 +15,9 @@ interface TopNavProps {
   rightMeta?: React.ReactNode
   scanning?: boolean
   walletScanning?: boolean
-  debugScanning?: boolean
   gmailConnected?: boolean
   onScanGmail?: () => void
   onScanWallet?: () => void
-  onDebugScan?: () => void
 }
 
 export default function TopNav({
@@ -28,11 +26,9 @@ export default function TopNav({
   rightMeta,
   scanning,
   walletScanning,
-  debugScanning,
   gmailConnected,
   onScanGmail,
   onScanWallet,
-  onDebugScan,
 }: TopNavProps) {
   const pathname = usePathname()
   const { user } = usePrivy()
@@ -89,17 +85,8 @@ export default function TopNav({
           })}
         </nav>
 
-        {/* Right: Network Status + Actions + User Identity */}
+        {/* Right: Actions + User Identity */}
         <div className="hidden md:flex items-center gap-2.5">
-          {/* Base Mainnet Status Pill */}
-          <div
-            className="inline-flex items-center gap-1.5 rounded-full border border-separator/80 bg-surface-2 px-3 py-1.5 type-caption font-semibold text-label"
-            title="Smart contracts and session keys live on Base mainnet"
-          >
-            <span className="size-2 rounded-full bg-[#0052FF] animate-pulse" />
-            <span>Base</span>
-          </div>
-
           {actions}
           {rightMeta}
 
@@ -121,22 +108,14 @@ export default function TopNav({
 
         {/* Mobile Actions & Menu */}
         <div className="flex xl:hidden items-center gap-2">
-          {/* Base status badge on mobile */}
-          <div className="inline-flex items-center gap-1 rounded-full border border-separator bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-label">
-            <span className="size-1.5 rounded-full bg-[#0052FF]" />
-            <span>Base</span>
-          </div>
-
           <MobileMenu
             walletAddress={user?.wallet?.address}
             email={user?.email?.address}
             gmailConnected={gmailConnected}
             scanning={scanning}
             walletScanning={walletScanning}
-            debugScanning={debugScanning}
             onScanGmail={onScanGmail}
             onScanWallet={onScanWallet}
-            onDebugScan={onDebugScan}
           />
         </div>
       </div>

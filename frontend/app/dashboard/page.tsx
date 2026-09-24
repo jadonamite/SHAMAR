@@ -5,7 +5,8 @@ import { usePrivy } from '@privy-io/react-auth'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import ConnectGmail from '@/components/app/ConnectGmail'
+import GmailSetupCard from '@/components/app/GmailSetupCard'
+import SubscriptionSkeleton from '@/components/app/SubscriptionSkeleton'
 import SubscriptionRow, {
   type Subscription,
 } from '@/components/app/SubscriptionRow'
@@ -15,6 +16,7 @@ import OnboardingProgress from '@/components/app/OnboardingProgress'
 import InsightsCarousel from '@/components/app/InsightsCarousel'
 import RenewalsTimeline from '@/components/app/RenewalsTimeline'
 import AgentActivity from '@/components/app/AgentActivity'
+import TelegramAlertsCard from '@/components/app/TelegramAlertsCard'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
 import Logo from '@/components/ui/Logo'
@@ -25,6 +27,8 @@ import {
   formatAggregate,
   type CurrencyMap,
 } from '@/lib/format'
+
+import { apiFetch } from '@/lib/api'
 
 function monthlyOf(s: Subscription): number {
   if (s.cadence === 'yearly') return s.amount / 12
@@ -65,6 +69,7 @@ function DashboardInner() {
   const { showToast } = useToast()
 
   const [gmailConnected, setGmailConnected] = useState(false)
+  const [telegramLinked, setTelegramLinked] = useState(false)
   const [subs, setSubs] = useState<Subscription[]>([])
   const [hasPolicies, setHasPolicies] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -76,52 +81,95 @@ function DashboardInner() {
   } | null>(null)
   const [lastScan, setLastScan] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [debugScanning, setDebugScanning] = useState(false)
-  const [debugOutput, setDebugOutput] = useState<string | null>(null)
+
+  const [readyTimeout, setReadyTimeout] = useState(false)
+  const [devUser, setDevUser] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shamar_dev_user')
+      if (saved) setDevUser(saved)
+    }
+  }, [])
+
+  const effectiveUserId = user?.id || devUser
+  const isUserAuthenticated = authenticated || Boolean(devUser)
+
+  useEffect(() => {
+    const t = setTimeout(() => setReadyTimeout(true), 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   async function fetchSubs(uid: string) {
-    const [statusRes, subsRes, polRes] = await Promise.all([
-      fetch(`/api/gmail/status?user_id=${uid}`),
-      fetch('/api/subscriptions', { headers: { 'x-user-id': uid } }),
-      fetch('/api/policies', { headers: { 'x-user-id': uid } }),
-    ])
-    const statusData = await statusRes.json()
-    setGmailConnected(statusData.connected ?? false)
-    if (subsRes.ok) {
-      const raw = ((await subsRes.json()).subscriptions ?? []) as Subscription[]
-      const list = raw.map(normalizeSubscription)
-      setSubs(list)
-      const latest = list
-        .map((s) => s.detected_at)
-        .filter(Boolean)
-        .sort()
-        .pop()
-      if (latest) setLastScan(latest as string)
-    }
-    if (polRes.ok) {
-      const pols = (await polRes.json()).policies ?? []
-      setHasPolicies(pols.length > 0)
+    try {
+      const [statusRes, subsRes, polRes, tgRes] = await Promise.all([
+        apiFetch('/api/gmail/status', { userId: uid }).catch(() => null),
+        apiFetch('/api/subscriptions', { userId: uid }).catch(() => null),
+        apiFetch('/api/policies', { userId: uid }).catch(() => null),
+        apiFetch('/api/telegram/status', { userId: uid }).catch(() => null),
+      ])
+
+      if (statusRes?.ok) {
+        try {
+          const statusData = await statusRes.json()
+          setGmailConnected(statusData.connected ?? false)
+        } catch {}
+      }
+
+      if (tgRes?.ok) {
+        try {
+          const tgData = await tgRes.json()
+          setTelegramLinked(tgData.linked ?? false)
+        } catch {}
+      }
+
+      if (subsRes?.ok) {
+        try {
+          const raw = ((await subsRes.json()).subscriptions ??
+            []) as Subscription[]
+          const list = raw.map(normalizeSubscription)
+          setSubs(list)
+          const latest = list
+            .map((s) => s.detected_at)
+            .filter(Boolean)
+            .sort()
+            .pop()
+          if (latest) setLastScan(latest as string)
+        } catch {}
+      }
+
+      if (polRes?.ok) {
+        try {
+          const pols = (await polRes.json()).policies ?? []
+          setHasPolicies(pols.length > 0)
+        } catch {}
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
   // Initial load
   useEffect(() => {
-    if (!ready || !authenticated || !user?.id) return
+    if (!ready || !isUserAuthenticated || !effectiveUserId) {
+      if (ready && !isUserAuthenticated) setLoading(false)
+      return
+    }
     setLoading(true)
-    fetchSubs(user.id)
+    fetchSubs(effectiveUserId)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [ready, authenticated, user?.id])
+  }, [ready, isUserAuthenticated, effectiveUserId])
 
   // Poll every 30s while tab is visible
   useEffect(() => {
-    if (!authenticated || !user?.id) return
+    if (!isUserAuthenticated || !effectiveUserId) return
     const id = setInterval(() => {
       if (document.visibilityState === 'visible')
-        fetchSubs(user!.id).catch(() => {})
+        fetchSubs(effectiveUserId).catch(() => {})
     }, 30_000)
     return () => clearInterval(id)
-  }, [authenticated, user?.id])
+  }, [isUserAuthenticated, effectiveUserId])
 
   // Handle OAuth redirect params
   useEffect(() => {
@@ -129,17 +177,51 @@ function DashboardInner() {
       setGmailConnected(true)
       router.replace('/dashboard')
       triggerScan()
+      return
     }
-  }, [searchParams])
 
-  async function triggerScan() {
-    if (!user?.id || scanning) return
+    const errorParam = searchParams.get('error')
+    const detailParam = searchParams.get('detail')
+    if (errorParam) {
+      router.replace('/dashboard')
+      if (errorParam === 'access_denied') {
+        showToast(
+          'Google access was not granted. On the Google warning screen, click "Advanced" then "Go to SHAMAR" to allow receipt scanning.',
+          'error'
+        )
+      } else if (errorParam === 'no_refresh_token') {
+        showToast(
+          'Google did not return an offline access token. Please disconnect and connect again.',
+          'error'
+        )
+      } else if (errorParam === 'oauth_expired') {
+        showToast(
+          'Google sign-in session expired. Please try connecting again.',
+          'error'
+        )
+      } else if (detailParam) {
+        showToast(`Google sign-in failed: ${detailParam}`, 'error')
+      } else {
+        showToast(
+          'Google connection could not be completed. Please try again.',
+          'error'
+        )
+      }
+    }
+  }, [searchParams, router, showToast])
+
+  async function triggerScan(opts?: { reset?: boolean; clear?: boolean }) {
+    if (!effectiveUserId || scanning) return
     setScanning(true)
     setScanResult(null)
     try {
-      const res = await fetch('/api/gmail/scan', {
+      const params = new URLSearchParams()
+      if (opts?.reset ?? true) params.set('reset', '1')
+      if (opts?.clear) params.set('clear', '1')
+      const queryString = params.toString() ? `?${params.toString()}` : ''
+      const res = await apiFetch(`/api/gmail/scan${queryString}`, {
         method: 'POST',
-        headers: { 'x-user-id': user.id },
+        userId: effectiveUserId,
       })
       const data = await res.json()
       if (res.ok) {
@@ -153,7 +235,7 @@ function DashboardInner() {
           `Scan complete: ${data.created} found, ${data.updated} updated`,
           'success'
         )
-        await fetchSubs(user.id)
+        await fetchSubs(effectiveUserId)
       } else {
         showToast(data.error ?? 'Scan failed', 'error')
       }
@@ -165,13 +247,13 @@ function DashboardInner() {
   }
 
   async function triggerWalletScan() {
-    if (!user?.id || walletScanning) return
+    if (!effectiveUserId || walletScanning) return
     setWalletScanning(true)
     setScanResult(null)
     try {
-      const res = await fetch('/api/wallet/scan', {
+      const res = await apiFetch('/api/wallet/scan', {
         method: 'POST',
-        headers: { 'x-user-id': user.id },
+        userId: effectiveUserId,
       })
       const data = await res.json()
       if (res.ok) {
@@ -185,7 +267,7 @@ function DashboardInner() {
           `Wallet scan complete: ${data.created} found, ${data.updated} updated`,
           'success'
         )
-        await fetchSubs(user.id)
+        await fetchSubs(effectiveUserId)
       } else {
         showToast(data.error ?? 'Wallet scan failed', 'error')
       }
@@ -196,39 +278,16 @@ function DashboardInner() {
     }
   }
 
-  async function debugScan() {
-    if (!user?.id || debugScanning) return
-    setDebugScanning(true)
-    setDebugOutput(null)
-    try {
-      const res = await fetch('/api/gmail/scan/debug', {
-        method: 'POST',
-        headers: { 'x-user-id': user.id },
-      })
-      const text = await res.text()
-      try {
-        const json = JSON.parse(text)
-        setDebugOutput(JSON.stringify(json, null, 2))
-      } catch {
-        setDebugOutput(text)
-      }
-      await fetchSubs(user.id)
-    } catch (e) {
-      setDebugOutput(String(e))
-    } finally {
-      setDebugScanning(false)
-    }
-  }
-
   async function handleStatusChange(
     id: string,
     status: 'active' | 'paused' | 'cancelled'
   ) {
-    if (!user?.id) return
+    if (!effectiveUserId) return
     try {
-      await fetch(`/api/subscriptions/${id}/status`, {
+      await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))
@@ -237,15 +296,18 @@ function DashboardInner() {
     }
   }
 
-  if (!ready) {
+  if (!ready && !readyTimeout) {
     return (
-      <main className="min-h-screen bg-canvas flex items-center justify-center">
-        <div className="size-2 rounded-full bg-accent animate-pulse" />
+      <main className="min-h-screen bg-canvas flex flex-col items-center justify-center gap-3">
+        <Logo variant="mark" size={40} />
+        <span className="type-caption text-label-3 animate-pulse">
+          Loading dashboard…
+        </span>
       </main>
     )
   }
 
-  if (!authenticated) {
+  if (!isUserAuthenticated) {
     return (
       <main className="min-h-screen bg-canvas flex flex-col justify-between p-4 sm:p-6 md:p-8">
         <header className="mx-auto w-full max-w-7xl flex items-center justify-between py-2">
@@ -269,10 +331,24 @@ function DashboardInner() {
             onClick={login}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="touch-target flex min-h-[48px] w-full items-center justify-center rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
+            className="touch-target flex min-h-[48px] w-full items-center justify-center rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors cursor-pointer"
           >
             Connect Wallet
           </motion.button>
+
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem(
+                'shamar_dev_user',
+                'did:privy:cmpd0hyqa00190clat96o5acm'
+              )
+              setDevUser('did:privy:cmpd0hyqa00190clat96o5acm')
+            }}
+            className="touch-target text-label-3 hover:text-accent type-caption underline underline-offset-4 cursor-pointer pt-1 transition-colors"
+          >
+            Enter with demo account (localhost) →
+          </button>
         </div>
 
         <AppFooter />
@@ -289,26 +365,26 @@ function DashboardInner() {
         gmailConnected={gmailConnected}
         scanning={scanning}
         walletScanning={walletScanning}
-        debugScanning={debugScanning}
-        onScanGmail={triggerScan}
+        onScanGmail={() => triggerScan({ reset: true, clear: true })}
         onScanWallet={triggerWalletScan}
-        onDebugScan={debugScan}
         actions={
           <div className="flex items-center gap-2">
-            {user?.wallet?.address && (
+            {devUser && (
               <button
                 type="button"
-                onClick={triggerWalletScan}
-                disabled={walletScanning}
-                className="touch-target min-h-[38px] px-3.5 rounded-full border border-separator bg-surface text-label type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-40"
+                onClick={() => {
+                  localStorage.removeItem('shamar_dev_user')
+                  setDevUser(null)
+                }}
+                className="touch-target text-xs font-mono text-label-3 hover:text-accent border border-separator/80 px-3 py-1.5 rounded-full bg-surface shadow-2xs cursor-pointer transition-colors"
               >
-                {walletScanning ? 'Scanning…' : 'Scan Wallet'}
+                Exit demo mode
               </button>
             )}
             {gmailConnected && (
               <button
                 type="button"
-                onClick={triggerScan}
+                onClick={() => triggerScan({ reset: true, clear: true })}
                 disabled={scanning}
                 className="touch-target min-h-[38px] px-4 rounded-full bg-accent text-on-accent type-footnote font-semibold shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
@@ -324,16 +400,16 @@ function DashboardInner() {
         scanning={scanning || walletScanning}
         lastScan={lastScan}
         subCount={subs.filter((s) => s.status === 'active').length}
-        userId={user?.id}
+        userId={effectiveUserId ?? undefined}
       />
 
       <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 md:px-8 py-8 flex flex-col gap-8">
         {/* Onboarding progress when incomplete */}
         <OnboardingProgress
-          wallet={Boolean(user?.wallet?.address)}
+          wallet={Boolean(user?.wallet?.address || devUser)}
           gmail={gmailConnected}
           firstScan={subs.length > 0}
-          policies={hasPolicies}
+          telegram={telegramLinked}
         />
 
         {/* Dashboard Hero Bento */}
@@ -360,41 +436,41 @@ function DashboardInner() {
               <MonthlyBleed byCurrency={stats.byCurrency} />
             </div>
 
-            {/* Quick Stats Column */}
-            <div className="flex flex-col gap-4">
-              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
-                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
-                  Active Subscriptions
+            {/* Quick Stats Bento */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+              <div className="rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
+                  Active Subs
                 </span>
-                <p className="type-display text-3xl font-[600] text-label tabular">
+                <p className="type-display text-2xl sm:text-3xl font-[600] text-label tabular">
                   {stats.count}
                 </p>
-                <p className="type-caption text-label-2">
-                  Recognized recurring services
+                <p className="type-caption text-label-2 text-[11px] sm:text-xs truncate">
+                  Recurring services
                 </p>
               </div>
 
-              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
-                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
-                  Blast Radius Alerts
+              <div className="rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
+                  Blast Radius
                 </span>
                 <p
-                  className={`type-display text-3xl font-[600] tabular ${stats.highRisk > 0 ? 'text-accent-text' : 'text-label'}`}
+                  className={`type-display text-2xl sm:text-3xl font-[600] tabular ${stats.highRisk > 0 ? 'text-accent-text' : 'text-label'}`}
                 >
                   {stats.highRisk}
                 </p>
-                <p className="type-caption text-label-2">
+                <p className="type-caption text-label-2 text-[11px] sm:text-xs truncate">
                   {stats.highRisk > 0
-                    ? 'High impact tools protected'
+                    ? 'High impact protected'
                     : 'Safe to manage'}
                 </p>
               </div>
 
-              <div className="flex-1 rounded-[var(--radius-card)] bg-surface p-5 border border-separator/70 shadow-2xs flex flex-col justify-between">
-                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold">
+              <div className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+                <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
                   Yearly Projection
                 </span>
-                <p className="type-display text-2xl font-[600] text-label tabular">
+                <p className="type-display text-xl sm:text-2xl font-[600] text-label tabular">
                   {formatAggregate(
                     Object.fromEntries(
                       Object.entries(stats.byCurrency).map(([c, v]) => [
@@ -404,7 +480,7 @@ function DashboardInner() {
                     )
                   )}
                 </p>
-                <p className="type-caption text-label-2">
+                <p className="type-caption text-label-2 text-[11px] sm:text-xs">
                   Estimated 12-month commitment
                 </p>
               </div>
@@ -416,15 +492,26 @@ function DashboardInner() {
         {subs.length > 0 && <InsightsCarousel subs={subs} />}
         {subs.length > 0 && <RenewalsTimeline subs={subs} />}
 
-        {/* Subscriptions List or Connect Card */}
-        {!gmailConnected ? (
-          <ConnectGmail />
-        ) : loading ? (
-          <div className="flex items-center justify-center py-20">
-            <span className="type-caption font-semibold text-label-3">
-              Scanning your receipts…
-            </span>
-          </div>
+        {/* Gmail Setup & Discovery 2-Step Card */}
+        <GmailSetupCard
+          gmailConnected={gmailConnected}
+          scanning={scanning}
+          onScan={() => triggerScan({ reset: true, clear: true })}
+          lastScan={lastScan}
+        />
+
+        {/* Telegram Renewal Alerts & One-Tap Control */}
+        <TelegramAlertsCard
+          userId={effectiveUserId ?? undefined}
+          onStatusChange={setTelegramLinked}
+        />
+
+        {/* Subscriptions List or Optimistic Shimmer Skeleton */}
+        {scanning || loading ? (
+          <SubscriptionSkeleton
+            scanning={scanning}
+            count={subs.length > 0 ? subs.length : 3}
+          />
         ) : subs.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center rounded-[var(--radius-card)] bg-surface p-8 border border-separator/70 shadow-xs">
             <p className="type-callout text-label-2">
@@ -432,11 +519,11 @@ function DashboardInner() {
             </p>
             <button
               type="button"
-              onClick={triggerScan}
+              onClick={() => triggerScan({ reset: true, clear: true })}
               disabled={scanning}
               className="touch-target rounded-full bg-accent px-6 py-2.5 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
             >
-              {scanning ? 'Scanning…' : 'Scan Receipts Now'}
+              Scan Receipts Now
             </button>
           </div>
         ) : (
@@ -473,55 +560,10 @@ function DashboardInner() {
         )}
 
         {/* The Black Slab: Agent Activity Dispatch Ledger */}
-        {subs.length > 0 && <AgentActivity userId={user?.id} />}
+        {subs.length > 0 && (
+          <AgentActivity userId={effectiveUserId ?? undefined} />
+        )}
       </div>
-
-      {/* Debug scan output modal */}
-      {debugOutput !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-          onClick={() => setDebugOutput(null)}
-        >
-          <div
-            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[var(--radius-card)] bg-surface p-6 shadow-2xl border border-separator"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-separator">
-              <span className="type-headline font-semibold text-label">
-                Diagnostic Scan Output
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (debugOutput) {
-                      try {
-                        await navigator.clipboard.writeText(debugOutput)
-                        showToast('Copied to clipboard', 'success')
-                      } catch {
-                        showToast('Copy failed', 'error')
-                      }
-                    }
-                  }}
-                  className="type-caption touch-target min-h-[36px] px-3 rounded-full border border-separator bg-surface text-label font-semibold hover:bg-surface-2"
-                >
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDebugOutput(null)}
-                  className="type-caption touch-target min-h-[36px] px-3 rounded-full bg-surface-2 text-label font-semibold hover:bg-surface"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-            <pre className="mt-3 p-3 overflow-auto flex-1 text-xs font-mono rounded-[var(--radius-tile)] bg-surface-2 text-label-2 leading-relaxed">
-              {debugOutput}
-            </pre>
-          </div>
-        </div>
-      )}
 
       <AppFooter />
     </main>

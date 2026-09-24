@@ -13,6 +13,8 @@ import actions from './routes/actions.js'
 import policies from './routes/policies.js'
 import execute from './routes/execute.js'
 import renewals from './routes/renewals.js'
+import telegram from './routes/telegram.js'
+import account from './routes/account.js'
 
 const app = new Hono()
 
@@ -20,9 +22,29 @@ app.use('*', logger())
 app.use(
   '*',
   cors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
-    allowHeaders: ['Content-Type', 'x-user-id'],
-    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    origin: (origin) => {
+      if (!origin) return '*'
+      if (
+        origin.includes('namite.xyz') ||
+        origin.includes('vercel.app') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')
+      ) {
+        return origin
+      }
+      return process.env.FRONTEND_URL ?? origin
+    },
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'authorization',
+      'x-user-id',
+      'x-wallet-address',
+      'x-wallet-signature',
+      'x-wallet-timestamp',
+      'x-cron-secret',
+    ],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   })
 )
 
@@ -40,5 +62,7 @@ app.route('/actions', actions)
 app.route('/policies', policies)
 app.route('/execute', execute)
 app.route('/renewals', renewals)
+app.route('/telegram', telegram)
+app.route('/account', account)
 
 export default app

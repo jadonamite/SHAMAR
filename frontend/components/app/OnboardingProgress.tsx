@@ -6,18 +6,18 @@ interface OnboardingProgressProps {
   wallet: boolean
   gmail: boolean
   firstScan: boolean
-  policies: boolean
+  telegram: boolean
 }
 
 const STEPS = [
-  { key: 'wallet', label: 'WALLET', description: 'Identity connected' },
-  { key: 'gmail', label: 'GMAIL', description: 'Inbox access granted' },
+  { key: 'wallet', label: 'ACCOUNT', description: 'Session active' },
+  { key: 'gmail', label: 'RECEIPTS', description: 'Gmail connected' },
   {
     key: 'firstScan',
-    label: 'FIRST SCAN',
-    description: 'Subscriptions detected',
+    label: 'DISCOVERY',
+    description: 'Subscriptions scanned',
   },
-  { key: 'policies', label: 'POLICIES', description: 'Automation rules set' },
+  { key: 'telegram', label: 'TELEGRAM', description: 'Renewal alerts linked' },
 ] as const
 
 export default function OnboardingProgress(props: OnboardingProgressProps) {
@@ -25,56 +25,31 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
   const allDone = STEPS.every((s) => completed(s.key))
   if (allDone) return null
 
-  // Find first incomplete step
   const activeIndex = STEPS.findIndex((s) => !completed(s.key))
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="p-4 sm:p-6"
-      style={{
-        background: '#0f0f0f',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '3px',
-      }}
+      transition={{ duration: 0.4 }}
+      className="p-5 sm:p-6 rounded-[var(--radius-section)] bg-surface border border-separator/70 shadow-xs"
     >
       <div className="flex items-center justify-between mb-5">
-        <span
-          style={{
-            fontFamily: 'var(--font-sans)',
-            color: '#525252',
-            fontSize: '10px',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Setup Progress
+        <span className="type-eyebrow text-label-2 font-semibold">
+          Getting Started
         </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: '#E50914',
-            fontSize: '11px',
-            letterSpacing: '0.04em',
-          }}
-        >
+        <span className="type-caption font-mono font-bold text-accent tabular">
           {STEPS.filter((s) => completed(s.key)).length}/{STEPS.length}
         </span>
       </div>
 
       <div className="flex items-start justify-between gap-2 relative">
         {/* connector line */}
-        <div
-          className="absolute top-[7px] left-0 right-0 h-px"
-          style={{ background: 'rgba(255,255,255,0.06)' }}
-        />
+        <div className="absolute top-[8px] left-[10%] right-[10%] h-[2px] bg-separator/60 -z-0" />
 
         {STEPS.map((step, i) => {
           const done = completed(step.key)
           const active = !done && i === activeIndex
-          const dotColor = done ? '#E50914' : active ? '#E50914' : '#2a2a2a'
 
           return (
             <div
@@ -86,8 +61,8 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
                   active
                     ? {
                         boxShadow: [
-                          '0 0 0 0 rgba(229,9,20,0.4)',
-                          '0 0 0 6px rgba(229,9,20,0)',
+                          '0 0 0 0 rgba(229,9,20,0.3)',
+                          '0 0 0 5px rgba(229,9,20,0)',
                         ],
                       }
                     : {}
@@ -97,26 +72,24 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
                     ? { duration: 1.6, repeat: Infinity, ease: 'easeOut' }
                     : {}
                 }
-                style={{
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '50%',
-                  background: done ? '#E50914' : '#0f0f0f',
-                  border: `2px solid ${dotColor}`,
-                  position: 'relative',
-                }}
+                className={`size-4 rounded-full flex items-center justify-center transition-colors ${
+                  done
+                    ? 'bg-accent text-white ring-2 ring-surface'
+                    : active
+                      ? 'bg-surface border-2 border-accent ring-2 ring-surface'
+                      : 'bg-surface border-2 border-separator ring-2 ring-surface'
+                }`}
               >
                 {done && (
                   <svg
                     width="8"
                     height="8"
                     viewBox="0 0 8 8"
-                    style={{ position: 'absolute', top: '1px', left: '1px' }}
+                    className="stroke-white"
                   >
                     <path
                       d="M1.5 4 L3 5.5 L6.5 2"
-                      stroke="#fff"
-                      strokeWidth="1.4"
+                      strokeWidth="1.6"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       fill="none"
@@ -127,24 +100,17 @@ export default function OnboardingProgress(props: OnboardingProgressProps) {
 
               <div className="flex flex-col items-center gap-0.5 text-center">
                 <span
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: done ? '#fff' : active ? '#E50914' : '#525252',
-                    fontSize: '10px',
-                    letterSpacing: '0.14em',
-                    fontWeight: 600,
-                  }}
+                  className={`type-caption font-bold uppercase tracking-wider text-[10px] ${
+                    done
+                      ? 'text-label'
+                      : active
+                        ? 'text-accent'
+                        : 'text-label-3'
+                  }`}
                 >
                   {step.label}
                 </span>
-                <span
-                  className="hidden sm:inline"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    color: '#3a3a3a',
-                    fontSize: '10px',
-                  }}
-                >
+                <span className="hidden sm:inline type-caption text-[11px] text-label-2">
                   {step.description}
                 </span>
               </div>

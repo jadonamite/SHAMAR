@@ -9,42 +9,23 @@ export const metadata: Metadata = {
 
 export default function CookiesPage() {
   return (
-    <div
-      className="min-h-screen flex flex-col justify-between"
-      style={{
-        backgroundColor: 'var(--bg-void)',
-        color: 'var(--text-primary)',
-        fontFamily: 'var(--font-sans)',
-      }}
-    >
+    <div className="min-h-screen bg-canvas text-label flex flex-col justify-between">
       <TopNav title="Cookie Policy" />
 
-      <main className="flex-1 px-6 py-12 md:px-12 max-w-3xl w-full mx-auto">
-        <header
-          className="mb-10 pb-6 border-b"
-          style={{ borderColor: 'var(--border-subtle)' }}
-        >
-          <h1
-            className="text-3xl font-bold tracking-tight mb-2"
-            style={{ fontFamily: 'var(--font-heading)' }}
-          >
+      <main className="flex-1 px-4 sm:px-6 py-10 md:py-12 max-w-3xl w-full mx-auto">
+        <header className="mb-10 pb-6 border-b border-separator/80">
+          <h1 className="type-title-1 font-[600] text-label tracking-tight mb-2">
             Cookie policy
           </h1>
-          <p
-            className="text-xs text-muted"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
+          <p className="type-caption text-label-3 font-mono">
             Last updated: 22 September 2026. This document has not had formal
             legal review.
           </p>
         </header>
 
-        <div className="space-y-8 text-sm leading-relaxed text-secondary">
+        <div className="space-y-8 type-callout leading-relaxed text-label-2">
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               How SHAMAR uses browser storage
             </h2>
             <p>
@@ -56,66 +37,35 @@ export default function CookiesPage() {
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-3">
               Storage items we use
             </h2>
-            <div className="space-y-4">
-              <div
-                className="p-4 rounded border"
-                style={{
-                  borderColor: 'var(--border-subtle)',
-                  background: 'var(--bg-surface)',
-                }}
-              >
-                <div
-                  className="font-semibold text-white mb-1"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
+            <div className="space-y-3">
+              <div className="p-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-2xs">
+                <div className="font-mono text-xs font-semibold text-label mb-1">
                   shamar-theme
                 </div>
-                <p className="text-xs text-muted">
-                  Stores your display theme selection (dark, light, or system
-                  default) so your visual preference is remembered across
-                  visits.
+                <p className="type-caption text-label-3">
+                  Stores your display preferences so your session remains
+                  consistent across visits.
                 </p>
               </div>
 
-              <div
-                className="p-4 rounded border"
-                style={{
-                  borderColor: 'var(--border-subtle)',
-                  background: 'var(--bg-surface)',
-                }}
-              >
-                <div
-                  className="font-semibold text-white mb-1"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
+              <div className="p-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-2xs">
+                <div className="font-mono text-xs font-semibold text-label mb-1">
                   shamar_cookie_consent
                 </div>
-                <p className="text-xs text-muted">
+                <p className="type-caption text-label-3">
                   Remembers your acknowledgment of this notice so you are not
                   prompted repeatedly.
                 </p>
               </div>
 
-              <div
-                className="p-4 rounded border"
-                style={{
-                  borderColor: 'var(--border-subtle)',
-                  background: 'var(--bg-surface)',
-                }}
-              >
-                <div
-                  className="font-semibold text-white mb-1"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
+              <div className="p-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-2xs">
+                <div className="font-mono text-xs font-semibold text-label mb-1">
                   privy:* (session tokens)
                 </div>
-                <p className="text-xs text-muted">
+                <p className="type-caption text-label-3">
                   Managed by Privy to maintain your authenticated login state
                   across browser refreshes without requiring you to re-sign each
                   page request.
@@ -125,24 +75,18 @@ export default function CookiesPage() {
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               Managing your storage
             </h2>
             <p>
               You can clear cookies and local storage data at any time through
               your browser settings. Note that clearing storage will log you out
-              of your current session and reset your theme selection to dark.
+              of your current session and require you to sign in again.
             </p>
           </section>
 
-          <section
-            className="pt-6 border-t"
-            style={{ borderColor: 'var(--border-subtle)' }}
-          >
-            <p className="text-xs text-muted">
+          <section className="pt-6 border-t border-separator/80">
+            <p className="type-caption text-label-3">
               For questions about our storage practices, contact
               privacy@shamar.namite.xyz.
             </p>

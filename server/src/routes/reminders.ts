@@ -77,11 +77,19 @@ app.delete('/:id', async (c) => {
 })
 
 // POST /reminders/send-due — send all unsent reminders due now
-// Called by a cron job or manually from admin. No user auth required — use a secret header.
+// Called by a cron job or manually from admin. Enforces CRON_SECRET.
 app.post('/send-due', async (c) => {
-  const secret = c.req.header('x-cron-secret')
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return c.json({ error: 'Forbidden' }, 403)
+  const cronSecret = process.env.CRON_SECRET
+  const authHeader = c.req.header('authorization')
+  const secretHeader = c.req.header('x-cron-secret')
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const provided = secretHeader || bearerToken
+
+  if (process.env.NODE_ENV === 'production' && !cronSecret) {
+    return c.json({ error: 'CRON_SECRET must be configured in production' }, 503)
+  }
+  if (cronSecret && provided !== cronSecret) {
+    return c.json({ error: 'Unauthorized cron runner' }, 401)
   }
 
   const due = await sql`

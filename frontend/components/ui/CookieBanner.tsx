@@ -48,7 +48,7 @@ export default function CookieBanner() {
           <button
             onClick={decline}
             aria-label="Dismiss banner"
-            className="min-h-[44px] min-w-[44px] -mt-2 -mr-2 inline-flex items-center justify-center text-muted hover:text-white"
+            className="min-h-[44px] min-w-[44px] -mt-2 -mr-2 inline-flex items-center justify-center text-label-3 hover:text-label cursor-pointer"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

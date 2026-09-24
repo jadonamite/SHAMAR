@@ -2,88 +2,21 @@ import { Hono } from 'hono'
 import { readBody } from '../lib/body.js'
 import { sql, getOrCreateUser } from '../lib/db.js'
 import { gatherEvidence, decide, persistDecision, monthlyUsd, type Decision } from '../lib/reasoning.js'
-import { dispatchCancellation, cancellationRecipient, type DispatchResult } from '../lib/dispatch.js'
-import { checkOnchainAuthorization, SCOPES, isAgentConfigured, getAgentAddress, getPolicyContract } from '../lib/agent.js'
-import { calendarClientFor, writeRenewalEvent, writeCancellationEvent, type RenewalEvent } from '../lib/calendar.js'
-import { pollControl, sendTelegram, dispatchReport, getHaltState } from '../lib/telegram.js'
-import { currencySymbol } from '../lib/currency.js'
+import { cancellationRecipient, type DispatchResult } from '../lib/dispatch.js'
+import { executeDecision } from '../lib/execution.js'
+import { authenticateCaller } from '../lib/auth.js'
+import {
+  SCOPES,
+  isAgentConfigured,
+  getAgentAddress,
+  getPolicyContract,
+  resolveAuthorization,
+  type Authorization,
+} from '../lib/agent.js'
+import { calendarClientFor, writeRenewalEvent, type RenewalEvent } from '../lib/calendar.js'
+import { pollControl, getHaltState } from '../lib/telegram.js'
 
 const app = new Hono()
-
-type Authorization = {
-  scope: 'shamar.cancel'
-  granted: boolean
-  checked: boolean
-  source: 'onchain' | 'local' | 'none'
-  agent: string
-  contract: string
-  wallet: string | null
-  expires_at: string | null
-  reason: string
-}
-
-// A locally-held grant with an expiry, used when the chain cannot be consulted.
-// It is the same shape of permission — scoped and time-bounded — but it is only
-// as trustworthy as this server, so the source is always reported.
-function localGrant(): { granted: boolean; expiresAt: string | null } {
-  const until = process.env.LOCAL_GRANT_UNTIL
-  if (!until) return { granted: false, expiresAt: null }
-  const expiry = new Date(until)
-  if (isNaN(expiry.getTime())) return { granted: false, expiresAt: null }
-  return { granted: expiry.getTime() > Date.now(), expiresAt: expiry.toISOString() }
-}
-
-async function resolveAuthorization(dbUserId: string): Promise<Authorization> {
-  const base = {
-    scope: 'shamar.cancel' as const,
-    agent: getAgentAddress(),
-    contract: getPolicyContract(),
-  }
-
-  const [user] = await sql`SELECT wallet_address FROM users WHERE id = ${dbUserId}`
-  const wallet = (user?.wallet_address as string | null) ?? null
-
-  // On-chain verification is the production authority, but a judge or reviewer
-  // running this without a funded wallet should still see the agent work.
-  // Setting ONCHAIN_AUTH=off skips the chain and falls through to the local grant.
-  const onchainEnabled = (process.env.ONCHAIN_AUTH ?? 'on').toLowerCase() !== 'off'
-  const onchainPossible = onchainEnabled && isAgentConfigured() && Boolean(base.contract) && Boolean(wallet)
-  if (onchainPossible) {
-    try {
-      const granted = await checkOnchainAuthorization(wallet as string, SCOPES.CANCEL)
-      if (granted) {
-        return { ...base, granted: true, checked: true, source: 'onchain', wallet, expires_at: null,
-          reason: 'shamar.cancel granted on-chain and unexpired' }
-      }
-      return { ...base, granted: false, checked: true, source: 'onchain', wallet, expires_at: null,
-        reason: 'shamar.cancel not granted, expired, or revoked on-chain' }
-    } catch (err) {
-      // Chain unreachable — fall through to the local grant rather than
-      // treating an RPC failure as a denial.
-      console.warn('[auth] on-chain check failed:', (err as Error).message)
-    }
-  }
-
-  const local = localGrant()
-  if (local.granted) {
-    return { ...base, granted: true, checked: true, source: 'local', wallet, expires_at: local.expiresAt,
-      reason: `No on-chain grant available; acting under a local grant expiring ${local.expiresAt}` }
-  }
-
-  const why = !onchainEnabled
-    ? 'On-chain authorization disabled and no local grant configured'
-    : !isAgentConfigured()
-    ? 'Agent key not configured'
-    : !base.contract
-      ? 'SHAMAR_POLICY_CONTRACT not set'
-      : !wallet
-        ? 'User has no wallet address on record'
-        : 'No grant on-chain and no local grant configured'
-
-  return { ...base, granted: false, checked: onchainPossible, source: 'none', wallet, expires_at: null, reason: why }
-}
-
-
 
 // Every pre-flight check talks to something outside this process. None of them
 // is worth failing the whole run over, so each gets a hard ceiling and a
@@ -105,9 +38,10 @@ function withTimeout<T>(work: Promise<T>, ms: number, fallback: T, label: string
 
 // Reasoning is slow and belongs off the request path. Decisions persisted by a
 // prior run are replayed here so a page load never waits on a model.
+// Preserves full original decision JSON (blast radius, reasoned_by).
 async function cachedDecisions(dbUserId: string): Promise<Decision[] | null> {
   const rows = (await sql`
-    SELECT r.subscription_id, r.action, r.confidence, r.evidence,
+    SELECT r.subscription_id, r.action, r.confidence, r.evidence, r.decision,
            s.merchant, s.amount, s.currency, s.cadence, s.category
     FROM recommendations r
     JOIN subscriptions s ON s.id = r.subscription_id
@@ -117,6 +51,9 @@ async function cachedDecisions(dbUserId: string): Promise<Decision[] | null> {
   if (rows.length === 0) return null
 
   return rows.map((r) => {
+    if (r.decision && typeof r.decision === 'object') {
+      return r.decision as Decision
+    }
     const notes: string[] = Array.isArray(r.evidence) ? r.evidence : []
     const [rationale, ...rest] = notes
     return {
@@ -137,16 +74,18 @@ async function cachedDecisions(dbUserId: string): Promise<Decision[] | null> {
           ? monthlyUsd(Number(r.amount), r.currency, r.cadence)
           : 0,
       requires_authorization: r.action === 'cancel' || r.action === 'pause',
-      reasoned_by: 'model' as const,
+      reasoned_by: 'fallback' as const,
     }
   })
 }
 
-// POST /execute — reason, check authorization, then dispatch.
+// POST /execute — reason, check authorization, then dispatch via single execution pipeline.
 // Dry-run unless { apply: true }. Nothing leaves the building without it.
 app.post('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  const userId = auth.privyDid
+  const dbUserId = auth.dbUserId
 
   const body = await readBody<{ apply: boolean; fresh: boolean; subscription_id: string; account_email: string }>(c)
 
@@ -158,16 +97,29 @@ app.post('/', async (c) => {
   }
 
   const t0 = Date.now()
-  const dbUserId = await getOrCreateUser(userId)
   const [authorization, control, calendar] = await Promise.all([
-    withTimeout(resolveAuthorization(dbUserId), 6000,
-      { scope: 'shamar.cancel' as const, granted: false, checked: false, source: 'none' as const,
-        agent: getAgentAddress(), contract: getPolicyContract(), wallet: null, expires_at: null,
-        reason: 'Authorization check timed out; refusing rather than assuming permission' },
-      'authorization'),
-    withTimeout(pollControl(), 4000,
+    withTimeout(
+      resolveAuthorization(dbUserId),
+      6000,
+      {
+        scope: 'shamar.cancel' as const,
+        granted: false,
+        checked: false,
+        source: 'none' as const,
+        agent: getAgentAddress(),
+        contract: getPolicyContract(),
+        wallet: null,
+        expires_at: null,
+        reason: 'Authorization check timed out; refusing rather than assuming permission',
+      },
+      'authorization'
+    ),
+    withTimeout(
+      pollControl(dbUserId),
+      4000,
       { halted: false, source: 'unavailable' as const, reason: 'Control channel unreachable' },
-      'telegram control'),
+      'telegram control'
+    ),
     withTimeout(calendarClientFor(userId), 4000, null, 'calendar'),
   ])
 
@@ -184,9 +136,10 @@ app.post('/', async (c) => {
   // A serverless function has a hard ceiling that live model calls can exceed,
   // so persisted decisions are replayed unless a fresh pass is asked for.
   const cached = fresh ? null : await cachedDecisions(dbUserId)
-  const reasoned = cached && cached.length === evidence.length
-    ? evidence.map((e) => cached.find((c) => c.subscription_id === e.subscription_id)!).filter(Boolean)
-    : await Promise.all(evidence.map(decide))
+  const reasoned =
+    cached && cached.length === evidence.length
+      ? evidence.map((e) => cached.find((c) => c.subscription_id === e.subscription_id)!).filter(Boolean)
+      : await Promise.all(evidence.map(decide))
   const replayed = Boolean(cached && cached.length === evidence.length)
 
   for (let i = 0; i < evidence.length; i++) {
@@ -212,35 +165,16 @@ app.post('/', async (c) => {
 
     if (decision.action !== 'cancel') continue
 
-    const result = await dispatchCancellation({
+    // Unified execution path: enforces guardrails, Base authorization, Telegram halt, email delivery, and signed action
+    const result = await executeDecision({
       decision,
-      userPrivyDid: userId,
+      trigger: 'manual',
       dbUserId,
+      userPrivyDid: userId,
       accountEmail,
-      authorized: authorization.granted && !control.halted,
       apply,
     })
-    if (control.halted && result.status === 'blocked_unauthorized') {
-      result.reason = 'Halted from Telegram — /resume to re-authorize'
-    }
     dispatches.push(result)
-
-    if (result.status === 'sent') {
-      if (calendar) {
-        calendarWrites.push(
-          await writeCancellationEvent(calendar, { id: e.subscription_id, merchant: e.merchant }, result.recipient ?? '')
-        )
-      }
-      await sendTelegram(
-        dispatchReport({
-          merchant: e.merchant,
-          recipient: result.recipient ?? '',
-          amount: `${currencySymbol(e.currency)}${e.amount}/${e.cadence}`,
-          rationale: decision.rationale,
-          attested: Boolean(result.attestation),
-        })
-      )
-    }
   }
 
   const sent = dispatches.filter((d) => d.status === 'sent')
@@ -271,20 +205,21 @@ app.post('/', async (c) => {
 
 // GET /execute/authorization — current on-chain grant, without reasoning
 app.get('/authorization', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
-  const dbUserId = await getOrCreateUser(userId)
-  return c.json(await resolveAuthorization(dbUserId))
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  return c.json(await resolveAuthorization(auth.dbUserId))
 })
 
 // GET /execute/control — halt state, without draining the Telegram queue
 app.get('/control', async (c) => {
-  return c.json(await getHaltState())
+  const auth = await authenticateCaller(c)
+  return c.json(await getHaltState(auth?.dbUserId))
 })
 
 // POST /execute/control/poll — drain Telegram and apply /stop or /resume
 app.post('/control/poll', async (c) => {
-  return c.json(await pollControl())
+  const auth = await authenticateCaller(c)
+  return c.json(await pollControl(auth?.dbUserId))
 })
 
 // GET /execute/recipient/:merchant — where a cancellation would be sent

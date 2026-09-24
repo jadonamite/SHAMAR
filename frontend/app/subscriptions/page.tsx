@@ -38,6 +38,8 @@ function filterAndSortSubscriptions(
   })
 }
 
+import { apiFetch } from '@/lib/api'
+
 export default function SubscriptionsPage() {
   const { ready, authenticated, user } = usePrivy()
   const router = useRouter()
@@ -46,14 +48,21 @@ export default function SubscriptionsPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('spend')
 
+  const devUser =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('shamar_dev_user')
+      : null
+  const effectiveUserId = user?.id || devUser
+  const isUserAuthenticated = authenticated || Boolean(devUser)
+
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) {
+    if (!isUserAuthenticated) {
       router.replace('/dashboard')
       return
     }
-    if (!user?.id) return
-    fetch('/api/subscriptions', { headers: { 'x-user-id': user.id } })
+    if (!effectiveUserId) return
+    apiFetch('/api/subscriptions', { userId: effectiveUserId })
       .then((r) => r.json())
       .then((d) =>
         setSubs(
@@ -62,7 +71,7 @@ export default function SubscriptionsPage() {
       )
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [ready, authenticated, user?.id, router])
+  }, [ready, isUserAuthenticated, effectiveUserId, router])
 
   const filtered = useMemo(
     () => filterAndSortSubscriptions(subs, filter, sort),
@@ -86,11 +95,12 @@ export default function SubscriptionsPage() {
     id: string,
     status: 'active' | 'paused' | 'cancelled'
   ) => {
-    if (!user?.id) return
+    if (!effectiveUserId) return
     try {
-      await fetch(`/api/subscriptions/${id}/status`, {
+      await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))
@@ -99,7 +109,7 @@ export default function SubscriptionsPage() {
     }
   }
 
-  if (!ready || !authenticated) {
+  if (!ready || !isUserAuthenticated) {
     return (
       <main className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="size-2 rounded-full bg-accent animate-pulse" />

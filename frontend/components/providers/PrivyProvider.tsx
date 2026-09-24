@@ -4,6 +4,7 @@ import {
   PrivyProvider as Privy,
   type PrivyClientConfig,
 } from '@privy-io/react-auth'
+import { base, mainnet } from 'viem/chains'
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''
 
@@ -15,11 +16,14 @@ const configured =
 
 const getPrivyConfig = (): PrivyClientConfig => ({
   appearance: {
-    theme: 'dark',
+    theme: 'light',
     accentColor: '#E50914',
     logo: undefined,
+    walletList: ['metamask', 'coinbase_wallet', 'rainbow', 'wallet_connect'],
   },
-  loginMethods: ['email', 'wallet', 'google'],
+  defaultChain: base,
+  supportedChains: [base, mainnet],
+  loginMethods: ['wallet', 'email', 'google'],
   embeddedWallets: {
     createOnLogin: 'users-without-wallets',
   },

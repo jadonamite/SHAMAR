@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://shamar.namite.xyz'),
   title: 'SHAMAR: an agent you can hand a recurring bill to',
   description:
-    'SHAMAR reads your receipts, works out what cancelling would cost you, asks before every renewal and acts when you stay silent. It checks a grant you hold on Base before it does anything.',
+    'SHAMAR reads your receipts, works out what cancelling would cost you, asks before every renewal and acts when you stay silent. It checks your permissions before it does anything.',
   openGraph: {
     title: 'SHAMAR: an agent you can hand a recurring bill to',
     description: 'It decides what cancelling costs, not just what it saves.',

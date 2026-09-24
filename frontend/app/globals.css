@@ -34,18 +34,6 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  /* Legacy names, kept until every screen is rebuilt on the tokens above */
-  --color-void: var(--canvas);
-  --color-elevated: var(--surface-2);
-  --color-foreground: var(--label);
-  --color-secondary: var(--label-2);
-  --color-muted: var(--label-3);
-  --color-border-subtle: var(--separator);
-  --color-sam-red: var(--accent-fill);
-  --color-sam-dim: var(--accent-hover);
-  --color-sam-success: var(--success);
-  --color-sam-warning: var(--warning);
-
   /* Radius: control, tile, card, section, pill */
   --radius-control: 10px;
   --radius-tile: 16px;
@@ -85,18 +73,6 @@
   --motion-base: 250ms;
   --motion-enter: 350ms;
 
-  /* Legacy variable names */
-  --bg-void: var(--canvas);
-  --bg-surface: var(--surface);
-  --bg-elevated: var(--surface-2);
-  --text-primary: var(--label);
-  --text-secondary: var(--label-2);
-  --text-muted: var(--label-3);
-  --border-subtle: var(--separator);
-  --border-strong: var(--separator-strong);
-  --border-red: rgba(217, 0, 18, 0.3);
-  --accent-red: var(--accent-fill);
-  --accent-dim: var(--accent-hover);
   --min-touch-target: 44px;
   --font-heading: var(--font-sans);
 }
@@ -249,3 +225,24 @@ body {
     background: var(--surface);
   }
 }
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    color-mix(in srgb, var(--surface) 80%, var(--surface-2)) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+

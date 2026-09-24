@@ -25,13 +25,14 @@ export default function Button({
   }
 
   const variantClasses = {
-    primary: 'bg-sam-red text-white hover:bg-sam-dim border-transparent',
+    primary:
+      'bg-accent text-on-accent hover:bg-accent-hover border-transparent shadow-xs',
     secondary:
-      'bg-transparent text-foreground hover:bg-white/5 border-[var(--border-strong)]',
+      'bg-surface text-label hover:bg-surface-2 border-separator shadow-2xs',
     destructive:
-      'bg-sam-red/15 text-sam-red hover:bg-sam-red/25 border-sam-red/40',
+      'bg-accent-soft text-accent hover:bg-accent/20 border-accent/30',
     ghost:
-      'bg-transparent text-secondary hover:text-foreground border-transparent hover:bg-white/5',
+      'bg-transparent text-label-2 hover:text-label border-transparent hover:bg-surface-2',
   }
 
   return (

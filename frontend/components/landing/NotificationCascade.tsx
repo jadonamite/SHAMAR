@@ -116,7 +116,7 @@ export default function NotificationCascade() {
   return (
     <div className="flex w-full flex-col gap-3" aria-hidden>
       <div className="flex items-center justify-between px-2 pt-1">
-        <span className="type-caption text-on-inverse/60">
+        <span className="type-caption font-semibold text-label-2">
           Coming up this month
         </span>
         <motion.span
@@ -159,7 +159,7 @@ export default function NotificationCascade() {
                     ease: [0.16, 1, 0.3, 1],
                     scale: { duration: 0.3, delay: flagDelay, ease: 'easeOut' },
                   }}
-                  className={`flex items-center gap-3 rounded-[var(--radius-tile)] bg-surface px-3.5 py-3.5 text-label shadow-[var(--shadow-float)] ${
+                  className={`flex items-center gap-3 rounded-[var(--radius-tile)] border border-black/[0.04] bg-surface/95 px-3.5 py-3.5 text-label shadow-[0_2px_8px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] backdrop-blur-sm ${
                     isFlagged ? 'ring-2 ring-accent' : ''
                   }`}
                 >
@@ -167,7 +167,7 @@ export default function NotificationCascade() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p
-                        className={`type-footnote truncate font-semibold ${isRemoved ? 'line-through' : ''}`}
+                        className={`type-footnote truncate font-semibold ${isRemoved ? 'line-through text-label-3' : ''}`}
                       >
                         {n.name}
                       </p>
@@ -201,10 +201,10 @@ export default function NotificationCascade() {
         </div>
       </div>
 
-      <div className="flex items-end justify-between rounded-[var(--radius-tile)] bg-inverse-raised px-4 py-3">
+      <div className="flex items-end justify-between rounded-[var(--radius-tile)] border border-black/[0.05] bg-white/80 px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.03)] backdrop-blur-md">
         <div>
-          <p className="type-caption text-on-inverse/60">You pay each month</p>
-          <motion.p className="type-title-2 tabular text-on-inverse">
+          <p className="type-caption text-label-3">You pay each month</p>
+          <motion.p className="type-title-2 tabular font-semibold text-label">
             {totalText}
           </motion.p>
         </div>
@@ -218,10 +218,10 @@ export default function NotificationCascade() {
               transition={{ duration: 0.4 }}
               className="text-right"
             >
-              <p className="type-footnote font-semibold text-success-on-inverse">
+              <p className="type-footnote font-semibold text-success">
                 Saved ${(TOTAL - KEPT).toFixed(2)} a month
               </p>
-              <p className="type-caption text-on-inverse/60">
+              <p className="type-caption text-label-3">
                 2 you ignored, both cancelled
               </p>
             </motion.div>

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import { apiFetch } from '@/lib/api'
 import { normalizeAction } from '@/lib/normalize'
 import { formatMoney } from '@/lib/format'
 
@@ -27,16 +28,27 @@ type ActionRecord = {
   status: string
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  cancel: '#E50914',
-  pause: '#D97706',
-  remind: '#3B82F6',
-  resume: '#16A34A',
-  analyze: '#A78BFA',
-}
-
-function formatAmount(amount: number, currency = 'USD') {
-  return formatMoney(Number(amount), currency)
+const TYPE_BADGES: Record<string, { label: string; badgeClass: string }> = {
+  cancel: {
+    label: 'Cancel',
+    badgeClass: 'text-accent bg-accent-soft border-accent/30',
+  },
+  pause: {
+    label: 'Pause',
+    badgeClass: 'text-warning bg-warning/10 border-warning/30',
+  },
+  remind: {
+    label: 'Remind',
+    badgeClass: 'text-label bg-surface-2 border-separator',
+  },
+  resume: {
+    label: 'Resume',
+    badgeClass: 'text-success bg-success/10 border-success/30',
+  },
+  analyze: {
+    label: 'Analyze',
+    badgeClass: 'text-label-2 bg-surface-2 border-separator',
+  },
 }
 
 function formatDate(iso: string) {
@@ -48,33 +60,41 @@ function formatDate(iso: string) {
 }
 
 export default function AuditPage() {
-  const { ready, authenticated, user, login } = usePrivy()
+  const { ready, authenticated, user } = usePrivy()
   const router = useRouter()
 
   const [actions, setActions] = useState<ActionRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [reversing, setReversing] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState<'all' | 'reversible' | 'reversed'>('all')
+  const [copiedSig, setCopiedSig] = useState<string | null>(null)
+
+  const devUser =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('shamar_dev_user')
+      : null
+  const effectiveUserId = user?.id || devUser
+  const isUserAuthenticated = authenticated || Boolean(devUser)
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) {
+    if (!isUserAuthenticated) {
       router.replace('/dashboard')
       return
     }
-    if (!user?.id) return
-    load()
-  }, [ready, authenticated, user?.id])
+    if (!effectiveUserId) return
+    load(effectiveUserId)
+  }, [ready, isUserAuthenticated, effectiveUserId])
 
-  async function load() {
+  async function load(uid: string) {
     setLoading(true)
     try {
-      const res = await fetch('/api/actions', {
-        headers: { 'x-user-id': user!.id },
-      })
-      if (res.ok)
+      const res = await apiFetch('/api/actions', { userId: uid })
+      if (res.ok) {
         setActions(((await res.json()).actions ?? []).map(normalizeAction))
+      }
     } catch {
+      // offline
     } finally {
       setLoading(false)
     }
@@ -84,9 +104,9 @@ export default function AuditPage() {
     if (reversing[action.id]) return
     setReversing((prev) => ({ ...prev, [action.id]: true }))
     try {
-      const res = await fetch(`/api/actions/${action.id}/reverse`, {
+      const res = await apiFetch(`/api/actions/${action.id}/reverse`, {
         method: 'PATCH',
-        headers: { 'x-user-id': user!.id },
+        userId: effectiveUserId ?? undefined,
       })
       if (res.ok) {
         setActions((prev) =>
@@ -98,6 +118,7 @@ export default function AuditPage() {
         )
       }
     } catch {
+      // offline
     } finally {
       setReversing((prev) => ({ ...prev, [action.id]: false }))
     }
@@ -113,114 +134,79 @@ export default function AuditPage() {
     (a) => a.reversible && !a.reversed_at
   ).length
 
-  if (!ready) return null
-
-  if (!authenticated) {
-    return (
-      <main className="min-h-screen bg-void flex items-center justify-center">
-        <motion.button
-          onClick={login}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="px-8 py-3 text-sm font-semibold uppercase tracking-widest cursor-pointer"
-          style={{
-            fontFamily: 'var(--font-sans)',
-            background: '#E50914',
-            color: '#fff',
-            borderRadius: '2px',
-          }}
-        >
-          Connect Wallet
-        </motion.button>
-      </main>
-    )
-  }
+  if (!ready || !authenticated) return null
 
   return (
-    <main className="min-h-screen bg-void flex flex-col justify-between">
+    <main className="min-h-screen bg-canvas text-label flex flex-col justify-between">
       <TopNav
         title="Audit Log"
         rightMeta={
           reversibleCount > 0 ? (
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#D97706',
-                fontSize: '11px',
-              }}
-            >
+            <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-warning/10 border border-warning/30 text-warning">
               {reversibleCount} reversible
             </span>
           ) : null
         }
       />
 
-      <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-6">
-        {/* Filters */}
-        {actions.length > 0 && (
-          <div className="flex gap-2">
-            {(['all', 'reversible', 'reversed'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className="px-3 py-1 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  background: filter === f ? '#E50914' : 'transparent',
-                  color: filter === f ? '#fff' : '#525252',
-                  border: `1px solid ${filter === f ? '#E50914' : 'rgba(255,255,255,0.06)'}`,
-                  borderRadius: '2px',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {f}
-              </button>
-            ))}
+      <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
+        <div className="flex items-baseline justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="type-title-1 font-[600] text-label tracking-tight">
+              Action Audit Log
+            </h1>
+            <p className="type-callout text-label-2">
+              Cryptographically signed EIP-191 attestations for every agent
+              action.
+            </p>
           </div>
-        )}
+
+          {actions.length > 0 && (
+            <div className="flex items-center gap-1 rounded-full bg-surface-2 p-1 border border-separator/80">
+              {(['all', 'reversible', 'reversed'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={`min-h-[32px] px-3.5 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer capitalize ${
+                    filter === f
+                      ? 'bg-surface text-label shadow-2xs border border-separator'
+                      : 'text-label-3 hover:text-label'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#525252',
-                fontSize: '12px',
-              }}
-            >
-              Loading...
-            </span>
+          <div className="py-20 text-center text-label-3 type-footnote">
+            Loading cryptographic attestations…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <p
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#525252',
-                fontSize: '13px',
-              }}
-            >
+          <div className="flex flex-col items-center gap-2 py-20 text-center rounded-[var(--radius-card)] bg-surface border border-separator p-8">
+            <p className="type-callout text-label font-medium">
               {actions.length === 0
-                ? 'No actions logged yet.'
+                ? 'No agent actions recorded yet.'
                 : 'No actions match this filter.'}
             </p>
             {actions.length === 0 && (
-              <p
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#3a3a3a',
-                  fontSize: '12px',
-                }}
-              >
-                Actions appear here when you approve recommendations.
+              <p className="type-caption text-label-3">
+                When SHAMAR executes a cancellation, pause, or renewal notice,
+                it generates a signed attestation displayed here.
               </p>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <AnimatePresence>
               {filtered.map((action, i) => {
-                const color = TYPE_COLORS[action.type] ?? '#525252'
+                const badge = TYPE_BADGES[action.type] ?? {
+                  label: action.type,
+                  badgeClass: 'text-label-2 bg-surface-2 border-separator',
+                }
                 const isReversed = !!action.reversed_at
                 const canUndo = action.reversible && !isReversed
 
@@ -228,132 +214,82 @@ export default function AuditPage() {
                   <motion.div
                     key={action.id}
                     initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="flex items-center justify-between px-4 py-3.5"
-                    style={{
-                      background: '#141414',
-                      border: `1px solid ${isReversed ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.06)'}`,
-                      borderRadius: '2px',
-                      opacity: isReversed ? 0.5 : 1,
-                    }}
+                    animate={{ opacity: isReversed ? 0.6 : 1, y: 0 }}
+                    transition={{ delay: i * 0.02 }}
+                    className={`p-4 sm:p-5 flex items-center justify-between gap-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-xs flex-wrap sm:flex-nowrap ${
+                      isReversed ? 'bg-surface/50' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-4 min-w-0">
-                      {/* Action type dot */}
-                      <div
-                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ background: color }}
-                      />
-
-                      <div className="flex flex-col gap-0.5 min-w-0">
+                      <div className="min-w-0 flex flex-col gap-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link
                             href={`/subscriptions/${action.subscription_id}`}
-                            style={{
-                              fontFamily: 'var(--font-sans)',
-                              color: '#A3A3A3',
-                              fontSize: '13px',
-                              textDecoration: 'none',
-                            }}
+                            className="type-headline font-semibold text-label hover:underline truncate"
                           >
                             {action.merchant}
                           </Link>
                           <span
-                            className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-                            style={{
-                              fontFamily: 'var(--font-sans)',
-                              color,
-                              border: `1px solid ${color}40`,
-                              borderRadius: '2px',
-                            }}
+                            className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${badge.badgeClass}`}
                           >
-                            {action.type}
+                            {badge.label}
                           </span>
                           {isReversed && (
-                            <span
-                              style={{
-                                fontFamily: 'var(--font-mono)',
-                                color: '#3a3a3a',
-                                fontSize: '10px',
-                              }}
-                            >
+                            <span className="type-caption text-[11px] font-medium text-label-3 bg-surface-2 px-2 py-0.5 rounded-full border border-separator">
                               reversed
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            style={{
-                              fontFamily: 'var(--font-mono)',
-                              color: '#525252',
-                              fontSize: '11px',
-                            }}
-                          >
-                            {formatAmount(action.amount, action.currency)}
+
+                        <div className="flex items-center gap-2 text-xs text-label-3 flex-wrap">
+                          <span className="font-semibold text-label-2 tabular">
+                            {formatMoney(action.amount, action.currency)}
                           </span>
-                          <span style={{ color: '#3a3a3a', fontSize: '10px' }}>
-                            ·
-                          </span>
-                          <span
-                            style={{
-                              fontFamily: 'var(--font-mono)',
-                              color: '#3a3a3a',
-                              fontSize: '10px',
-                            }}
-                          >
+                          <span>·</span>
+                          <span className="capitalize">
                             {action.triggered_by}
                           </span>
                           {action.signature && (
                             <>
-                              <span
-                                style={{ color: '#3a3a3a', fontSize: '10px' }}
-                              >
-                                ·
+                              <span>·</span>
+                              <span className="font-mono text-[11px] text-label-3">
+                                EIP-191: {action.signature.slice(0, 14)}…
                               </span>
-                              <span
-                                style={{
-                                  fontFamily: 'var(--font-mono)',
-                                  color: '#3a3a3a',
-                                  fontSize: '10px',
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (action.signature) {
+                                    await navigator.clipboard.writeText(
+                                      action.signature
+                                    )
+                                    setCopiedSig(action.id)
+                                    setTimeout(() => setCopiedSig(null), 2000)
+                                  }
                                 }}
+                                className="type-caption text-[11px] text-accent hover:underline font-medium cursor-pointer"
                               >
-                                {action.signature.slice(0, 16)}…
-                              </span>
+                                {copiedSig === action.id ? 'Copied!' : 'Copy'}
+                              </button>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          color: '#525252',
-                          fontSize: '11px',
-                        }}
-                      >
+                    <div className="flex items-center gap-3 shrink-0 ml-auto sm:ml-0">
+                      <span className="type-caption font-mono text-label-3">
                         {formatDate(action.executed_at)}
                       </span>
+
                       {canUndo && (
-                        <motion.button
+                        <button
+                          type="button"
                           onClick={() => reverse(action)}
                           disabled={reversing[action.id]}
-                          whileHover={{
-                            scale: reversing[action.id] ? 1 : 1.02,
-                          }}
-                          whileTap={{ scale: reversing[action.id] ? 1 : 0.98 }}
-                          className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest cursor-pointer"
-                          style={{
-                            fontFamily: 'var(--font-sans)',
-                            background: 'transparent',
-                            color: reversing[action.id] ? '#525252' : '#16A34A',
-                            border: `1px solid ${reversing[action.id] ? 'rgba(255,255,255,0.06)' : 'rgba(22,163,74,0.4)'}`,
-                            borderRadius: '2px',
-                          }}
+                          className="touch-target inline-flex min-h-[44px] items-center rounded-full border border-separator bg-surface px-4 type-footnote font-semibold text-accent hover:bg-accent-soft active:scale-[0.97] transition-all cursor-pointer"
                         >
-                          {reversing[action.id] ? '...' : 'Undo'}
-                        </motion.button>
+                          {reversing[action.id] ? 'Undoing…' : 'Undo'}
+                        </button>
                       )}
                     </div>
                   </motion.div>
@@ -363,6 +299,7 @@ export default function AuditPage() {
           </div>
         )}
       </div>
+
       <AppFooter />
     </main>
   )

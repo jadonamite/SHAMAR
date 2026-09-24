@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
 import BrandLogo from '@/components/ui/BrandLogo'
+import { apiFetch } from '@/lib/api'
 
 interface ConnectGmailProps {
   onConnected?: () => void
@@ -11,10 +13,40 @@ interface ConnectGmailProps {
 
 export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
   const { user } = usePrivy()
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleConnect() {
-    if (!user?.id) return
-    window.location.href = `/api/gmail/auth?user_id=${user.id}`
+  const effectiveUserId =
+    user?.id ||
+    (typeof window !== 'undefined'
+      ? localStorage.getItem('shamar_dev_user')
+      : null)
+
+  async function handleConnect() {
+    if (!effectiveUserId) return
+    setConnecting(true)
+    setError(null)
+    try {
+      const res = await apiFetch('/api/gmail/connect', {
+        method: 'POST',
+        userId: effectiveUserId,
+      })
+      if (!res.ok) {
+        setError("We couldn't start the Gmail connection. Please try again.")
+        setConnecting(false)
+        return
+      }
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError("We couldn't start the Gmail connection. Please try again.")
+        setConnecting(false)
+      }
+    } catch {
+      setError('Network error starting Gmail connection. Please try again.')
+      setConnecting(false)
+    }
   }
 
   if (compact) {
@@ -22,12 +54,13 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
       <motion.button
         type="button"
         onClick={handleConnect}
+        disabled={connecting}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="touch-target inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
+        className="touch-target inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-60 cursor-pointer"
       >
         <BrandLogo name="gmail" size={20} />
-        <span>Connect Gmail</span>
+        <span>{connecting ? 'Connecting…' : 'Connect Gmail'}</span>
       </motion.button>
     )
   }
@@ -41,9 +74,6 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
     >
       <div className="relative">
         <BrandLogo name="gmail" size={72} />
-        <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-success text-white text-[11px] font-bold ring-2 ring-surface">
-          ✓
-        </span>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -71,20 +101,30 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
         ))}
       </div>
 
+      {error && <p className="type-caption text-danger text-center">{error}</p>}
+
       <motion.button
         type="button"
         onClick={handleConnect}
+        disabled={connecting}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="touch-target flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
+        className="touch-target flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-60 cursor-pointer"
       >
-        <span>Connect & Scan Receipts</span>
+        <span>{connecting ? 'Connecting…' : 'Connect & Scan Receipts'}</span>
         <span>→</span>
       </motion.button>
 
-      <p className="type-caption text-label-3">
-        Redirects to Google&rsquo;s official OAuth consent screen
-      </p>
+      <div className="flex flex-col gap-1 text-center">
+        <p className="type-caption text-label-3">
+          Redirects to Google&rsquo;s official OAuth consent screen
+        </p>
+        <p className="text-[11px] text-label-3 leading-snug">
+          Google verification in progress: if a prompt appears, click{' '}
+          <span className="font-semibold text-label-2">Advanced</span> then{' '}
+          <span className="font-semibold text-label-2">Go to SHAMAR</span>.
+        </p>
+      </div>
     </motion.div>
   )
 }

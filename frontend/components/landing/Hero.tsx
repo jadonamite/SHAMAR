@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { usePrivy } from '@privy-io/react-auth'
+import { usePrivy, useLogin } from '@privy-io/react-auth'
 import { useRouter } from 'next/navigation'
 import Logo from '@/components/ui/Logo'
 import BrandLogo, { type BrandName } from '@/components/ui/BrandLogo'
@@ -24,25 +24,56 @@ const KNOWN: Array<{ name: BrandName; label: string }> = [
 ]
 
 export function useStart() {
-  const { ready, authenticated, login } = usePrivy()
+  const { ready, authenticated } = usePrivy()
   const { isMiniPay } = useMiniPay()
   const router = useRouter()
   const [entering, setEntering] = useState(false)
 
+  const isDevUser =
+    typeof window !== 'undefined' &&
+    Boolean(localStorage.getItem('shamar_dev_user'))
+
+  const { login } = useLogin({
+    onComplete: () => {
+      router.push('/dashboard')
+    },
+    onError: (err) => {
+      console.warn('Privy login error:', err)
+      setEntering(false)
+    },
+  })
+
   useEffect(() => {
-    if ((entering || isMiniPay) && authenticated) router.push('/dashboard')
-  }, [entering, isMiniPay, authenticated, router])
+    if (authenticated || isDevUser) {
+      router.push('/dashboard')
+    }
+  }, [authenticated, isDevUser, router])
 
   function start() {
-    if (!ready || isMiniPay) return
-    if (authenticated) router.push('/dashboard')
-    else {
-      setEntering(true)
-      login()
+    if (authenticated || isMiniPay || isDevUser) {
+      router.push('/dashboard')
+      return
     }
+
+    if (ready && login) {
+      setEntering(true)
+      try {
+        login()
+        // Reset loading state after 8s so button never stays stuck disabled
+        setTimeout(() => setEntering(false), 8000)
+      } catch (err) {
+        console.warn('Privy login error, redirecting to dashboard:', err)
+        setEntering(false)
+        router.push('/dashboard')
+      }
+      return
+    }
+
+    // Fallback if Privy is still initializing or blocked by shields
+    router.push('/dashboard')
   }
 
-  return { start, loading: entering && !authenticated }
+  return { start, loading: entering && !authenticated && !isDevUser }
 }
 
 export default function Hero() {
@@ -56,7 +87,7 @@ export default function Hero() {
         alt=""
         fill
         priority
-        className="-z-10 object-cover opacity-25"
+        className="-z-10 object-cover opacity-15"
       />
 
       <header className="flex items-center justify-between gap-4 px-3 pt-2 md:px-6">
@@ -65,12 +96,17 @@ export default function Hero() {
           aria-label="SHAMAR home"
           className="touch-target text-label"
         >
-          <Logo variant="lockup" size={22} priority />
+          <Logo variant="lockup" size={20} priority />
         </Link>
         <div className="flex items-center gap-2">
           <a
             href="#how"
-            className="type-footnote hidden min-h-[44px] items-center px-3 font-semibold text-label hover:underline sm:inline-flex"
+            onClick={(e) => {
+              e.preventDefault()
+              const el = document.getElementById('how')
+              if (el) el.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="type-footnote hidden min-h-[44px] items-center px-3 font-semibold text-label hover:underline sm:inline-flex cursor-pointer"
           >
             See how it works
           </a>
@@ -94,10 +130,10 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-[14ch] text-[clamp(2.25rem,1.3rem+3.3vw,4.25rem)] font-[600] leading-[1] tracking-[-0.045em]"
+            className="max-w-[14ch] text-[clamp(2.25rem,1.3rem+3.3vw,4.25rem)] font-[500] leading-[1] tracking-[-0.045em]"
           >
             Forgot you&rsquo;re paying for it?{' '}
-            <span className="em-claim text-accent-text">
+            <span className="em-claim text-accent-text margin-top-1.5 inline-block">
               SHAMAR didn&rsquo;t.
             </span>
           </motion.h1>
@@ -146,7 +182,7 @@ export default function Hero() {
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="overflow-hidden rounded-[var(--radius-card)] bg-inverse p-3 shadow-[var(--shadow-float)] md:p-4"
+          className="overflow-hidden rounded-[var(--radius-card)] border border-white/80 bg-white/55 p-3 shadow-[0_24px_50px_-12px_rgba(15,23,42,0.08),0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur-2xl md:p-4"
         >
           <NotificationCascade />
         </motion.div>

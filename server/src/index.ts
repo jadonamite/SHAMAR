@@ -8,8 +8,12 @@ if (typeof net.setDefaultAutoSelectFamily === 'function') {
   net.setDefaultAutoSelectFamily(false)
 }
 
+import { startTelegramPoller } from './lib/telegram.js'
+
 const port = Number(process.env.PORT ?? 3001)
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Shamar server running on http://localhost:${port}`)
+  startTelegramPoller()
 })
+

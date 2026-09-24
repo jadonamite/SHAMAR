@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { usePrivy } from '@privy-io/react-auth'
 import Link from 'next/link'
-import AgentStateBadge from '@/components/app/AgentStateBadge'
+import AgentStateBadge, {
+  type AgentStateKind,
+} from '@/components/app/AgentStateBadge'
 import EmailTierNotice from '@/components/app/EmailTierNotice'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
-
-const SERVER = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001'
+import { apiFetch } from '@/lib/api'
 
 type BlastRadius = {
   data_loss: string
@@ -69,29 +71,22 @@ type RunResult = {
   dispatches: Dispatch[]
 }
 
-const ACTION_STYLE: Record<
-  string,
-  { bg: string; text: string; border: string }
-> = {
+const ACTION_BADGES: Record<string, { badgeClass: string; label: string }> = {
   cancel: {
-    bg: 'rgba(229, 9, 20, 0.15)',
-    text: '#E50914',
-    border: 'rgba(229, 9, 20, 0.4)',
+    badgeClass: 'text-accent bg-accent-soft border-accent/30',
+    label: 'Cancel',
   },
   pause: {
-    bg: 'rgba(217, 119, 6, 0.15)',
-    text: '#D97706',
-    border: 'rgba(217, 119, 6, 0.4)',
+    badgeClass: 'text-warning bg-warning/10 border-warning/30',
+    label: 'Pause',
   },
   remind: {
-    bg: 'rgba(59, 130, 246, 0.15)',
-    text: '#3B82F6',
-    border: 'rgba(59, 130, 246, 0.4)',
+    badgeClass: 'text-label bg-surface-2 border-separator',
+    label: 'Remind',
   },
   keep: {
-    bg: 'rgba(255, 255, 255, 0.05)',
-    text: '#A3A3A3',
-    border: 'rgba(255, 255, 255, 0.1)',
+    badgeClass: 'text-success bg-success/10 border-success/30',
+    label: 'Keep',
   },
 }
 
@@ -106,17 +101,17 @@ function IntegrationBadge({
 }) {
   return (
     <div
-      className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wide border transition-colors"
-      style={{
-        borderColor: live ? 'rgba(22, 163, 74, 0.4)' : 'var(--border-subtle)',
-        backgroundColor: live ? 'rgba(22, 163, 74, 0.08)' : 'var(--bg-surface)',
-        color: live ? 'var(--text-primary)' : 'var(--text-muted)',
-      }}
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wide border transition-colors ${
+        live
+          ? 'bg-success/10 border-success/30 text-success'
+          : 'bg-surface-2 border-separator text-label-3'
+      }`}
       title={detail}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: live ? '#16A34A' : '#525252' }}
+        className={`size-1.5 rounded-full ${
+          live ? 'bg-success' : 'bg-label-3'
+        }`}
       />
       <span>{name}</span>
     </div>
@@ -135,30 +130,19 @@ function TelemetryStat({
   accent?: string
 }) {
   return (
-    <div
-      className="flex-1 min-w-[120px] p-4 rounded border transition-colors"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderColor: 'var(--border-subtle)',
-      }}
-    >
-      <div
-        className="text-[10px] uppercase tracking-[0.14em] text-muted mb-1 font-semibold"
-        style={{ fontFamily: 'var(--font-sans)' }}
-      >
+    <div className="flex-1 min-w-[120px] p-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-2xs">
+      <div className="type-eyebrow text-[10px] text-label-3 mb-1 font-semibold">
         {label}
       </div>
       <div
-        className="text-2xl font-bold tabular-nums"
-        style={{
-          color: accent ?? 'var(--text-primary)',
-          fontFamily: 'var(--font-mono)',
-        }}
+        className={`text-2xl font-bold tabular-nums font-mono ${
+          accent ?? 'text-label'
+        }`}
       >
         {value}
       </div>
       {sublabel && (
-        <div className="text-[10px] text-muted font-mono mt-0.5">
+        <div className="text-[10px] text-label-3 font-mono mt-0.5">
           {sublabel}
         </div>
       )}
@@ -167,7 +151,8 @@ function TelemetryStat({
 }
 
 export default function RunPage() {
-  const [userId, setUserId] = useState('did:privy:cmq204il7013g0cjljp9jf4ab')
+  const { ready, authenticated, user, login } = usePrivy()
+  const [devUser, setDevUser] = useState<string | null>(null)
   const [result, setResult] = useState<RunResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -176,32 +161,45 @@ export default function RunPage() {
   )
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('user')
-    if (q) setUserId(q)
-  }, [])
-
-  const refreshHalt = useCallback(async () => {
-    try {
-      const res = await fetch(`${SERVER}/execute/control`)
-      setHalt(await res.json())
-    } catch {
-      setHalt(null)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shamar_dev_user')
+      if (saved) setDevUser(saved)
     }
   }, [])
 
+  const effectiveUserId = user?.id || devUser
+  const isUserAuthenticated = authenticated || Boolean(devUser)
+
+  const refreshHalt = useCallback(async () => {
+    if (!effectiveUserId) return
+    try {
+      const res = await apiFetch('/api/execute/control', {
+        userId: effectiveUserId,
+      })
+      if (res.ok) {
+        setHalt(await res.json())
+      }
+    } catch {
+      setHalt(null)
+    }
+  }, [effectiveUserId])
+
   useEffect(() => {
+    if (!isUserAuthenticated || !effectiveUserId) return
     refreshHalt()
-    const t = setInterval(refreshHalt, 4000)
+    const t = setInterval(refreshHalt, 5000)
     return () => clearInterval(t)
-  }, [refreshHalt])
+  }, [isUserAuthenticated, effectiveUserId, refreshHalt])
 
   async function run(apply: boolean) {
+    if (!effectiveUserId) return
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${SERVER}/execute`, {
+      const res = await apiFetch('/api/execute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
         body: JSON.stringify({ apply }),
       })
       const data = await res.json()
@@ -218,7 +216,7 @@ export default function RunPage() {
   const r = result
 
   // Derive agent state for R23 badge
-  const agentStateKind = halt?.halted
+  const agentStateKind: AgentStateKind = halt?.halted
     ? 'halted'
     : r
       ? r.authorization.granted
@@ -226,36 +224,56 @@ export default function RunPage() {
         : 'blocked'
       : 'checking'
 
+  if (!ready) {
+    return (
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-2 rounded-full bg-accent animate-pulse" />
+      </main>
+    )
+  }
+
+  if (!isUserAuthenticated) {
+    return (
+      <main className="min-h-screen bg-canvas text-label flex flex-col justify-between">
+        <TopNav title="Operational Run" />
+        <div className="flex-1 max-w-md w-full mx-auto px-4 py-20 flex flex-col items-center justify-center text-center gap-6">
+          <div className="rounded-[var(--radius-card)] bg-surface p-8 border border-separator/80 shadow-xs flex flex-col items-center gap-4 w-full">
+            <h1 className="type-title-1 font-[600] text-label">
+              Sign in to Run Pipeline
+            </h1>
+            <p className="type-callout text-label-2">
+              Connect your wallet or account to run autonomous evaluations and
+              live dispatches.
+            </p>
+            <button
+              type="button"
+              onClick={login}
+              className="touch-target flex min-h-[48px] w-full items-center justify-center rounded-full bg-accent px-6 type-headline font-semibold text-white shadow-xs hover:bg-accent-hover transition-colors cursor-pointer"
+            >
+              Connect Wallet
+            </button>
+          </div>
+        </div>
+        <AppFooter />
+      </main>
+    )
+  }
+
   return (
-    <main
-      className="min-h-screen flex flex-col justify-between"
-      style={{
-        backgroundColor: 'var(--bg-void)',
-        color: 'var(--text-primary)',
-        fontFamily: 'var(--font-sans)',
-      }}
-    >
+    <main className="min-h-screen bg-canvas text-label flex flex-col justify-between">
       <TopNav title="Operational Run" />
 
       <div className="flex-1 max-w-5xl w-full mx-auto px-4 py-8 md:px-10 space-y-8">
         {/* Navigation & Header */}
-        <header
-          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b"
-          style={{ borderColor: 'var(--border-subtle)' }}
-        >
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-separator/80">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wider text-secondary font-mono">
-                Judge Inspection Console
-              </span>
-            </div>
-            <h1
-              className="text-3xl font-bold tracking-tight mt-1"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <span className="type-eyebrow text-accent font-semibold">
+              Judge Inspection Console
+            </span>
+            <h1 className="type-title-1 font-[600] text-label tracking-tight mt-1">
               SHAMAR Operational Run
             </h1>
-            <p className="text-secondary text-sm mt-1">
+            <p className="type-callout text-label-2 mt-1">
               Autonomous pipeline: Evidence → Judgment → Guardrails →
               Authorization → Dispatch.
             </p>
@@ -276,9 +294,7 @@ export default function RunPage() {
 
         {/* Live Integrations Strip */}
         <section aria-label="System integrations">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-muted mb-2 font-mono">
-            Integrations
-          </div>
+          <div className="type-eyebrow text-label-3 mb-2">Integrations</div>
           <div className="flex flex-wrap gap-2.5">
             <IntegrationBadge
               name="Gmail (Receipts)"
@@ -313,63 +329,51 @@ export default function RunPage() {
         </section>
 
         {/* User Identity and Execution Controls */}
-        <section
-          className="p-5 rounded border space-y-4"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--border-subtle)',
-          }}
-        >
+        <section className="p-6 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <label
-              htmlFor="user-id-input"
-              className="text-xs font-semibold uppercase tracking-wider text-muted font-mono"
-            >
-              Caller Privy DID (User Session)
-            </label>
-            <span className="text-[11px] text-muted font-mono">
-              Parameter: ?user=did:privy:...
+            <div>
+              <h2 className="type-headline font-semibold text-label">
+                Decision Pipeline Runner
+              </h2>
+              <p className="type-caption text-label-2 mt-0.5">
+                Evaluates subscriptions, checks Base policy authorizations,
+                verifies Telegram halt state, and dispatches actions.
+              </p>
+            </div>
+            <span className="type-caption font-mono text-label-3">
+              Mode: {result ? result.mode : 'Idle'}
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 items-center">
-            <input
-              id="user-id-input"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="did:privy:..."
-              className="w-full sm:flex-1 px-3 py-2 text-xs font-mono rounded border transition-colors"
-              style={{
-                backgroundColor: 'var(--bg-void)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-                minHeight: '44px',
-              }}
-            />
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between pt-2">
+            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-surface-2 border border-separator text-xs font-mono text-label-2 w-full sm:w-auto">
+              <span className="size-2 rounded-full bg-success" />
+              <span>
+                Session:{' '}
+                <span className="font-semibold text-label">
+                  {user?.email?.address ??
+                    (user?.wallet?.address
+                      ? `${user.wallet.address.slice(0, 6)}…${user.wallet.address.slice(-4)}`
+                      : effectiveUserId)}
+                </span>
+              </span>
+            </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
+                type="button"
                 onClick={() => run(false)}
                 disabled={busy}
-                className="flex-1 sm:flex-none min-h-[44px] px-5 py-2.5 rounded border text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 cursor-pointer"
-                style={{
-                  borderColor: 'var(--border-strong)',
-                  backgroundColor: 'transparent',
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
+                className="flex-1 sm:flex-none min-h-[44px] px-5 py-2.5 rounded-full border border-separator bg-surface text-xs font-semibold uppercase tracking-wider text-label hover:bg-surface-2 transition-colors disabled:opacity-40 cursor-pointer"
               >
-                {busy ? 'Running…' : 'Dry Run'}
+                {busy ? 'Running…' : 'Simulate (Dry Run)'}
               </button>
 
               <button
+                type="button"
                 onClick={() => run(true)}
                 disabled={busy || Boolean(halt?.halted)}
-                className="flex-1 sm:flex-none min-h-[44px] px-6 py-2.5 rounded text-xs font-semibold uppercase tracking-wider text-white transition-colors disabled:opacity-40 cursor-pointer"
-                style={{
-                  backgroundColor: '#E50914',
-                  fontFamily: 'var(--font-sans)',
-                }}
+                className="flex-1 sm:flex-none min-h-[44px] px-6 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider text-white bg-accent hover:bg-accent-hover shadow-xs transition-all disabled:opacity-40 cursor-pointer"
               >
                 Execute Live
               </button>
@@ -381,19 +385,17 @@ export default function RunPage() {
         {halt?.halted && (
           <div
             role="alert"
-            className="p-4 rounded border text-sm"
-            style={{
-              backgroundColor: 'rgba(229, 9, 20, 0.12)',
-              borderColor: 'rgba(229, 9, 20, 0.4)',
-              color: '#FFFFFF',
-            }}
+            className="p-4 rounded-[var(--radius-card)] border border-accent/40 bg-accent-soft text-sm text-accent-text font-medium"
           >
             <div className="flex items-center gap-2 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-sam-red animate-ping" />
+              <span className="size-2 rounded-full bg-accent animate-pulse" />
               Emergency halt active from Telegram
             </div>
-            <p className="text-secondary text-xs mt-1">
-              Dispatch is strictly blocked until you send <code>/resume</code>{' '}
+            <p className="type-caption text-label-2 mt-1">
+              Dispatch is strictly blocked until you send{' '}
+              <code className="bg-surface px-1.5 py-0.5 rounded font-mono text-accent">
+                /resume
+              </code>{' '}
               to the Telegram bot.
             </p>
           </div>
@@ -403,12 +405,7 @@ export default function RunPage() {
         {error && (
           <div
             role="alert"
-            className="p-4 rounded border text-sm font-mono"
-            style={{
-              backgroundColor: 'rgba(229, 9, 20, 0.1)',
-              borderColor: 'rgba(229, 9, 20, 0.3)',
-              color: '#E50914',
-            }}
+            className="p-4 rounded-[var(--radius-card)] border border-accent/30 bg-accent-soft text-sm font-mono text-accent"
           >
             {error}
           </div>
@@ -424,9 +421,9 @@ export default function RunPage() {
             >
               <TelemetryStat label="Reasoned" value={r.reasoned} />
               <TelemetryStat
-                label="Model / fallback"
+                label="Model / Fallback"
                 value={`${r.reasoned - r.fell_back} / ${r.fell_back}`}
-                accent={r.fell_back === r.reasoned ? '#D97706' : undefined}
+                accent={r.fell_back === r.reasoned ? 'text-warning' : undefined}
                 sublabel={
                   r.fell_back > 0
                     ? 'Deterministic rules used'
@@ -436,22 +433,22 @@ export default function RunPage() {
               <TelemetryStat
                 label="Cancellations"
                 value={r.proposed_cancellations}
-                accent="#E50914"
+                accent="text-accent"
               />
               <TelemetryStat
                 label="Dispatched"
                 value={r.dispatched}
-                accent={r.dispatched ? '#16A34A' : undefined}
+                accent={r.dispatched ? 'text-success' : undefined}
               />
               <TelemetryStat
                 label="Blocked"
                 value={r.blocked}
-                accent={r.blocked ? '#D97706' : undefined}
+                accent={r.blocked ? 'text-warning' : undefined}
               />
               <TelemetryStat
                 label="Saved / mo"
                 value={`$${r.monthly_savings_usd.toFixed(2)}`}
-                accent="#16A34A"
+                accent="text-success"
               />
               <TelemetryStat
                 label="Latency"
@@ -461,39 +458,27 @@ export default function RunPage() {
 
             {/* Authorization & Control Strip */}
             <section className="grid md:grid-cols-2 gap-4 text-sm">
-              <div
-                className="p-5 rounded border"
-                style={{
-                  backgroundColor: 'var(--bg-surface)',
-                  borderColor: 'var(--border-subtle)',
-                }}
-              >
+              <div className="p-5 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-xs">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.14em] text-muted font-mono font-semibold">
+                  <span className="type-eyebrow text-label-3">
                     On-chain Authorization (SHAMARPolicy)
                   </span>
                   <span
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: r.authorization.granted
-                        ? '#16A34A'
-                        : '#E50914',
-                    }}
+                    className={`size-2 rounded-full ${
+                      r.authorization.granted ? 'bg-success' : 'bg-accent'
+                    }`}
                   />
                 </div>
-                <div className="font-semibold text-white">
+                <div className="font-semibold text-label">
                   {r.authorization.granted
                     ? 'shamar.cancel scope granted'
                     : 'Authorization denied'}
                 </div>
-                <p className="text-secondary text-xs mt-1 leading-relaxed">
+                <p className="type-caption text-label-2 mt-1 leading-relaxed">
                   {r.authorization.reason}
                 </p>
                 {r.authorization.contract && (
-                  <div
-                    className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5"
-                    style={{ borderColor: 'var(--border-subtle)' }}
-                  >
+                  <div className="mt-3 pt-3 border-t border-separator/60 text-[11px] font-mono text-label-3 space-y-0.5">
                     <div>
                       Contract: {r.authorization.contract.slice(0, 10)}…
                       {r.authorization.contract.slice(-6)}
@@ -508,34 +493,24 @@ export default function RunPage() {
                 )}
               </div>
 
-              <div
-                className="p-5 rounded border"
-                style={{
-                  backgroundColor: 'var(--bg-surface)',
-                  borderColor: 'var(--border-subtle)',
-                }}
-              >
+              <div className="p-5 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-xs">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.14em] text-muted font-mono font-semibold">
+                  <span className="type-eyebrow text-label-3">
                     Control Channel (Telegram)
                   </span>
                   <span
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: r.control.halted ? '#E50914' : '#16A34A',
-                    }}
+                    className={`size-2 rounded-full ${
+                      r.control.halted ? 'bg-accent' : 'bg-success'
+                    }`}
                   />
                 </div>
-                <div className="font-semibold text-white">
+                <div className="font-semibold text-label">
                   {r.control.halted ? 'Agent Halted' : 'Active / Unhalted'}
                 </div>
-                <p className="text-secondary text-xs mt-1 leading-relaxed">
+                <p className="type-caption text-label-2 mt-1 leading-relaxed">
                   {r.control.reason}
                 </p>
-                <div
-                  className="mt-3 pt-3 border-t text-[11px] font-mono text-muted space-y-0.5"
-                  style={{ borderColor: 'var(--border-subtle)' }}
-                >
+                <div className="mt-3 pt-3 border-t border-separator/60 text-[11px] font-mono text-label-3 space-y-0.5">
                   <div>Source: {r.control.source}</div>
                   <div>Emergency command: Send /stop or /resume</div>
                 </div>
@@ -546,10 +521,10 @@ export default function RunPage() {
             {r.dispatches.length > 0 && (
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs uppercase tracking-[0.14em] text-muted font-mono font-semibold">
+                  <h2 className="type-eyebrow font-semibold text-label">
                     Dispatch Ledger ({r.dispatches.length})
                   </h2>
-                  <span className="text-[11px] text-muted font-mono">
+                  <span className="type-caption font-mono text-label-3">
                     Signed by Agent Key (EIP-191)
                   </span>
                 </div>
@@ -558,32 +533,24 @@ export default function RunPage() {
                   {r.dispatches.map((d) => (
                     <div
                       key={d.subscription_id}
-                      className="p-4 rounded border transition-colors space-y-2"
-                      style={{
-                        backgroundColor: 'var(--bg-surface)',
-                        borderColor: 'var(--border-subtle)',
-                      }}
+                      className="p-5 rounded-[var(--radius-card)] bg-surface border border-separator/80 shadow-xs space-y-2"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-white text-base">
+                          <span className="font-semibold text-label text-base">
                             {d.merchant}
                           </span>
                           <span
-                            className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-mono"
-                            style={{
-                              backgroundColor:
-                                d.status === 'sent'
-                                  ? 'rgba(22,163,74,0.15)'
-                                  : 'rgba(229,9,20,0.15)',
-                              color:
-                                d.status === 'sent' ? '#16A34A' : '#E50914',
-                            }}
+                            className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-bold font-mono border ${
+                              d.status === 'sent'
+                                ? 'bg-success/10 border-success/30 text-success'
+                                : 'bg-accent-soft border-accent/30 text-accent'
+                            }`}
                           >
                             {d.status.replace(/_/g, ' ')}
                           </span>
                           {!d.reversible && d.status === 'sent' && (
-                            <span className="text-[10px] uppercase tracking-wider text-amber-500 font-mono">
+                            <span className="text-[10px] uppercase tracking-wider text-warning font-mono font-semibold">
                               One-way door
                             </span>
                           )}
@@ -591,7 +558,7 @@ export default function RunPage() {
 
                         {d.signature && (
                           <span
-                            className="text-[10px] font-mono text-muted"
+                            className="text-[10px] font-mono text-label-3"
                             title={`EIP-191 signature: ${d.signature}`}
                           >
                             Sig: {d.signature.slice(0, 14)}…
@@ -600,7 +567,7 @@ export default function RunPage() {
                         )}
                       </div>
 
-                      <p className="text-secondary text-xs">{d.reason}</p>
+                      <p className="type-caption text-label-2">{d.reason}</p>
 
                       {/* Honest Email Tier Weakness callout when dispatched */}
                       {d.status === 'sent' && (
@@ -619,10 +586,10 @@ export default function RunPage() {
             {/* Decisions & Blast Radius */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs uppercase tracking-[0.14em] text-muted font-mono font-semibold">
-                  Decisions and blast radius ({r.decisions.length})
+                <h2 className="type-eyebrow font-semibold text-label">
+                  Decisions and Blast Radius ({r.decisions.length})
                 </h2>
-                <span className="text-[11px] text-muted font-mono">
+                <span className="type-caption font-mono text-label-3">
                   Guardrails applied
                 </span>
               </div>
@@ -632,39 +599,32 @@ export default function RunPage() {
                   const downgraded = d.blast_radius.notes.some((n) =>
                     n.toLowerCase().includes('downgraded')
                   )
-                  const style = ACTION_STYLE[d.action] ?? ACTION_STYLE.keep
+                  const badge = ACTION_BADGES[d.action] ?? ACTION_BADGES.keep
 
                   return (
                     <div
                       key={d.subscription_id}
-                      className="p-5 rounded border transition-colors space-y-3"
-                      style={{
-                        backgroundColor: 'var(--bg-surface)',
-                        borderColor: downgraded
-                          ? 'rgba(229,9,20,0.4)'
-                          : 'var(--border-subtle)',
-                      }}
+                      className={`p-5 rounded-[var(--radius-card)] bg-surface border transition-colors space-y-3 shadow-xs ${
+                        downgraded
+                          ? 'border-accent/40 bg-accent-soft/20'
+                          : 'border-separator/80'
+                      }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <span
-                            className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded font-bold font-mono"
-                            style={{
-                              backgroundColor: style.bg,
-                              color: style.text,
-                              border: `1px solid ${style.border}`,
-                            }}
+                            className={`text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-bold font-mono border ${badge.badgeClass}`}
                           >
                             {d.action}
                           </span>
-                          <span className="font-bold text-white text-base">
+                          <span className="font-semibold text-label text-base">
                             {d.merchant}
                           </span>
-                          <span className="text-muted text-xs tabular-nums font-mono">
+                          <span className="text-label-3 text-xs tabular-nums font-mono">
                             {d.confidence}% confidence
                           </span>
                           {d.savings_usd_monthly > 0 && (
-                            <span className="text-green-500 text-xs font-mono tabular-nums">
+                            <span className="text-success text-xs font-mono tabular-nums font-semibold">
                               +${d.savings_usd_monthly.toFixed(2)}/mo
                             </span>
                           )}
@@ -672,11 +632,11 @@ export default function RunPage() {
 
                         <div className="flex items-center gap-2">
                           {d.blast_radius.irreversible && (
-                            <span className="text-[10px] uppercase tracking-wider text-amber-500 font-mono px-1.5 py-0.5 border border-amber-500/30 rounded">
+                            <span className="text-[10px] uppercase tracking-wider text-warning font-mono px-2 py-0.5 border border-warning/30 rounded-full font-semibold">
                               Irreversible
                             </span>
                           )}
-                          <span className="text-[10px] uppercase tracking-wider text-muted font-mono">
+                          <span className="text-[10px] uppercase tracking-wider text-label-3 font-mono">
                             {d.reasoned_by === 'model'
                               ? 'AI reasoning'
                               : 'Fallback rule'}
@@ -684,44 +644,41 @@ export default function RunPage() {
                         </div>
                       </div>
 
-                      <p className="text-secondary text-sm leading-relaxed">
+                      <p className="type-callout text-label leading-relaxed">
                         {d.rationale}
                       </p>
 
                       {/* Blast Radius Details */}
-                      <div
-                        className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t text-xs font-mono"
-                        style={{ borderColor: 'var(--border-subtle)' }}
-                      >
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-separator/60 text-xs font-mono">
                         <div>
-                          <span className="text-muted block text-[10px] uppercase">
+                          <span className="text-label-3 block text-[10px] uppercase font-semibold">
                             Data Loss
                           </span>
-                          <span className="text-secondary">
+                          <span className="text-label-2 font-medium">
                             {d.blast_radius.data_loss}
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted block text-[10px] uppercase">
+                          <span className="text-label-3 block text-[10px] uppercase font-semibold">
                             Access Impact
                           </span>
-                          <span className="text-secondary">
+                          <span className="text-label-2 font-medium">
                             {d.blast_radius.access_loss}
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted block text-[10px] uppercase">
+                          <span className="text-label-3 block text-[10px] uppercase font-semibold">
                             Repurchase Cost
                           </span>
-                          <span className="text-secondary">
+                          <span className="text-label-2 font-medium">
                             {d.blast_radius.repurchase}
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted block text-[10px] uppercase">
+                          <span className="text-label-3 block text-[10px] uppercase font-semibold">
                             Door Type
                           </span>
-                          <span className="text-secondary">
+                          <span className="text-label-2 font-medium">
                             {d.blast_radius.irreversible
                               ? 'One-way'
                               : 'Two-way'}
@@ -740,12 +697,11 @@ export default function RunPage() {
                               return (
                                 <li
                                   key={idx}
-                                  className="text-xs font-mono flex items-center gap-1.5"
-                                  style={{
-                                    color: isDowngrade
-                                      ? '#E50914'
-                                      : 'var(--text-muted)',
-                                  }}
+                                  className={`text-xs font-mono flex items-center gap-1.5 ${
+                                    isDowngrade
+                                      ? 'text-accent font-semibold'
+                                      : 'text-label-3'
+                                  }`}
                                 >
                                   <span>·</span>
                                   <span>{note}</span>
@@ -763,6 +719,7 @@ export default function RunPage() {
           </div>
         )}
       </div>
+
       <AppFooter />
     </main>
   )

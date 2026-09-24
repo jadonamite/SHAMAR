@@ -13,10 +13,8 @@ interface MobileMenuProps {
   gmailConnected?: boolean
   scanning?: boolean
   walletScanning?: boolean
-  debugScanning?: boolean
   onScanGmail?: () => void
   onScanWallet?: () => void
-  onDebugScan?: () => void
 }
 
 export default function MobileMenu({
@@ -25,14 +23,11 @@ export default function MobileMenu({
   gmailConnected,
   scanning,
   walletScanning,
-  debugScanning,
   onScanGmail,
   onScanWallet,
-  onDebugScan,
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
-  const showDebug = process.env.NODE_ENV !== 'production'
 
   return (
     <>
@@ -73,9 +68,21 @@ export default function MobileMenu({
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
-                  className="touch-target flex size-9 items-center justify-center rounded-full hover:bg-surface-2 text-label text-xl leading-none transition-colors"
+                  className="touch-target flex size-9 items-center justify-center rounded-full hover:bg-surface-2 text-label transition-colors"
                 >
-                  ✕
+                  <svg
+                    className="size-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                 </button>
               </div>
 
@@ -147,20 +154,6 @@ export default function MobileMenu({
                     className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-separator bg-surface text-label type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
                   >
                     {walletScanning ? 'Scanning…' : 'Scan Base Wallet'}
-                  </button>
-                )}
-
-                {onDebugScan && showDebug && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onDebugScan()
-                      setOpen(false)
-                    }}
-                    disabled={debugScanning}
-                    className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-separator bg-surface text-label-2 type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
-                  >
-                    {debugScanning ? 'Debugging…' : 'Debug Scan'}
                   </button>
                 )}
               </div>

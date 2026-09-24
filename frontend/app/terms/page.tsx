@@ -10,42 +10,23 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div
-      className="min-h-screen flex flex-col justify-between"
-      style={{
-        backgroundColor: 'var(--bg-void)',
-        color: 'var(--text-primary)',
-        fontFamily: 'var(--font-sans)',
-      }}
-    >
+    <div className="min-h-screen bg-canvas text-label flex flex-col justify-between">
       <TopNav title="Terms of Service" />
 
-      <main className="flex-1 px-6 py-12 md:px-12 max-w-3xl w-full mx-auto">
-        <header
-          className="mb-10 pb-6 border-b"
-          style={{ borderColor: 'var(--border-subtle)' }}
-        >
-          <h1
-            className="text-3xl font-bold tracking-tight mb-2"
-            style={{ fontFamily: 'var(--font-heading)' }}
-          >
+      <main className="flex-1 px-4 sm:px-6 py-10 md:py-12 max-w-3xl w-full mx-auto">
+        <header className="mb-10 pb-6 border-b border-separator/80">
+          <h1 className="type-title-1 font-[600] text-label tracking-tight mb-2">
             Terms of service
           </h1>
-          <p
-            className="text-xs text-muted"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
+          <p className="type-caption text-label-3 font-mono">
             Last updated: 22 September 2026. This document has not had formal
             legal review.
           </p>
         </header>
 
-        <div className="space-y-8 text-sm leading-relaxed text-secondary">
+        <div className="space-y-8 type-callout leading-relaxed text-label-2">
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               What SHAMAR is
             </h2>
             <p>
@@ -57,10 +38,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               How the default email tier works
             </h2>
             <p>
@@ -76,10 +54,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               On-chain policy and authorization
             </h2>
             <p>
@@ -95,25 +70,19 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               Emergency halt controls
             </h2>
             <p>
-              You can halt all agent operations at any time by sending /stop to
-              the connected Telegram bot. Once halted, no cancellations or
-              automated dispatches will occur until you explicitly issue
-              /resume.
+              You can halt all agent operations at any time by sending stop to
+              the connected Telegram bot (@shamar_agent_bot). Once halted, no
+              cancellations or automated dispatches will occur until you
+              explicitly reply resume.
             </p>
           </section>
 
           <section>
-            <h2
-              className="text-lg font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-heading)' }}
-            >
+            <h2 className="type-headline font-semibold text-label mb-2">
               Limitation of liability
             </h2>
             <p>
@@ -125,11 +94,8 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section
-            className="pt-6 border-t"
-            style={{ borderColor: 'var(--border-subtle)' }}
-          >
-            <p className="text-xs text-muted">
+          <section className="pt-6 border-t border-separator/80">
+            <p className="type-caption text-label-3">
               Questions regarding these terms may be directed to
               team@shamar.namite.xyz or via GitHub issues.
             </p>

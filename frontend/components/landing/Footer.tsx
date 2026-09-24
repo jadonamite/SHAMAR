@@ -19,7 +19,7 @@ const SOCIAL = [
     icon: <GitHubIcon />,
   },
   {
-    href: 'https://t.me/jadonamite',
+    href: 'https://t.me/shamar_agent_bot',
     label: 'SHAMAR on Telegram',
     icon: <TelegramIcon />,
   },
@@ -39,7 +39,7 @@ export default function Footer() {
         src="/brand/red-pattern.jpg"
         alt=""
         fill
-        className="-z-10 object-cover opacity-25"
+        className="-z-10 object-cover opacity-15"
       />
 
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">

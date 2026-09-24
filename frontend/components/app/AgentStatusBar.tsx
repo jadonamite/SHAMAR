@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import AgentStateBadge, { type AgentStateKind } from './AgentStateBadge'
+import { apiFetch } from '@/lib/api'
 
 interface AgentStatusBarProps {
   scanning?: boolean
@@ -30,60 +31,38 @@ export default function AgentStatusBar({
   subCount = 0,
   userId,
 }: AgentStatusBarProps) {
-  const [controlState, setControlState] = useState<{
-    halted: boolean
-    reason: string
-  } | null>(null)
-  const [authState, setAuthState] = useState<{
-    granted: boolean
+  const [status, setStatus] = useState<{
+    state: AgentStateKind
     reason: string
   } | null>(null)
 
   useEffect(() => {
-    // Check Telegram control state
-    fetch('/api/execute/control')
-      .then((r) => r.json())
-      .then((d) => setControlState(d))
-      .catch(() => {})
+    if (!userId) return
 
-    // Check policy status if user is present
-    if (userId) {
-      fetch('/api/agent/status', { headers: { 'x-user-id': userId } })
-        .then((r) => r.json())
-        .then((d) => {
-          setAuthState({
-            granted: Boolean(d.onchainAuthorized || d.user?.policy_granted),
-            reason: d.onchainAuthorized
-              ? 'shamar.cancel authorized on Base'
-              : d.user?.policy_granted
-                ? 'Local grant active'
-                : 'Not authorized',
-          })
+    apiFetch('/api/agent/status', { userId })
+      .then((r) => r.json())
+      .then((d) => {
+        setStatus({
+          state:
+            d.state ?? (d.onchainAuthorized ? 'authorized' : 'unauthorized'),
+          reason:
+            d.reason ??
+            (d.onchainAuthorized ? 'Authorized on Base' : 'Not granted'),
         })
-        .catch(() => {})
-    }
+      })
+      .catch(() => {})
   }, [userId])
 
-  const agentStateKind: AgentStateKind = controlState?.halted
-    ? 'halted'
-    : authState
-      ? authState.granted
-        ? 'authorized'
-        : 'blocked'
-      : scanning
-        ? 'checking'
-        : 'authorized'
+  const agentStateKind: AgentStateKind = scanning
+    ? 'checking'
+    : (status?.state ?? 'unauthorized')
 
   return (
     <div
-      className="flex items-center justify-between px-4 sm:px-6 py-2 border-b overflow-x-auto whitespace-nowrap transition-colors"
-      style={{
-        borderColor: 'var(--border-subtle)',
-        background: 'var(--bg-surface)',
-        scrollbarWidth: 'none',
-      }}
+      className="flex items-center justify-between px-4 sm:px-6 py-2 border-b border-separator/80 bg-surface text-label overflow-x-auto whitespace-nowrap transition-colors"
+      style={{ scrollbarWidth: 'none' }}
     >
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
         {/* Status dot */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <motion.span
@@ -93,63 +72,51 @@ export default function AgentStatusBar({
                 ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
                 : {}
             }
-            style={{
-              display: 'inline-block',
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: scanning ? '#E50914' : '#16A34A',
-              boxShadow: scanning ? '0 0 8px #E50914' : '0 0 8px #16A34A',
-            }}
+            className={`size-1.5 rounded-full ${
+              scanning
+                ? 'bg-accent shadow-[0_0_8px_var(--color-accent)]'
+                : 'bg-success shadow-[0_0_8px_var(--color-success)]'
+            }`}
           />
           <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: scanning ? '#E50914' : 'var(--text-secondary)',
-              fontSize: '10px',
-              letterSpacing: '0.18em',
-            }}
+            className={`font-mono text-[10px] tracking-[0.18em] font-semibold ${
+              scanning ? 'text-accent' : 'text-label-2'
+            }`}
           >
             {scanning ? 'SCANNING' : 'ONLINE'}
           </span>
         </div>
 
-        <Divider />
+        <span className="text-separator text-[10px]">·</span>
 
         <Field label="SUBS">{subCount}</Field>
 
-        <Divider />
+        <span className="text-separator text-[10px] hidden sm:inline">·</span>
 
-        <Field label="LAST SCAN">{formatRelative(lastScan)}</Field>
+        <span className="hidden sm:inline-flex">
+          <Field label="LAST SCAN">{formatRelative(lastScan)}</Field>
+        </span>
 
-        <Divider />
+        <span className="text-separator text-[10px] hidden sm:inline">·</span>
 
-        <Field label="POLICY">
-          <span className="text-[10px] text-green-500 font-mono">
-            SHAMARPolicy (Base)
-          </span>
-        </Field>
+        <span className="hidden sm:inline-flex">
+          <Field label="POLICY">
+            <span className="text-[10px] text-success font-mono font-medium">
+              Active
+            </span>
+          </Field>
+        </span>
       </div>
 
       {/* R23 Agent State at a glance */}
       <div className="flex items-center gap-2 shrink-0 pl-3">
         <AgentStateBadge
           state={agentStateKind}
-          reason={
-            controlState?.halted
-              ? 'Halted via Telegram /stop'
-              : authState?.reason
-          }
+          reason={status?.reason}
           compact
         />
       </div>
     </div>
-  )
-}
-
-function Divider() {
-  return (
-    <span style={{ color: 'var(--border-strong)', fontSize: '10px' }}>·</span>
   )
 }
 
@@ -162,24 +129,10 @@ function Field({
 }) {
   return (
     <div className="flex items-center gap-1.5 flex-shrink-0">
-      <span
-        style={{
-          fontFamily: 'var(--font-sans)',
-          color: 'var(--text-muted)',
-          fontSize: '9px',
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-        }}
-      >
+      <span className="type-eyebrow text-[9px] tracking-[0.14em] text-label-3">
         {label}
       </span>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--text-secondary)',
-          fontSize: '11px',
-        }}
-      >
+      <span className="font-mono text-[11px] text-label-2 font-medium">
         {children}
       </span>
     </div>

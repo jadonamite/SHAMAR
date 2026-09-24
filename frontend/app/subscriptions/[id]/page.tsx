@@ -5,9 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import BrandLogo from '@/components/ui/BrandLogo'
 import ConfidenceScore from '@/components/app/ConfidenceScore'
+import EmailTierNotice from '@/components/app/EmailTierNotice'
 import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import { apiFetch } from '@/lib/api'
 import { normalizeSubscription } from '@/lib/normalize'
 import { formatMoney } from '@/lib/format'
 import type { Subscription } from '@/components/app/SubscriptionRow'
@@ -34,11 +37,11 @@ type DetailData = {
   recommendation: Recommendation | null
 }
 
-const ACTION_COLORS = {
-  cancel: '#E50914',
-  pause: '#D97706',
-  remind: '#3B82F6',
-  keep: '#16A34A',
+const ACTION_STYLES = {
+  cancel: 'text-accent border-accent/30 bg-accent-soft',
+  pause: 'text-warning border-warning/30 bg-warning/10',
+  remind: 'text-label border-separator bg-surface-2',
+  keep: 'text-success border-success/30 bg-success/10',
 }
 
 const CADENCE_LABELS: Record<string, string> = {
@@ -48,13 +51,20 @@ const CADENCE_LABELS: Record<string, string> = {
   yearly: '/yr',
 }
 
-const STATUS_STYLES: Record<string, { color: string; border: string }> = {
-  active: { color: '#16A34A', border: 'rgba(22,163,74,0.3)' },
-  paused: { color: '#D97706', border: 'rgba(217,119,6,0.3)' },
-  cancelled: { color: '#525252', border: 'rgba(255,255,255,0.1)' },
+const STATUS_BADGES: Record<string, { label: string; badgeClass: string }> = {
+  active: {
+    label: 'Active',
+    badgeClass: 'text-success bg-success/10 border-success/30',
+  },
+  paused: {
+    label: 'Paused',
+    badgeClass: 'text-warning bg-warning/10 border-warning/30',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    badgeClass: 'text-label-3 bg-surface-2 border-separator',
+  },
 }
-
-const formatAmount = formatMoney
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
@@ -70,6 +80,13 @@ export default function SubscriptionDetail() {
   const router = useRouter()
   const { ready, authenticated, user } = usePrivy()
 
+  const devUser =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('shamar_dev_user')
+      : null
+  const effectiveUserId = user?.id || devUser
+  const isUserAuthenticated = authenticated || Boolean(devUser)
+
   const [data, setData] = useState<DetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
@@ -77,22 +94,24 @@ export default function SubscriptionDetail() {
   const [reminderSent, setReminderSent] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderError, setReminderError] = useState<string | null>(null)
+  const [dispatchedCancel, setDispatchedCancel] = useState(false)
+  const [cancelFeedback, setCancelFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ready) return
-    if (!authenticated) {
+    if (!isUserAuthenticated) {
       router.replace('/dashboard')
       return
     }
-    if (!user?.id || !id) return
+    if (!effectiveUserId || !id) return
     load()
-  }, [ready, authenticated, user?.id, id])
+  }, [ready, isUserAuthenticated, effectiveUserId, id])
 
   async function load() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/subscriptions/${id}`, {
-        headers: { 'x-user-id': user!.id },
+      const res = await apiFetch(`/api/subscriptions/${id}`, {
+        userId: effectiveUserId!,
       })
       if (!res.ok) {
         router.replace('/subscriptions')
@@ -112,17 +131,13 @@ export default function SubscriptionDetail() {
     }
   }
 
-  /**
-   * runAnalysis
-   * @returns {*}
-   */
   async function runAnalysis() {
-    if (!user?.id || analyzing) return
+    if (!effectiveUserId || analyzing) return
     setAnalyzing(true)
     try {
-      const res = await fetch(`/api/intelligence/analyze/${id}`, {
+      const res = await apiFetch(`/api/intelligence/analyze/${id}`, {
         method: 'POST',
-        headers: { 'x-user-id': user.id },
+        userId: effectiveUserId,
       })
       if (res.ok) {
         const json = await res.json()
@@ -158,17 +173,18 @@ export default function SubscriptionDetail() {
   }
 
   async function scheduleReminder(daysFromNow: number) {
-    if (!user?.id || reminderSending) return
+    if (!effectiveUserId || reminderSending) return
     setReminderSending(true)
     setReminderError(null)
     const remindAt = new Date(
       Date.now() + daysFromNow * 86_400_000
     ).toISOString()
-    const email = user.email?.address ?? user.google?.email ?? null
+    const email = user?.email?.address ?? user?.google?.email ?? null
     try {
-      const res = await fetch('/api/reminders', {
+      const res = await apiFetch('/api/reminders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
         body: JSON.stringify({
           subscription_id: id,
           remind_at: remindAt,
@@ -190,13 +206,73 @@ export default function SubscriptionDetail() {
     }
   }
 
-  async function changeStatus(status: 'active' | 'paused' | 'cancelled') {
-    if (!user?.id || statusChanging || !data) return
+  async function cancelSubscription() {
+    if (!effectiveUserId || statusChanging || !data) return
+    setStatusChanging(true)
+    setCancelFeedback(null)
+
+    try {
+      // Run through unified execute pipeline
+      const execRes = await apiFetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
+        body: JSON.stringify({
+          subscription_id: id,
+          action: 'cancel',
+          triggered_by: 'user',
+        }),
+      })
+
+      if (execRes.ok) {
+        const execJson = await execRes.json()
+        setDispatchedCancel(true)
+        setCancelFeedback(
+          execJson.message ?? 'Cancellation dispatched via email rail.'
+        )
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                subscription: { ...prev.subscription, status: 'cancelled' },
+              }
+            : prev
+        )
+      } else {
+        // Fall back to direct patch if execute is offline or dry-run
+        const patchRes = await apiFetch(`/api/subscriptions/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          userId: effectiveUserId,
+          body: JSON.stringify({ status: 'cancelled' }),
+        })
+        if (patchRes.ok) {
+          setDispatchedCancel(true)
+          setData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  subscription: { ...prev.subscription, status: 'cancelled' },
+                }
+              : prev
+          )
+        }
+      }
+    } catch {
+      setCancelFeedback('Action could not be dispatched right now.')
+    } finally {
+      setStatusChanging(false)
+    }
+  }
+
+  async function changeStatus(status: 'active' | 'paused') {
+    if (!effectiveUserId || statusChanging || !data) return
     setStatusChanging(true)
     try {
-      const res = await fetch(`/api/subscriptions/${id}/status`, {
+      const res = await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
+        headers: { 'Content-Type': 'application/json' },
+        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       if (res.ok) {
@@ -215,193 +291,160 @@ export default function SubscriptionDetail() {
 
   if (!ready || loading) {
     return (
-      <main className="min-h-screen bg-void flex items-center justify-center">
-        <div className="w-1 h-1 bg-sam-red rounded-full animate-pulse" />
+      <main className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-2 rounded-full bg-accent animate-pulse" />
       </main>
     )
   }
 
-  if (!data) return null
+  if (!isUserAuthenticated) {
+    return (
+      <main className="min-h-screen bg-canvas text-label flex flex-col justify-between">
+        <TopNav title="Subscription" />
+        <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-20 text-center flex flex-col items-center justify-center">
+          <p className="type-callout text-label-2 mb-4">
+            Please connect your wallet to view subscription details.
+          </p>
+          <Link
+            href="/dashboard"
+            className="touch-target inline-flex min-h-[44px] items-center rounded-full bg-accent px-6 type-headline text-accent-contrast"
+          >
+            Go to Dashboard
+          </Link>
+        </div>
+        <AppFooter />
+      </main>
+    )
+  }
+
+  if (!data) {
+    return (
+      <main className="min-h-screen bg-canvas text-label flex flex-col justify-between">
+        <TopNav title="Subscription" />
+        <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-20 text-center flex flex-col items-center justify-center">
+          <p className="type-callout text-label-2 mb-4">
+            Subscription not found or inaccessible.
+          </p>
+          <Link
+            href="/subscriptions"
+            className="touch-target inline-flex min-h-[44px] items-center rounded-full border border-separator bg-surface px-6 type-headline text-label shadow-2xs"
+          >
+            Back to Subscriptions
+          </Link>
+        </div>
+        <AppFooter />
+      </main>
+    )
+  }
 
   const { subscription: sub, signals, insight, recommendation } = data
-  const statusStyle = STATUS_STYLES[sub.status]
+  const statusBadge = STATUS_BADGES[sub.status] ?? STATUS_BADGES.active
   const confidence = sub.confidence ?? recommendation?.confidence
   const action = sub.action ?? recommendation?.action
   const signalLabels = signals.map((s) => s.value)
 
   return (
-    <main className="min-h-screen bg-void flex flex-col justify-between">
+    <main className="min-h-screen bg-canvas flex flex-col justify-between">
       <TopNav
         title={sub.merchant}
         rightMeta={
           <span
-            className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-            style={{
-              fontFamily: 'var(--font-sans)',
-              color: statusStyle.color,
-              border: `1px solid ${statusStyle.border}`,
-              borderRadius: '2px',
-            }}
+            className={`px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider rounded-full border ${statusBadge.badgeClass}`}
           >
-            {sub.status}
+            {statusBadge.label}
           </span>
         }
       />
-      <div className="max-w-2xl mx-auto px-6 pt-4">
+
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 pt-4">
         <Link
           href="/subscriptions"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: '#525252',
-            fontSize: '12px',
-          }}
+          className="type-footnote inline-flex min-h-[44px] items-center gap-1.5 font-medium text-label-2 hover:text-label hover:underline"
         >
-          ← Subscriptions
+          ← Back to subscriptions
         </Link>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 flex flex-col gap-6">
         {/* Identity block */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-start gap-5"
+          className="flex items-start gap-4 sm:gap-5 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
         >
-          <div
-            className="w-14 h-14 flex items-center justify-center flex-shrink-0"
-            style={{
-              background: 'rgba(229,9,20,0.12)',
-              border: '1px solid rgba(229,9,20,0.2)',
-              borderRadius: '2px',
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#E50914',
-                fontSize: '22px',
-                fontWeight: 700,
-              }}
-            >
-              {sub.merchant.charAt(0).toUpperCase()}
-            </span>
+          <div className="size-14 shrink-0 rounded-2xl bg-surface-2 p-1 border border-separator/60 flex items-center justify-center">
+            <BrandLogo name={sub.merchant} size={44} label={sub.merchant} />
           </div>
-          <div className="flex flex-col gap-1">
-            <h1
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#fff',
-                fontSize: '22px',
-                fontWeight: 700,
-                letterSpacing: '-0.02em',
-                lineHeight: 1.1,
-              }}
-            >
-              {sub.merchant}
-            </h1>
-            <div className="flex items-center gap-2 flex-wrap">
+
+          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h1 className="type-title-1 font-[600] text-label tracking-tight truncate">
+                {sub.merchant}
+              </h1>
               <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  color: '#fff',
-                  fontSize: '20px',
-                  letterSpacing: '-0.02em',
-                }}
+                className={`px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider rounded-full border ${statusBadge.badgeClass}`}
               >
-                {formatAmount(sub.amount, sub.currency)}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  color: '#525252',
-                  fontSize: '14px',
-                }}
-              >
-                {CADENCE_LABELS[sub.cadence]}
+                {statusBadge.label}
               </span>
             </div>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <span
-                className="px-2 py-0.5 text-[10px] uppercase tracking-widest"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: sub.source === 'gmail' ? '#3B82F6' : '#A78BFA',
-                  border: `1px solid ${sub.source === 'gmail' ? 'rgba(59,130,246,0.3)' : 'rgba(167,139,250,0.3)'}`,
-                  borderRadius: '2px',
-                }}
-              >
+
+            <div className="flex items-baseline gap-1.5">
+              <span className="type-headline font-bold text-label tabular text-xl">
+                {formatMoney(sub.amount, sub.currency)}
+              </span>
+              <span className="type-caption text-label-3">
+                {CADENCE_LABELS[sub.cadence] ?? `/${sub.cadence}`}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-label-3">
+              <span className="rounded-full bg-surface-2 px-2.5 py-0.5 font-medium uppercase tracking-wider text-[10px] text-label-2 border border-separator">
                 {sub.source}
               </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  color: '#525252',
-                  fontSize: '11px',
-                }}
-              >
-                Detected {formatDate(sub.detected_at)}
-              </span>
+              <span>Detected {formatDate(sub.detected_at)}</span>
               {sub.last_charged && (
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    color: '#525252',
-                    fontSize: '11px',
-                  }}
-                >
-                  Last charged {formatDate(sub.last_charged)}
-                </span>
+                <span>· Last charged {formatDate(sub.last_charged)}</span>
               )}
             </div>
           </div>
         </motion.div>
 
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+        {/* Honest Email Notice (R28 / Section 4) */}
+        {(dispatchedCancel || sub.status === 'cancelled') && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <EmailTierNotice merchant={sub.merchant} />
+          </motion.div>
+        )}
 
         {/* Intelligence block */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="flex flex-col gap-4 p-5"
-          style={{
-            background: '#141414',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '2px',
-          }}
+          className="flex flex-col gap-4 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#525252',
-                fontSize: '11px',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Intelligence
+            <span className="type-eyebrow font-semibold text-label">
+              Intelligence & Blast Radius
             </span>
             <motion.button
+              type="button"
               onClick={runAnalysis}
               disabled={analyzing}
               whileHover={{ scale: analyzing ? 1 : 1.02 }}
               whileTap={{ scale: analyzing ? 1 : 0.98 }}
-              className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest cursor-pointer"
-              style={{
-                fontFamily: 'var(--font-sans)',
-                background: 'transparent',
-                color: analyzing ? '#525252' : '#E50914',
-                border: `1px solid ${analyzing ? 'rgba(255,255,255,0.06)' : 'rgba(229,9,20,0.4)'}`,
-                borderRadius: '2px',
-              }}
+              className="touch-target inline-flex min-h-[44px] items-center rounded-full border border-separator bg-surface px-4 type-footnote font-semibold text-label shadow-2xs hover:bg-surface-2 disabled:opacity-50 transition-all cursor-pointer"
             >
               {analyzing
-                ? 'Analyzing...'
+                ? 'Evaluating…'
                 : confidence !== undefined
-                  ? 'Re-analyze'
-                  : 'Run Analysis'}
+                  ? 'Re-evaluate'
+                  : 'Run evaluation'}
             </motion.button>
           </div>
 
@@ -412,14 +455,9 @@ export default function SubscriptionDetail() {
               action={action}
             />
           ) : (
-            <p
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#525252',
-                fontSize: '13px',
-              }}
-            >
-              No analysis yet. Run analysis to score this subscription.
+            <p className="type-callout text-label-2">
+              No evaluation yet. Run an analysis to score this subscription and
+              inspect what you’d lose if cancelled.
             </p>
           )}
         </motion.div>
@@ -429,33 +467,13 @@ export default function SubscriptionDetail() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="flex flex-col gap-3 p-5"
-            style={{
-              background: '#141414',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '2px',
-            }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
           >
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#525252',
-                fontSize: '11px',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}
-            >
-              AI Insight
+            <span className="type-eyebrow font-semibold text-label-2">
+              Agent Judgment
             </span>
-            <p
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#A3A3A3',
-                fontSize: '13px',
-                lineHeight: 1.6,
-              }}
-            >
+            <p className="type-callout text-label leading-relaxed font-normal">
               {insight}
             </p>
           </motion.div>
@@ -466,56 +484,29 @@ export default function SubscriptionDetail() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-            className="flex flex-col gap-4 p-5"
-            style={{
-              background: '#141414',
-              border: `1px solid ${ACTION_COLORS[action]}30`,
-              borderRadius: '2px',
-            }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex flex-col gap-4 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
           >
             <div className="flex items-center justify-between">
-              <span
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#525252',
-                  fontSize: '11px',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Recommendation
+              <span className="type-eyebrow font-semibold text-label">
+                Recommended Action
               </span>
               <span
-                className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: ACTION_COLORS[action],
-                  border: `1px solid ${ACTION_COLORS[action]}60`,
-                  borderRadius: '2px',
-                }}
+                className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full border ${ACTION_STYLES[action] ?? ''}`}
               >
                 {action}
               </span>
             </div>
+
             {recommendation.evidence.length > 0 && (
-              <ul className="flex flex-col gap-1.5">
+              <ul className="flex flex-col gap-2 pt-1">
                 {recommendation.evidence.map((e, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-2"
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      color: '#A3A3A3',
-                      fontSize: '12px',
-                    }}
+                    className="flex items-start gap-2.5 type-footnote text-label-2"
                   >
-                    <span
-                      style={{ color: ACTION_COLORS[action], fontSize: '6px' }}
-                    >
-                      ●
-                    </span>
-                    {e}
+                    <span className="size-1.5 rounded-full bg-accent shrink-0 mt-2" />
+                    <span>{e}</span>
                   </li>
                 ))}
               </ul>
@@ -523,44 +514,28 @@ export default function SubscriptionDetail() {
           </motion.div>
         )}
 
-        {/* Reminder */}
+        {/* Reminder scheduling */}
         {sub.status !== 'cancelled' && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            className="flex flex-col gap-3 p-5"
-            style={{
-              background: '#141414',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '2px',
-            }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+            className="flex flex-col gap-3 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
           >
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#525252',
-                fontSize: '11px',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Set Reminder
+            <span className="type-eyebrow font-semibold text-label">
+              Set Autonomous Reminder
             </span>
             {reminderSent ? (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#16A34A',
-                  fontSize: '12px',
-                }}
+                className="type-footnote text-success font-semibold"
               >
-                Reminder scheduled.
+                Reminder scheduled. SHAMAR will notify you before the next
+                billing cycle.
               </motion.p>
             ) : (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap pt-1">
                 {[
                   { label: 'Tomorrow', days: 1 },
                   { label: '3 days', days: 3 },
@@ -569,16 +544,10 @@ export default function SubscriptionDetail() {
                 ].map(({ label, days }) => (
                   <button
                     key={days}
+                    type="button"
                     onClick={() => scheduleReminder(days)}
                     disabled={reminderSending}
-                    className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest cursor-pointer"
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      background: 'transparent',
-                      color: reminderSending ? '#525252' : '#3B82F6',
-                      border: `1px solid ${reminderSending ? 'rgba(255,255,255,0.06)' : 'rgba(59,130,246,0.3)'}`,
-                      borderRadius: '2px',
-                    }}
+                    className="touch-target inline-flex min-h-[44px] items-center rounded-full border border-separator bg-surface-2 px-4 type-footnote font-semibold text-label hover:bg-surface disabled:opacity-50 transition-colors cursor-pointer"
                   >
                     {label}
                   </button>
@@ -586,78 +555,61 @@ export default function SubscriptionDetail() {
               </div>
             )}
             {reminderError && (
-              <p
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  color: '#E50914',
-                  fontSize: '11px',
-                }}
-              >
+              <p className="type-caption text-accent font-medium">
                 {reminderError}
               </p>
             )}
           </motion.div>
         )}
 
-        {/* Status actions */}
+        {/* Status Actions */}
         {sub.status !== 'cancelled' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 flex-wrap pt-2"
           >
             {sub.status === 'active' && (
               <>
                 <button
+                  type="button"
                   onClick={() => changeStatus('paused')}
                   disabled={statusChanging}
-                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    background: 'transparent',
-                    color: statusChanging ? '#525252' : '#D97706',
-                    border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(217,119,6,0.4)'}`,
-                    borderRadius: '2px',
-                  }}
+                  className="touch-target inline-flex min-h-[48px] items-center justify-center rounded-full border border-separator bg-surface px-6 type-headline font-semibold text-label shadow-2xs hover:bg-surface-2 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   Pause
                 </button>
                 <button
-                  onClick={() => changeStatus('cancelled')}
+                  type="button"
+                  onClick={cancelSubscription}
                   disabled={statusChanging}
-                  className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    background: 'transparent',
-                    color: statusChanging ? '#525252' : '#E50914',
-                    border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(229,9,20,0.4)'}`,
-                    borderRadius: '2px',
-                  }}
+                  className="touch-target inline-flex min-h-[48px] items-center justify-center rounded-full bg-accent px-6 type-headline font-semibold text-on-accent shadow-xs hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  Cancel Subscription
+                  {statusChanging ? 'Dispatching…' : 'Cancel subscription'}
                 </button>
               </>
             )}
             {sub.status === 'paused' && (
               <button
+                type="button"
                 onClick={() => changeStatus('active')}
                 disabled={statusChanging}
-                className="px-5 py-2.5 text-xs font-semibold uppercase tracking-widest cursor-pointer"
-                style={{
-                  fontFamily: 'var(--font-sans)',
-                  background: 'transparent',
-                  color: statusChanging ? '#525252' : '#16A34A',
-                  border: `1px solid ${statusChanging ? 'rgba(255,255,255,0.06)' : 'rgba(22,163,74,0.4)'}`,
-                  borderRadius: '2px',
-                }}
+                className="touch-target inline-flex min-h-[48px] items-center justify-center rounded-full bg-success px-6 type-headline font-semibold text-white shadow-xs hover:bg-success/90 active:scale-[0.97] disabled:opacity-50 transition-all cursor-pointer"
               >
                 Resume
               </button>
             )}
           </motion.div>
         )}
+
+        {cancelFeedback && (
+          <p className="type-caption text-label-2 font-medium">
+            {cancelFeedback}
+          </p>
+        )}
       </div>
+
       <AppFooter />
     </main>
   )

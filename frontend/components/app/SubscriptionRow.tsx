@@ -37,7 +37,8 @@ const KNOWN_BRANDS: Record<string, BrandName> = {
   anthropic: 'claude',
   figma: 'figma',
   youtube: 'youtube',
-  google: 'gmail',
+  googleone: 'google',
+  google: 'google',
   gmail: 'gmail',
   chatgpt: 'chatgpt',
   openai: 'chatgpt',
@@ -47,6 +48,8 @@ const KNOWN_BRANDS: Record<string, BrandName> = {
   canva: 'canva',
   adobe: 'adobe',
   telegram: 'telegram',
+  vercel: 'vercel',
+  github: 'github',
 }
 
 function resolveBrand(merchant: string): BrandName | null {
@@ -94,83 +97,97 @@ export default function SubscriptionRow({
       onClick={() => href && router.push(href)}
       whileHover={{ y: -1.5, scale: 1.003 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-      className={`group relative flex items-center justify-between gap-4 rounded-[var(--radius-tile)] bg-surface p-3.5 sm:p-4 border border-separator/70 transition-all ${
+      className={`group relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-[var(--radius-tile)] bg-surface p-3.5 sm:p-4 border border-separator/70 transition-all ${
         hovered
           ? 'shadow-xs border-separator-strong'
           : 'shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
       } ${href ? 'cursor-pointer' : ''}`}
     >
-      {/* Left: Avatar + Title info */}
-      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        {brand ? (
-          <BrandLogo name={brand} size={40} label={sub.merchant} />
-        ) : (
-          <FallbackAvatar name={sub.merchant || sub.name} />
-        )}
+      {/* Top Line on mobile, Left on desktop */}
+      <div className="flex items-center justify-between sm:justify-start gap-3 min-w-0 sm:flex-1">
+        {/* Avatar + Merchant Info */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {brand ? (
+            <BrandLogo name={brand} size={40} label={sub.merchant} />
+          ) : (
+            <FallbackAvatar name={sub.merchant || sub.name} />
+          )}
 
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="type-headline font-semibold text-label truncate">
-              {sub.merchant || sub.name}
-            </span>
-
-            {/* Status indicator tag */}
-            {sub.status === 'paused' && (
-              <span className="type-caption rounded-full bg-warning/15 px-2 py-0.5 font-bold text-warning">
-                Paused
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="type-headline font-semibold text-label truncate">
+                {sub.merchant || sub.name}
               </span>
-            )}
-            {sub.status === 'cancelled' && (
-              <span className="type-caption rounded-full bg-accent-soft px-2 py-0.5 font-bold text-accent-text">
-                Cancelled
-              </span>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2 type-caption text-label-3">
-            <span className="capitalize">{sub.cadence}</span>
-            <span>·</span>
-            <span className="capitalize">{sub.source}</span>
-            {sub.last_charged && (
-              <>
-                <span>·</span>
-                <span>
-                  Last:{' '}
-                  {new Date(sub.last_charged).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+              {/* Status indicator tag */}
+              {sub.status === 'paused' && (
+                <span className="type-caption shrink-0 rounded-full bg-warning/15 px-2 py-0.5 font-bold text-warning text-[10px]">
+                  Paused
                 </span>
-              </>
-            )}
+              )}
+              {sub.status === 'cancelled' && (
+                <span className="type-caption shrink-0 rounded-full bg-accent-soft px-2 py-0.5 font-bold text-accent-text text-[10px]">
+                  Cancelled
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 type-caption text-label-3 text-xs">
+              <span className="capitalize">{sub.cadence}</span>
+              <span>·</span>
+              <span className="capitalize">{sub.source}</span>
+              {sub.last_charged && (
+                <>
+                  <span>·</span>
+                  <span className="whitespace-nowrap">
+                    Last:{' '}
+                    {new Date(sub.last_charged).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Mobile-only Price display in top right */}
+        <div className="text-right sm:hidden shrink-0 pl-2">
+          <span className="type-callout font-[600] tabular text-label block">
+            {formatMoney(sub.amount, sub.currency)}
+          </span>
+          <span className="type-caption text-label-3 block">
+            {CADENCE_LABELS[sub.cadence]}
+          </span>
         </div>
       </div>
 
-      {/* Middle: Blast Radius Risk Badge */}
-      <div className="hidden sm:flex items-center gap-2">
-        {sub.confidence != null && (
-          <span
-            className={`type-caption rounded-full px-2.5 py-1 font-semibold tabular ${
-              isHighRisk
-                ? 'bg-accent-soft text-accent-text'
-                : 'bg-surface-2 text-label-2'
-            }`}
-          >
-            {sub.confidence}% blast radius
-          </span>
-        )}
+      {/* Bottom Line on mobile, Inline on desktop */}
+      <div className="flex items-center justify-between sm:justify-end gap-3 pt-2.5 sm:pt-0 border-t border-separator/40 sm:border-0">
+        {/* Blast Radius Risk Badge */}
+        <div className="flex items-center gap-2">
+          {sub.confidence != null && (
+            <span
+              className={`type-caption rounded-full px-2.5 py-0.5 sm:py-1 font-semibold tabular text-xs ${
+                isHighRisk
+                  ? 'bg-accent-soft text-accent-text'
+                  : 'bg-surface-2 text-label-2'
+              }`}
+            >
+              {sub.confidence}% blast radius
+            </span>
+          )}
 
-        {sub.action && (
-          <span className="type-caption uppercase font-bold text-label-3 tracking-wider">
-            {sub.action}
-          </span>
-        )}
-      </div>
+          {sub.action && (
+            <span className="type-caption uppercase font-bold text-label-3 tracking-wider text-[11px] hidden sm:inline">
+              {sub.action}
+            </span>
+          )}
+        </div>
 
-      {/* Right: Amount & Quick Action Controls */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right">
+        {/* Desktop Price display */}
+        <div className="text-right hidden sm:block">
           <span className="type-callout font-[600] tabular text-label block">
             {formatMoney(sub.amount, sub.currency)}
           </span>
@@ -179,11 +196,11 @@ export default function SubscriptionRow({
           </span>
         </div>
 
-        {/* Quick actions (visible on hover or focus) */}
+        {/* Quick actions */}
         {onStatusChange && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-2 shrink-0"
           >
             {sub.status === 'active' && (
               <>
@@ -191,7 +208,7 @@ export default function SubscriptionRow({
                   type="button"
                   onClick={() => onStatusChange(sub.id, 'paused')}
                   aria-label="Pause subscription"
-                  className="type-caption touch-target min-h-[36px] px-2.5 rounded-full border border-separator/80 bg-surface-2 font-semibold text-warning hover:bg-warning/15 transition-colors"
+                  className="type-caption touch-target min-h-[34px] sm:min-h-[36px] px-3 rounded-full border border-separator/80 bg-surface-2 font-semibold text-warning hover:bg-warning/15 transition-colors cursor-pointer"
                 >
                   Pause
                 </button>
@@ -199,7 +216,7 @@ export default function SubscriptionRow({
                   type="button"
                   onClick={() => onStatusChange(sub.id, 'cancelled')}
                   aria-label="Cancel subscription"
-                  className="type-caption touch-target min-h-[36px] px-2.5 rounded-full bg-accent-soft font-semibold text-accent-text hover:bg-accent hover:text-white transition-colors"
+                  className="type-caption touch-target min-h-[34px] sm:min-h-[36px] px-3 rounded-full bg-accent-soft font-semibold text-accent-text hover:bg-accent hover:text-white transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -210,7 +227,7 @@ export default function SubscriptionRow({
                 type="button"
                 onClick={() => onStatusChange(sub.id, 'active')}
                 aria-label="Resume subscription"
-                className="type-caption touch-target min-h-[36px] px-3 rounded-full bg-success/15 font-semibold text-success hover:bg-success hover:text-white transition-colors"
+                className="type-caption touch-target min-h-[34px] sm:min-h-[36px] px-3.5 rounded-full bg-success/15 font-semibold text-success hover:bg-success hover:text-white transition-colors cursor-pointer"
               >
                 Resume
               </button>

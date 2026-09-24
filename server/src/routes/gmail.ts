@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { randomBytes } from 'crypto'
 import { google } from 'googleapis'
 import type { gmail_v1 } from 'googleapis'
 import { sql, getOrCreateUser } from '../lib/db.js'
@@ -10,13 +11,18 @@ import {
   hasGmailConnected,
   getGmailSync,
   setGmailSync,
+  clearGmailTokens,
+  cache,
 } from '../lib/cache.js'
+import { withGmailRetry, isAuthExpired, isRateLimited } from '../lib/gmail-retry.js'
 import { quickPass } from '../lib/reasoning.js'
 import { CALENDAR_SCOPE } from '../lib/calendar.js'
 import {
   lookupService,
   type SubscriptionCategory,
 } from '../lib/subscriptions-registry.js'
+import { authenticateCaller } from '../lib/auth.js'
+import { isExcludedNonSubscription } from '../lib/exclusions.js'
 
 const app = new Hono()
 
@@ -65,37 +71,55 @@ export function normalizeMerchant(raw: string): string {
 
 export type Cadence = 'monthly' | 'yearly' | 'weekly' | 'daily'
 
-// Words that indicate a real charge/receipt rather than a notification.
+// Words that indicate a recurring charge/receipt rather than a generic notification.
 const BILLING_KEYWORDS =
-  /\b(receipt|invoice|payment|paid|billed|charged?|subscription|renew(?:s|ed|al)?|order\s+confirmation|transaction|amount\s+due)\b/i
+  /\b(receipt|invoice|billed|charged?|auto[-\s]?renew(?:ing|s)?|membership|billing\s+cycle|amount\s+due|payment\s+received)\b/i
 
-// Stronger language that, on its own, identifies a recurring subscription —
-// used to accept a single email in Balanced mode.
+// Stronger language that explicitly identifies a recurring subscription
 const EXPLICIT_SUBSCRIPTION =
-  /\b(subscription|renews?\s+(?:on|automatically)|auto[-\s]?renew|billing\s+cycle|next\s+(?:billing|payment)|recurring|membership)\b/i
+  /\b(auto[-\s]?renew(?:ing|s)?|renews?\s+(?:on|automatically|every)|next\s+(?:billing|payment|charge)\s+date|billing\s+cycle|recurring\s+(?:charge|payment|subscription|plan)|(?:monthly|annual|yearly|quarterly)\s+(?:plan|subscription)|subscription\s+(?:confirmation|receipt|invoice|charge|payment|renewed|purchase)|you\s+will\s+be\s+automatically\s+charged|cancel\s+anytime)\b/i
 
 // Subjects that look like account/notification noise — rejected unless the
 // subject also carries billing language.
 const NON_BILLING_SUBJECT =
   /\b(sign[-\s]?in|log[-\s]?in|security\s+alert|verify|verification|confirm\s+your|password|one[-\s]?time|otp|2fa|new\s+device|unusual\s+activity|comment(?:ed)?|mention(?:ed)?|liked|followed|digest|newsletter|welcome|get\s+started)\b/i
 
-export function classifyBilling(subject: string, body: string): { isBilling: boolean; explicit: boolean } {
+export function classifyBilling(
+  subject: string,
+  body: string,
+  from = ''
+): { isBilling: boolean; explicit: boolean; reason?: string } {
+  // 1. Exclude banks, fintech transfer receipts, newsletters, and one-off e-commerce shopping
+  if (from) {
+    const exclusion = isExcludedNonSubscription(from, subject, body)
+    if (exclusion.excluded) {
+      return { isBilling: false, explicit: false, reason: exclusion.reason }
+    }
+  }
+
   const text = `${subject}\n${body}`
   if (NON_BILLING_SUBJECT.test(subject) && !BILLING_KEYWORDS.test(subject)) {
-    return { isBilling: false, explicit: false }
+    return { isBilling: false, explicit: false, reason: 'non_billing_subject' }
   }
-  return { isBilling: BILLING_KEYWORDS.test(text), explicit: EXPLICIT_SUBSCRIPTION.test(text) }
+  return {
+    isBilling: BILLING_KEYWORDS.test(text),
+    explicit: EXPLICIT_SUBSCRIPTION.test(text),
+  }
 }
 
 type Money = { amount: number; currency: string; index: number }
 
+// Atomic-style currency regex with negative lookahead for scale multipliers ($12.9 billion != $12.9)
 const CURRENCY_AMOUNT =
-  /(\$|USD|₦|NGN|€|EUR|£|GBP)\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/gi
+  /(\$|USD|₦|NGN|€|EUR|£|GBP)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d|\.\d)(?!\s*(?:billion|million|trillion|bn|b\b|m\b|k\b))/gi
 
 // Words the actual charge sits next to. Used to pick the right number when an
 // email contains several amounts (promos, taxes, crossed-out prices).
 const AMOUNT_ANCHOR =
-  /\b(grand\s+total|total|subtotal|amount\s+(?:due|charged|paid)?|charged|you\s+paid|payment\s+of|billed)\b/gi
+  /\b(grand\s+total|total\s*(?:due|paid|charged)?\s*[:\s]|subtotal\s*[:\s]|amount\s+(?:due|charged|paid)\s*[:\s]?|charged\s*[:\s]|you\s+paid\s*[:\s]?|payment\s+(?:of|received|amount)\s*[:\s]?|billed\s*[:\s]?|price\s*[:\s]|renewal\s*[:\s]|renew(?:s|ed)\s|processed|debited|deducted|facture\s*[:\s]|montant\s*[:\s]|pay[ée])/gi
+
+const RECEIPT_MARKERS =
+  /\b(receipt\s*#|invoice\s*#|order\s*(?:number|#|id)|order\s+date:|payment\s+method:|download\s+invoice|download\s+receipt)\b/i
 
 function toCurrency(symbol: string): string {
   const s = symbol.toUpperCase()
@@ -114,9 +138,8 @@ function parseAllAmounts(text: string): Money[] {
   return out
 }
 
-// Billing-anchored extraction: prefer the amount adjacent to a "total/charged"
-// label; otherwise fall back to the largest amount (the charge usually beats
-// promo/tax lines). Returns null when no positive amount is present.
+// Billing-anchored extraction: prefer the amount adjacent to a "total/charged" label;
+// otherwise fall back to explicit receipt markers. Returns null if amounts are ambiguous.
 export function extractBillingAmount(text: string): { amount: number; currency: string } | null {
   const amounts = parseAllAmounts(text)
   if (amounts.length === 0) return null
@@ -134,20 +157,25 @@ export function extractBillingAmount(text: string): { amount: number; currency: 
     if (best && bestDist <= 80) return { amount: best.amount, currency: best.currency }
   }
 
-  const largest = amounts.reduce((p, c) => (c.amount > p.amount ? c : p))
-  return { amount: largest.amount, currency: largest.currency }
+  // If there are explicit receipt headers (like Receipt #, Order number:), accept the largest amount
+  if (RECEIPT_MARKERS.test(text)) {
+    const largest = amounts.reduce((p, c) => (c.amount > p.amount ? c : p))
+    return { amount: largest.amount, currency: largest.currency }
+  }
+
+  return null
 }
 
 // Cadence guessed from email language — only used when there's a single receipt.
 export function detectCadence(text: string): Cadence {
+  if (/domain\s+(?:purchase|registration|renewal)/i.test(text)) return 'yearly'
   if (/annual|yearly|per\s+year|\/\s*year|\byr\b/i.test(text)) return 'yearly'
   if (/weekly|per\s+week|\/\s*week/i.test(text)) return 'weekly'
   if (/daily|per\s+day|\/\s*day/i.test(text)) return 'daily'
   return 'monthly'
 }
 
-// Cadence inferred from the spacing between repeat receipts (the reliable
-// signal). Mirrors the wallet detector's interval logic.
+// Cadence inferred from the spacing between repeat receipts (the reliable signal).
 export function cadenceFromDates(isoDates: string[]): Cadence | null {
   if (isoDates.length < 2) return null
   const days = isoDates
@@ -156,9 +184,110 @@ export function cadenceFromDates(isoDates: string[]): Cadence | null {
   const intervals = days.slice(1).map((d, i) => d - days[i]).sort((a, b) => a - b)
   const median = intervals[Math.floor(intervals.length / 2)]
   if (median >= 5 && median <= 10) return 'weekly'
+  if (median >= 20 && median <= 40) return 'monthly'
   if (median >= 320 && median <= 400) return 'yearly'
-  if (median >= 11) return 'monthly'
-  return 'monthly'
+  return null
+}
+
+/**
+ * Detects and parses Google Play or Apple App Store subscription receipts,
+ * extracting the underlying application name (e.g. "CapCut"), vendor, and pricing.
+ */
+export function parseAppStoreReceipt(
+  from: string,
+  subject: string,
+  body: string
+): {
+  merchant: string
+  name: string
+  category: SubscriptionCategory
+  amount?: number
+  currency?: string
+  cadence?: Cadence
+} | null {
+  const combined = `${subject}\n${body}`
+  const fromLower = from.toLowerCase()
+
+  // 1. Google Play Receipts
+  const isGooglePlay =
+    fromLower.includes('googleplay') ||
+    fromLower.includes('google play') ||
+    /Google\s*Play\s+Order\s+Receipt/i.test(subject) ||
+    /Order\s+number:\s*GPA\.\d{4}-\d{4}-\d{4}-\d{5}/i.test(body)
+
+  if (isGooglePlay) {
+    const itemPriceMatch = combined.match(/Item\s+Price\s*\n+([^\n\r]+)/i)
+    let rawItem = ''
+    if (itemPriceMatch) {
+      let line = itemPriceMatch[1].replace(/(?:₦|\$|USD|EUR|GBP)\s*[\d,]+(?:\.\d{2})?.*$/i, '').trim()
+      const subInParens = line.match(/(?:Monthly|Annual|Yearly|Weekly)?\s*Subscription\s*\((.*)\)$/i)
+      if (subInParens) line = subInParens[1].trim()
+      line = line.replace(/\(by [^)]+\)/gi, '').trim()
+      rawItem = line
+    } else {
+      const subMatch = combined.match(/(?:Monthly|Annual|Yearly|Weekly)?\s*Subscription\s*\(([^)]+)\)/i)
+      if (subMatch) rawItem = subMatch[1].trim()
+    }
+
+    if (rawItem) {
+      let cleanName = rawItem.split(':')[0].split(' - ')[0].trim()
+      cleanName = cleanName.replace(/\([^)]+\)/g, '').trim()
+
+      let category: SubscriptionCategory = 'design'
+      const lowerItem = rawItem.toLowerCase()
+      if (lowerItem.includes('ai') || lowerItem.includes('gemini') || lowerItem.includes('chat') || lowerItem.includes('bot')) {
+        category = 'ai'
+      } else if (lowerItem.includes('google one') || lowerItem.includes('storage') || lowerItem.includes('drive')) {
+        category = 'storage'
+      } else if (lowerItem.includes('photo') || lowerItem.includes('video') || lowerItem.includes('editor') || lowerItem.includes('design') || lowerItem.includes('capcut')) {
+        category = 'design'
+      } else if (lowerItem.includes('stream') || lowerItem.includes('tv') || lowerItem.includes('movie')) {
+        category = 'streaming'
+      } else if (lowerItem.includes('music') || lowerItem.includes('audio') || lowerItem.includes('song')) {
+        category = 'music'
+      } else if (lowerItem.includes('fit') || lowerItem.includes('workout') || lowerItem.includes('health') || lowerItem.includes('gym')) {
+        category = 'fitness'
+      } else if (lowerItem.includes('vpn') || lowerItem.includes('proxy')) {
+        category = 'vpn'
+      } else if (lowerItem.includes('learn') || lowerItem.includes('tutor') || lowerItem.includes('course') || lowerItem.includes('duolingo')) {
+        category = 'education'
+      }
+
+      let cadence: Cadence = 'monthly'
+      if (/for\s+1\s+year|\/year|yearly|annual/i.test(combined)) {
+        cadence = 'yearly'
+      } else if (/for\s+1\s+week|\/week|weekly/i.test(combined)) {
+        cadence = 'weekly'
+      }
+
+      return {
+        merchant: cleanName || 'Google Play',
+        name: cleanName || rawItem || 'Google Play Subscription',
+        category,
+        cadence,
+      }
+    }
+  }
+
+  // 2. Apple App Store Receipts
+  const isApple =
+    fromLower.includes('apple.com') &&
+    (/receipt\s+from\s+apple/i.test(subject) || /apple\.com\/bill/i.test(body))
+
+  if (isApple) {
+    const appMatch = combined.match(/(?:App Store|In-App Purchase)\s*\n\s*([^\n\r]+)/i)
+    if (appMatch) {
+      const rawApp = appMatch[1].trim()
+      const cleanName = rawApp.split(' - ')[0].split(':')[0].trim()
+      return {
+        merchant: cleanName,
+        name: cleanName,
+        category: 'productivity',
+      }
+    }
+  }
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -214,14 +343,47 @@ function getOAuthClient() {
 // ---------------------------------------------------------------------------
 
 app.get('/status', async (c) => {
-  const userId = c.req.query('user_id') ?? c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
+  const userId = auth?.dbUserId ?? c.req.query('user_id') ?? c.req.header('x-user-id')
   if (!userId) return c.json({ error: 'user_id required' }, 400)
   const connected = await hasGmailConnected(userId)
   return c.json({ connected })
 })
 
 // ---------------------------------------------------------------------------
-// GET /gmail/auth
+// POST /gmail/connect (Safe OAuth initiation with cryptographic state nonce)
+// ---------------------------------------------------------------------------
+
+app.post('/connect', async (c) => {
+  const auth = await authenticateCaller(c)
+  if (!auth) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET) {
+    return c.json({ error: 'Gmail OAuth not configured.' }, 503)
+  }
+
+  const stateCode = randomBytes(32).toString('hex')
+  await cache.set(
+    `oauth_state:${stateCode}`,
+    { dbUserId: auth.dbUserId, privyDid: auth.privyDid },
+    { ex: 600 }
+  )
+
+  const oauth2Client = getOAuthClient()
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: ['https://www.googleapis.com/auth/gmail.readonly', CALENDAR_SCOPE],
+    state: stateCode,
+  })
+
+  return c.json({ url: authUrl })
+})
+
+// ---------------------------------------------------------------------------
+// GET /gmail/auth (Legacy fallback)
 // ---------------------------------------------------------------------------
 
 app.get('/auth', (c) => {
@@ -252,11 +414,37 @@ app.get('/auth', (c) => {
 
 app.get('/callback', async (c) => {
   const code = c.req.query('code')
-  const userId = c.req.query('state')
+  const state = c.req.query('state')
+  const error = c.req.query('error')
+  const errorDescription = c.req.query('error_description')
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000'
 
-  if (!code || !userId) {
+  if (error) {
+    console.warn('[Gmail OAuth] Google returned error:', error, errorDescription)
+    const errParam = encodeURIComponent(error)
+    const detailParam = errorDescription ? `&detail=${encodeURIComponent(errorDescription)}` : ''
+    return c.redirect(`${frontendUrl}/dashboard?error=${errParam}${detailParam}`)
+  }
+
+  if (!code || !state) {
+    console.warn('[Gmail OAuth] Callback missing code or state:', { code: Boolean(code), state })
     return c.redirect(`${frontendUrl}/dashboard?error=oauth_failed`)
+  }
+
+  let targetUserId: string | null = null
+
+  // 1. Verify cryptographic state nonce from KV
+  const stateKey = `oauth_state:${state}`
+  const stored = await cache.get<{ dbUserId: string; privyDid: string }>(stateKey)
+  if (stored) {
+    targetUserId = stored.privyDid || stored.dbUserId
+    await cache.del(stateKey)
+  } else if (state.startsWith('did:') || state.length > 20) {
+    // Backward compatibility for legacy callers
+    targetUserId = state
+  } else {
+    console.warn('[Gmail OAuth] State expired or invalid:', state)
+    return c.redirect(`${frontendUrl}/dashboard?error=oauth_expired`)
   }
 
   try {
@@ -264,19 +452,29 @@ app.get('/callback', async (c) => {
     const { tokens } = await oauth2Client.getToken(code)
 
     if (!tokens.refresh_token) {
+      console.warn('[Gmail OAuth] Google did not return refresh_token')
       return c.redirect(`${frontendUrl}/dashboard?error=no_refresh_token`)
     }
 
-    await getOrCreateUser(userId)
-    await storeGmailTokens(userId, {
+    const dbUserId = await getOrCreateUser(targetUserId)
+    await storeGmailTokens(targetUserId, {
       refresh_token: tokens.refresh_token,
       access_token: tokens.access_token ?? undefined,
     })
+    if (dbUserId !== targetUserId) {
+      await storeGmailTokens(dbUserId, {
+        refresh_token: tokens.refresh_token,
+        access_token: tokens.access_token ?? undefined,
+      })
+    }
 
+    console.log('[Gmail OAuth] Successfully connected Gmail for user:', targetUserId)
     return c.redirect(`${frontendUrl}/dashboard?connected=gmail`)
   } catch (err) {
     console.error('[Gmail OAuth] Callback error:', (err as Error).message)
-    return c.redirect(`${frontendUrl}/dashboard?error=oauth_failed`)
+    return c.redirect(
+      `${frontendUrl}/dashboard?error=oauth_failed&detail=${encodeURIComponent((err as Error).message)}`
+    )
   }
 })
 
@@ -290,14 +488,16 @@ app.get('/callback', async (c) => {
 // decide downstream. The registry is no longer a gate; it only enriches naming
 // and category after detection, so subscriptions outside the registry are caught.
 const GMAIL_QUERY =
-  'category:purchases OR subject:(receipt OR invoice OR subscription OR renewal OR renews OR "payment received" OR billed OR "your plan" OR "order confirmation")'
+  'subject:(receipt OR invoice OR "payment received" OR billed OR "auto-renew" OR "order receipt" OR "membership renewed") -subject:(briefing OR newsletter OR digest OR alert)'
 
-const MAX_RESULTS = 200
-const BATCH_SIZE = 15
+const MAX_RESULTS = 75
+const BATCH_SIZE = 5
 
 app.post('/scan', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  const userId = auth.privyDid
+  const dbUserId = auth.dbUserId
 
   const debug = c.req.query('debug') === '1'
   const t0 = Date.now()
@@ -308,7 +508,6 @@ app.post('/scan', async (c) => {
     return c.json({ error: 'Scan already in progress. Try again in 2 minutes.' }, 429)
   }
 
-  const dbUserId = await getOrCreateUser(userId)
   const tokens = await getGmailTokens(userId)
   if (!tokens?.refresh_token) {
     await releaseScanLock(userId)
@@ -337,7 +536,19 @@ app.post('/scan', async (c) => {
     // completed run; a scan cut short by the time budget resumes from its saved
     // pageToken instead of restarting. Reprocessing a page is safe — Phase 2
     // upserts idempotently.
-    const sync = await getGmailSync(userId)
+    const isReset = c.req.query('reset') === '1' || c.req.query('full') === '1'
+    if (isReset) {
+      await setGmailSync(userId, { lastCompletedAt: undefined, resumeToken: undefined, resumeQuery: undefined })
+      if (c.req.query('clear') === '1') {
+        const oldRows = (await sql`SELECT id FROM subscriptions WHERE user_id = ${dbUserId} AND source = 'gmail'`) as { id: string }[]
+        for (const row of oldRows) {
+          await cache.del(`renewal:${row.id}`)
+          await cache.del(`insight:${row.id}`)
+        }
+        await sql`DELETE FROM subscriptions WHERE user_id = ${dbUserId} AND source = 'gmail'`
+      }
+    }
+    const sync = isReset ? {} : await getGmailSync(userId)
     const scanStartedAt = Math.floor(t0 / 1000)
     const resuming = !!(sync.resumeToken && sync.resumeQuery)
     const query = resuming
@@ -345,7 +556,7 @@ app.post('/scan', async (c) => {
       : sync.lastCompletedAt
         ? `${GMAIL_QUERY} after:${sync.lastCompletedAt}`
         : `${GMAIL_QUERY} newer_than:1y`
-    log('window', { resuming, lastCompletedAt: sync.lastCompletedAt ?? null, query_len: query.length })
+    log('window', { resuming, lastCompletedAt: sync.lastCompletedAt ?? null, isReset, query_len: query.length })
 
     let detected = 0       // emails that pass the billing-intent gate
     let noAmount = 0       // billing emails with no parseable amount
@@ -356,17 +567,23 @@ app.post('/scan', async (c) => {
 
     type Candidate = {
       merchant: string
+      name?: string
       category: SubscriptionCategory | null
       amount: number
       currency: string
       date: string
       cadenceHint: Cadence
       explicit: boolean
+      messageId?: string
+      subject?: string
+      bodySnippet?: string
     }
     const candidates: Candidate[] = []
 
     // --- Phase 1: interleaved list + fetch, time-boxed and resumable ---
-    const TIME_BUDGET_MS = 50_000
+    const TIME_BUDGET_MS = 22_000
+    // Retry waits must end before this, leaving room for Phase 2 inside the 60s function.
+    const retryDeadline = t0 + TIME_BUDGET_MS + 8_000
     let timedOut = false
     let exhausted = false
     let processed = 0
@@ -380,12 +597,16 @@ app.post('/scan', async (c) => {
       if (Date.now() - t0 > TIME_BUDGET_MS) { timedOut = true; break }
 
       const tokenForThisPage = nextToken
-      const listRes = await gmail.users.messages.list({
-        userId: 'me',
-        q: query,
-        maxResults: 100,
-        ...(tokenForThisPage ? { pageToken: tokenForThisPage } : {}),
-      })
+      const listRes = await withGmailRetry(
+        () =>
+          gmail.users.messages.list({
+            userId: 'me',
+            q: query,
+            maxResults: 100,
+            ...(tokenForThisPage ? { pageToken: tokenForThisPage } : {}),
+          }),
+        { deadline: retryDeadline }
+      )
       const msgs = listRes.data.messages ?? []
       nextToken = listRes.data.nextPageToken ?? undefined
       pages++
@@ -406,16 +627,17 @@ app.post('/scan', async (c) => {
             if (!msg.id) return
             processed++
 
+            const id = msg.id
             let full
             try {
-              full = await gmail.users.messages.get({
-                userId: 'me',
-                id: msg.id,
-                format: 'full',
-              })
+              full = await withGmailRetry(
+                () => gmail.users.messages.get({ userId: 'me', id, format: 'full' }),
+                { deadline: retryDeadline }
+              )
             } catch (e) {
+              if (isAuthExpired(e)) throw e
               fetchErrors++
-              log('fetch-error', { id: msg.id, err: (e as Error).message })
+              log('fetch-error', { id, err: (e as Error).message })
               return
             }
 
@@ -430,9 +652,9 @@ app.post('/scan', async (c) => {
             const snippet = full.data.snippet ?? ''
 
             const body = full.data.payload ? getEmailBody(full.data.payload) : ''
-            const { isBilling, explicit } = classifyBilling(subject, body)
+            const { isBilling, explicit, reason } = classifyBilling(subject, body, from)
             if (!isBilling) {
-              if (rejectedSamples.length < 10) rejectedSamples.push({ subject, from, reason: 'not_billing' })
+              if (rejectedSamples.length < 10) rejectedSamples.push({ subject, from, reason: reason ?? 'not_billing' })
               return
             }
 
@@ -445,21 +667,46 @@ app.post('/scan', async (c) => {
             }
 
             detected++
-            const { name: merchant, category } = resolveMerchant(from)
+            const appStoreReceipt = parseAppStoreReceipt(from, subject, body)
+            let merchant: string
+            let candidateName: string | undefined = undefined
+            let category: SubscriptionCategory | null = null
+            let detectedCadenceHint: Cadence = detectCadence(`${subject}\n${snippet}\n${body}`)
+
+            if (appStoreReceipt) {
+              merchant = appStoreReceipt.merchant
+              candidateName = appStoreReceipt.name
+              category = appStoreReceipt.category
+              if (appStoreReceipt.cadence) {
+                detectedCadenceHint = appStoreReceipt.cadence
+              }
+            } else {
+              const res = resolveMerchant(from)
+              merchant = res.name
+              category = res.category
+            }
+
             candidates.push({
               merchant,
+              name: candidateName,
               category,
               amount: money.amount,
               currency: money.currency,
               date,
-              cadenceHint: detectCadence(`${subject}\n${snippet}`),
+              cadenceHint: detectedCadenceHint,
               explicit,
+              messageId: msg.id ?? undefined,
+              subject,
+              bodySnippet: body.slice(0, 1500),
             })
             if (acceptedSamples.length < 10) {
               acceptedSamples.push({ subject, from, merchant, amount: money.amount, currency: money.currency })
             }
           })
         )
+
+        // Inter-batch pacing delay to respect Gmail per-user query limits
+        await new Promise((r) => setTimeout(r, 120))
       }
 
       if (timedOut) break
@@ -487,41 +734,116 @@ app.post('/scan', async (c) => {
 
     for (const [merchant, group] of byMerchant) {
       group.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      const recurring = group.length >= 2
-      const singleExplicit = group.length === 1 && group[0].explicit
-      if (!recurring && !singleExplicit) {
+      const isKnownService = !!group.find((g) => g.category)
+      const detectedCadence = cadenceFromDates(group.map((g) => g.date))
+      const hasExplicit = group.some((g) => g.explicit)
+
+      // Reject one-off domain purchases for different domains without explicit auto-renew
+      const domainMatches = group
+        .map((g) => {
+          const match = `${g.subject ?? ''} ${g.bodySnippet ?? ''}`.match(/Domain purchase\s*-\s*([^\s,]+)/i)
+          return match ? match[1].toLowerCase() : null
+        })
+        .filter(Boolean) as string[]
+
+      if (domainMatches.length > 0 && !hasExplicit) {
+        const distinctDomains = new Set(domainMatches)
+        if (distinctDomains.size === domainMatches.length) {
+          skippedOneOff++
+          continue
+        }
+      }
+
+      // A merchant qualifies as a subscription ONLY IF:
+      // 1. It is a known service in the registry, OR
+      // 2. It has an explicit subscription marker in at least one email, OR
+      // 3. It has regular periodic recurrence (cadenceFromDates !== null)
+      if (!isKnownService && !hasExplicit && !detectedCadence) {
         skippedOneOff++
         continue
       }
 
+      // Enforce amount consistency for unverified merchants:
+      // If repeat charges fluctuate wildly, it's variable spending (not a fixed subscription)
+      const positiveAmounts = group.map((g) => g.amount).filter((a) => a > 0)
+      if (!isKnownService && !hasExplicit && positiveAmounts.length >= 2) {
+        const min = Math.min(...positiveAmounts)
+        const max = Math.max(...positiveAmounts)
+        if (max > min * 1.35) {
+          skippedOneOff++
+          continue
+        }
+      }
+
       const latest = group[group.length - 1]
-      const cadence: Cadence = recurring
-        ? (cadenceFromDates(group.map((g) => g.date)) ?? 'monthly')
-        : latest.cadenceHint
+      // Reject zero-dollar phantom subscriptions for unverified merchants with no explicit trial
+      if (latest.amount <= 0 && !isKnownService && !hasExplicit) {
+        skippedOneOff++
+        continue
+      }
+
+      const cadence: Cadence = detectedCadence ?? latest.cadenceHint
       const category = group.find((g) => g.category)?.category ?? null
+      const finalName = group.find((g) => g.name)?.name ?? latest.name ?? merchant
 
       try {
-        const existingRows = await sql`
+        let subId: string
+        const existingRows = (await sql`
           SELECT id FROM subscriptions
-          WHERE user_id = ${dbUserId} AND merchant = ${merchant} AND status = 'active'
-          LIMIT 1
-        `
+          WHERE user_id = ${dbUserId} AND LOWER(merchant) = ${merchant.toLowerCase()} AND status = 'active'
+          ORDER BY (amount > 0) DESC, detected_at DESC
+        `) as unknown as { id: string }[]
         if (existingRows.length > 0) {
+          subId = existingRows[0].id
           await sql`
             UPDATE subscriptions
-            SET last_charged = ${latest.date}, amount = ${latest.amount}, currency = ${latest.currency},
+            SET name = COALESCE(${finalName}, name),
+                last_charged = ${latest.date}, amount = ${latest.amount}, currency = ${latest.currency},
                 cadence = ${cadence}, category = COALESCE(category, ${category})
-            WHERE id = ${existingRows[0].id}
+            WHERE id = ${subId}
           `
+          if (existingRows.length > 1) {
+            const duplicateIds = existingRows.slice(1).map((r) => r.id)
+            await sql`DELETE FROM subscriptions WHERE id = ANY(${duplicateIds})`
+          }
           updated++
         } else {
-          await sql`
+          const [inserted] = (await sql`
             INSERT INTO subscriptions
               (user_id, name, merchant, amount, currency, cadence, source, category, detected_at, last_charged)
             VALUES
-              (${dbUserId}, ${merchant}, ${merchant}, ${latest.amount}, ${latest.currency}, ${cadence}, 'gmail', ${category}, NOW(), ${latest.date})
-          `
+              (${dbUserId}, ${finalName}, ${merchant}, ${latest.amount}, ${latest.currency}, ${cadence}, 'gmail', ${category}, NOW(), ${latest.date})
+            RETURNING id
+          `) as unknown as { id: string }[]
+          subId = inserted.id
           created++
+        }
+
+        // Write each receipt signal to the database for accurate charge_count
+        for (const candidate of group) {
+          if (candidate.messageId) {
+            try {
+              await sql`
+                INSERT INTO signals (subscription_id, type, value, weight, message_id, created_at)
+                VALUES (
+                  ${subId},
+                  'receipt',
+                  ${JSON.stringify({
+                    amount: candidate.amount,
+                    currency: candidate.currency,
+                    subject: candidate.subject,
+                    date: candidate.date,
+                  })},
+                  1.0,
+                  ${candidate.messageId},
+                  ${candidate.date}
+                )
+                ON CONFLICT (subscription_id, message_id) DO NOTHING
+              `
+            } catch {
+              // Ignore single duplicate or conflicting signal insert
+            }
+          }
         }
       } catch (e) {
         dbErrors++
@@ -542,8 +864,6 @@ app.post('/scan', async (c) => {
         resumeQuery: query,
       })
     }
-
-    await releaseScanLock(userId)
 
     // Auto-score all subs now that detection is fresh — no AI calls, just DB writes.
     // Ensures confidence + recommendations are populated immediately after every scan.
@@ -588,9 +908,29 @@ app.post('/scan', async (c) => {
     }
     return c.json(response)
   } catch (err) {
-    await releaseScanLock(userId)
     console.error('[gmail/scan] fatal:', err)
+    if (isAuthExpired(err)) {
+      await clearGmailTokens(userId).catch(() => {})
+      return c.json(
+        {
+          error: 'Your Gmail connection has expired. Connect Gmail again to keep scanning.',
+          code: 'GMAIL_RECONNECT_REQUIRED',
+        },
+        400
+      )
+    }
+    if (isRateLimited(err)) {
+      return c.json(
+        {
+          error: 'Gmail asked us to slow down. Wait a minute, then scan again.',
+          code: 'GMAIL_RATE_LIMITED',
+        },
+        503
+      )
+    }
     return c.json({ error: 'Scan failed', detail: (err as Error).message }, 500)
+  } finally {
+    await releaseScanLock(userId).catch(() => {})
   }
 })
 
@@ -607,8 +947,9 @@ app.delete('/scan-lock', async (c) => {
 // ---------------------------------------------------------------------------
 
 app.post('/parse', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  const dbUserId = auth.dbUserId
 
   const body = await c.req.json<{
     subject: string
@@ -617,16 +958,14 @@ app.post('/parse', async (c) => {
     received_at: string
   }>()
 
-  const { isBilling } = classifyBilling(body.subject, body.body_snippet)
+  const { isBilling, reason } = classifyBilling(body.subject, body.body_snippet, body.sender)
   if (!isBilling) {
-    return c.json({ detected: false, reason: 'not_billing' })
+    return c.json({ detected: false, reason: reason ?? 'not_billing' })
   }
 
   const { name: merchant, category } = resolveMerchant(body.sender)
   const amountResult = extractBillingAmount(`${body.subject}\n${body.body_snippet}`)
   const cadence = detectCadence(`${body.subject}\n${body.body_snippet}`)
-
-  const dbUserId = await getOrCreateUser(userId)
 
   const existingRows = await sql`
     SELECT id FROM subscriptions
@@ -636,19 +975,41 @@ app.post('/parse', async (c) => {
 
   const amount = amountResult?.amount ?? 0
   const currency = amountResult?.currency ?? 'USD'
+  let subId: string
 
   if (existingRows.length > 0) {
-    await sql`UPDATE subscriptions SET last_charged = ${body.received_at}, category = COALESCE(category, ${category}) WHERE id = ${existingRows[0].id}`
-    return c.json({ detected: true, action: 'updated', subscription_id: existingRows[0].id })
+    subId = existingRows[0].id
+    await sql`UPDATE subscriptions SET last_charged = ${body.received_at}, category = COALESCE(category, ${category}) WHERE id = ${subId}`
+  } else {
+    const created = await sql`
+      INSERT INTO subscriptions (user_id, name, merchant, amount, currency, cadence, source, category, detected_at, last_charged)
+      VALUES (${dbUserId}, ${merchant}, ${merchant}, ${amount}, ${currency}, ${cadence}, 'gmail', ${category}, NOW(), ${body.received_at})
+      RETURNING id
+    `
+    subId = created[0].id
   }
 
-  const created = await sql`
-    INSERT INTO subscriptions (user_id, name, merchant, amount, currency, cadence, source, category, detected_at, last_charged)
-    VALUES (${dbUserId}, ${merchant}, ${merchant}, ${amount}, ${currency}, ${cadence}, 'gmail', ${category}, NOW(), ${body.received_at})
-    RETURNING id
-  `
+  // Insert signal record
+  try {
+    await sql`
+      INSERT INTO signals (subscription_id, type, value, weight, created_at)
+      VALUES (
+        ${subId},
+        'receipt',
+        ${JSON.stringify({ amount, currency, subject: body.subject, date: body.received_at })},
+        1.0,
+        ${body.received_at}
+      )
+    `
+  } catch {
+    // ignore
+  }
 
-  return c.json({ detected: true, action: 'created', subscription_id: created[0].id })
+  return c.json({
+    detected: true,
+    action: existingRows.length > 0 ? 'updated' : 'created',
+    subscription_id: subId,
+  })
 })
 
 export default app

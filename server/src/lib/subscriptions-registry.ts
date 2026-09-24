@@ -301,11 +301,14 @@ export function lookupService(senderHeader: string): { name: string; category: S
     }
   }
 
-  // 3. Root domain match
+  // 3. Root domain match (skip shared platform mega-domains like google.com, apple.com to avoid misattributions)
+  const SHARED_PLATFORM_ROOTS = new Set(['google.com', 'apple.com', 'amazon.com', 'microsoft.com'])
   const root = rootOf(fullDomain)
-  for (const service of SUBSCRIPTION_REGISTRY) {
-    if (service.domains.some((d) => rootOf(d) === root)) {
-      return { name: service.name, category: service.category }
+  if (!SHARED_PLATFORM_ROOTS.has(root)) {
+    for (const service of SUBSCRIPTION_REGISTRY) {
+      if (service.domains.some((d) => rootOf(d) === root)) {
+        return { name: service.name, category: service.category }
+      }
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { apiFetch } from '@/lib/api'
 
 interface AgentAction {
   id: string
@@ -46,7 +47,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    fetch('/api/agent/history', { headers: { 'x-user-id': userId } })
+    apiFetch('/api/agent/history', { userId })
       .then((r) => (r.ok ? r.json() : { actions: [] }))
       .then((d) => {
         if (!cancelled) setActions(d.actions ?? [])
@@ -75,7 +76,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
           </h4>
         </div>
         <span className="type-caption font-mono text-white/50">
-          {actions.length} action{actions.length !== 1 ? 's' : ''} on Base
+          {actions.length} action{actions.length !== 1 ? 's' : ''} recorded
         </span>
       </div>
 

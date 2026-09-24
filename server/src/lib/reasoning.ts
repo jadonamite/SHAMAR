@@ -187,7 +187,7 @@ function extractJson(raw: string): any | null {
 
 // Constraints the model cannot argue its way past. Applied after every decision,
 // model-sourced or not.
-function applyGuardrails(d: Decision): Decision {
+export function applyGuardrails(d: Decision): Decision {
   const g = { ...d, blast_radius: { ...d.blast_radius } }
 
   if (g.blast_radius.data_loss === 'permanent' && g.action === 'cancel') {
@@ -294,8 +294,8 @@ export async function persistDecision(d: Decision): Promise<void> {
   const evidence = [d.rationale, ...d.blast_radius.notes]
   await sql`DELETE FROM recommendations WHERE subscription_id = ${d.subscription_id}`
   await sql`
-    INSERT INTO recommendations (subscription_id, action, confidence, evidence)
-    VALUES (${d.subscription_id}, ${d.action}, ${d.confidence}, ${JSON.stringify(evidence)})
+    INSERT INTO recommendations (subscription_id, action, confidence, evidence, decision)
+    VALUES (${d.subscription_id}, ${d.action}, ${d.confidence}, ${JSON.stringify(evidence)}, ${JSON.stringify(d)})
   `
 }
 

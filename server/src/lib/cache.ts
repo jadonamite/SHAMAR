@@ -49,6 +49,8 @@ async function kvDel(key: string): Promise<void> {
   await sql`DELETE FROM kv WHERE key = ${key}`
 }
 
+export { kvGet, kvSet, kvDel }
+
 // Minimal Redis-shaped surface so callers written against the old client keep
 // working unchanged.
 export const redis = {
@@ -59,6 +61,8 @@ export const redis = {
       : kvSet(key, value, opts?.ex).then(() => 'OK'),
   del: (key: string) => kvDel(key),
 }
+
+export const cache = redis
 
 export async function getCachedInsight(subId: string): Promise<string | null> {
   return kvGet<string>(`insight:${subId}`)
@@ -92,6 +96,10 @@ export async function storeGmailTokens(userId: string, tokens: GmailTokens): Pro
 
 export async function getGmailTokens(userId: string): Promise<GmailTokens | null> {
   return kvGet<GmailTokens>(`gmail_tokens:${userId}`)
+}
+
+export async function clearGmailTokens(userId: string): Promise<void> {
+  await kvDel(`gmail_tokens:${userId}`)
 }
 
 export async function hasGmailConnected(userId: string): Promise<boolean> {
