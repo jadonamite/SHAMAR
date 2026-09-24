@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import TopNav from '@/components/app/TopNav'
 
 export const metadata: Metadata = {
   title: 'Cookie policy — SHAMAR',
@@ -18,8 +18,7 @@ export default function CookiesPage() {
             Cookie policy
           </h1>
           <p className="type-caption text-label-3 font-mono">
-            Last updated: 22 September 2026. This document has not had formal
-            legal review.
+            Last updated: 24 September 2026.
           </p>
         </header>
 
@@ -87,8 +86,11 @@ export default function CookiesPage() {
 
           <section className="pt-6 border-t border-separator/80">
             <p className="type-caption text-label-3">
-              For questions about our storage practices, contact
-              privacy@shamar.namite.xyz.
+              For questions about our storage practices, see{' '}
+              <a href="/support" className="text-accent underline font-medium">
+                Support
+              </a>
+              .
             </p>
           </section>
         </div>

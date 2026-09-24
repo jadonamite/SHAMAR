@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
-import { sql, getOrCreateUser } from '../lib/db.js'
+import { sql } from '../lib/db.js'
 import { complete } from '../lib/ai.js'
+import { authenticateCaller } from '../lib/auth.js'
 
 const app = new Hono()
 
@@ -34,17 +35,16 @@ const CANCEL_URLS: Record<string, string> = {
 
 // GET /actions — full action audit log for user
 app.get('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const rows = await sql`
     SELECT a.id, a.type, a.triggered_by, a.executed_at, a.reversible,
            a.reversed_at, a.signature, a.agent_address,
            s.merchant, s.amount, s.currency, s.cadence, s.id AS subscription_id, s.status
     FROM actions a
     JOIN subscriptions s ON s.id = a.subscription_id
-    WHERE s.user_id = ${dbUserId}
+    WHERE s.user_id = ${auth.dbUserId}
     ORDER BY a.executed_at DESC
     LIMIT 100
   `
@@ -53,17 +53,15 @@ app.get('/', async (c) => {
 
 // PATCH /actions/:id/reverse — undo a reversible action
 app.patch('/:id/reverse', async (c) => {
-  const userId = c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const { id } = c.req.param()
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
-
-  const dbUserId = await getOrCreateUser(userId)
 
   const [action] = await sql`
     SELECT a.id, a.type, a.reversible, a.reversed_at, a.subscription_id
     FROM actions a
     JOIN subscriptions s ON s.id = a.subscription_id
-    WHERE a.id = ${id} AND s.user_id = ${dbUserId}
+    WHERE a.id = ${id} AND s.user_id = ${auth.dbUserId}
   `
 
   if (!action) return c.json({ error: 'Not found' }, 404)
@@ -79,14 +77,13 @@ app.patch('/:id/reverse', async (c) => {
 
 // GET /actions/:subscriptionId/cancel-guide — AI-generated cancellation guide
 app.get('/cancel-guide/:subscriptionId', async (c) => {
-  const userId = c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const { subscriptionId } = c.req.param()
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const [sub] = await sql`
     SELECT merchant, amount, currency, cadence
-    FROM subscriptions WHERE id = ${subscriptionId} AND user_id = ${dbUserId}
+    FROM subscriptions WHERE id = ${subscriptionId} AND user_id = ${auth.dbUserId}
   `
   if (!sub) return c.json({ error: 'Not found' }, 404)
 

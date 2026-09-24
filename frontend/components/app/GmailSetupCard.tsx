@@ -23,11 +23,7 @@ export default function GmailSetupCard({
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveUserId =
-    user?.id ||
-    (typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null)
+  const effectiveUserId = user?.id ?? null
 
   async function handleConnect() {
     if (!effectiveUserId) return
@@ -36,10 +32,10 @@ export default function GmailSetupCard({
     try {
       const res = await apiFetch('/api/gmail/connect', {
         method: 'POST',
-        userId: effectiveUserId,
       })
       if (!res.ok) {
-        window.location.href = `/api/gmail/auth?user_id=${effectiveUserId}`
+        setError('Could not start Google authorization. Please try again.')
+        setConnecting(false)
         return
       }
       const data = await res.json()
@@ -50,7 +46,8 @@ export default function GmailSetupCard({
         setConnecting(false)
       }
     } catch {
-      window.location.href = `/api/gmail/auth?user_id=${effectiveUserId}`
+      setError('Connection failed. Please check network and try again.')
+      setConnecting(false)
     }
   }
 

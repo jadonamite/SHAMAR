@@ -29,10 +29,6 @@ export function useStart() {
   const router = useRouter()
   const [entering, setEntering] = useState(false)
 
-  const isDevUser =
-    typeof window !== 'undefined' &&
-    Boolean(localStorage.getItem('shamar_dev_user'))
-
   const { login } = useLogin({
     onComplete: () => {
       router.push('/dashboard')
@@ -44,13 +40,13 @@ export function useStart() {
   })
 
   useEffect(() => {
-    if (authenticated || isDevUser) {
+    if (authenticated) {
       router.push('/dashboard')
     }
-  }, [authenticated, isDevUser, router])
+  }, [authenticated, router])
 
   function start() {
-    if (authenticated || isMiniPay || isDevUser) {
+    if (authenticated || isMiniPay) {
       router.push('/dashboard')
       return
     }
@@ -73,7 +69,7 @@ export function useStart() {
     router.push('/dashboard')
   }
 
-  return { start, loading: entering && !authenticated && !isDevUser }
+  return { start, loading: entering && !authenticated }
 }
 
 export default function Hero() {

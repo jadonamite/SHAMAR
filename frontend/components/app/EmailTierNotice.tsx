@@ -41,7 +41,7 @@ export default function EmailTierNotice({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-warning/15 pt-2 text-[11px] text-label-3">
         <span>Default Tier: Request sent</span>
         <span className="font-mono text-[10px] text-label-3">
-          Card Tier (Upcoming): Instant closure at Visa network level
+          Card tier: coming soon
         </span>
       </div>
     </div>

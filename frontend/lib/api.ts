@@ -1,8 +1,8 @@
 import { getAccessToken } from '@privy-io/react-auth'
 
 /**
- * apiFetch wraps native fetch to automatically attach Privy JWT Bearer authorization
- * and optionally include user ID headers during the auth transition.
+ * apiFetch wraps native fetch to automatically attach Privy JWT Bearer authorization.
+ * All requests are cryptographically verified; unverified user IDs are never transmitted.
  */
 export async function apiFetch(
   input: string | URL | Request,
@@ -20,10 +20,6 @@ export async function apiFetch(
     }
   } catch {
     // Privy not yet initialized, SSR, or no active session
-  }
-
-  if (init?.userId && !headers.has('x-user-id')) {
-    headers.set('x-user-id', init.userId)
   }
 
   const { userId: _unusedUserId, ...restInit } = init ?? {}

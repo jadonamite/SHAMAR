@@ -145,8 +145,8 @@ export default function AgentPage() {
     setLoading(true)
     try {
       const [statusRes, historyRes] = await Promise.all([
-        apiFetch('/api/agent/status', { userId: user!.id }),
-        apiFetch('/api/agent/history', { userId: user!.id }),
+        apiFetch('/api/agent/status'),
+        apiFetch('/api/agent/history'),
       ])
       if (statusRes.ok) setStatus(await statusRes.json())
       if (historyRes.ok) setHistory((await historyRes.json()).actions ?? [])
@@ -190,28 +190,7 @@ export default function AgentPage() {
           account,
         })
         setTxMessage('Grant recorded on-chain!')
-      }
-
-      const res = await apiFetch('/api/agent/grant-policy', {
-        method: 'POST',
-        userId: user.id,
-      })
-      if (res.ok) {
-        setStatus((prev) =>
-          prev
-            ? {
-                ...prev,
-                state: 'authorized',
-                reason: 'Authorized on Base mainnet.',
-                user: {
-                  ...prev.user!,
-                  policy_granted: true,
-                  policy_granted_at: new Date().toISOString(),
-                },
-                onchainAuthorized: true,
-              }
-            : prev
-        )
+        await load()
       }
     } catch (err) {
       setTxMessage('Transaction cancelled or failed.')
@@ -244,24 +223,8 @@ export default function AgentPage() {
           account,
         })
         setTxMessage('Permissions revoked on Base.')
+        await load()
       }
-
-      await apiFetch('/api/agent/revoke-policy', {
-        method: 'POST',
-        userId: user.id,
-      })
-
-      setStatus((prev) =>
-        prev
-          ? {
-              ...prev,
-              state: 'unauthorized',
-              reason: 'Policy not granted on Base.',
-              user: { ...prev.user!, policy_granted: false },
-              onchainAuthorized: false,
-            }
-          : prev
-      )
     } catch (err) {
       setTxMessage('Revocation cancelled or failed.')
     } finally {
@@ -276,7 +239,6 @@ export default function AgentPage() {
     try {
       const res = await apiFetch('/api/telegram/link-code', {
         method: 'POST',
-        userId: user.id,
       })
       if (res.ok) {
         const data = await res.json()
@@ -297,12 +259,8 @@ export default function AgentPage() {
     try {
       const res = await apiFetch('/api/account', {
         method: 'DELETE',
-        userId: user.id,
       })
       if (res.ok) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('shamar_dev_user')
-        }
         await logout()
         router.push('/?account_deleted=1')
       } else {

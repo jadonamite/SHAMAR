@@ -9,6 +9,8 @@ import { useToast } from '@/components/providers/ToastProvider'
 interface TelegramAlertsCardProps {
   userId?: string
   compact?: boolean
+  // Draw nothing until linked; TelegramLinkBar handles the unlinked prompt.
+  hideWhenUnlinked?: boolean
   onStatusChange?: (linked: boolean) => void
 }
 
@@ -24,6 +26,7 @@ type TelegramStatus = {
 export default function TelegramAlertsCard({
   userId,
   compact = false,
+  hideWhenUnlinked = false,
   onStatusChange,
 }: TelegramAlertsCardProps) {
   const { showToast } = useToast()
@@ -44,7 +47,7 @@ export default function TelegramAlertsCard({
       return
     }
     try {
-      const res = await apiFetch('/api/telegram/status', { userId })
+      const res = await apiFetch('/api/telegram/status')
       if (res.ok) {
         const data: TelegramStatus = await res.json()
         setStatus(data)
@@ -67,7 +70,7 @@ export default function TelegramAlertsCard({
     const interval = setInterval(async () => {
       if (!userId) return
       try {
-        const res = await apiFetch('/api/telegram/status', { userId })
+        const res = await apiFetch('/api/telegram/status')
         if (res.ok) {
           const data: TelegramStatus = await res.json()
           if (data.linked) {
@@ -90,7 +93,6 @@ export default function TelegramAlertsCard({
     try {
       const res = await apiFetch('/api/telegram/link-code', {
         method: 'POST',
-        userId,
       })
       if (res.ok) {
         const data = await res.json()
@@ -114,7 +116,6 @@ export default function TelegramAlertsCard({
     try {
       const res = await apiFetch('/api/telegram/test-notice', {
         method: 'POST',
-        userId,
       })
       const data = await res.json()
       if (res.ok) {
@@ -138,7 +139,6 @@ export default function TelegramAlertsCard({
     try {
       const res = await apiFetch(endpoint, {
         method: 'POST',
-        userId,
       })
       if (res.ok) {
         const nextHalted = !status.halted
@@ -162,7 +162,6 @@ export default function TelegramAlertsCard({
     try {
       const res = await apiFetch('/api/telegram/unlink', {
         method: 'POST',
-        userId,
       })
       if (res.ok) {
         setStatus((prev) =>
@@ -177,6 +176,7 @@ export default function TelegramAlertsCard({
   }
 
   if (loading || !status?.configured) return null
+  if (hideWhenUnlinked && !status.linked) return null
 
   if (compact) {
     return (

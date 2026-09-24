@@ -78,12 +78,8 @@ export default function RecommendationsPage() {
   const [recs, setRecs] = useState<Rec[]>([])
   const [loading, setLoading] = useState(true)
 
-  const devUser =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   useEffect(() => {
     if (!ready) return
@@ -93,7 +89,7 @@ export default function RecommendationsPage() {
     }
     if (!effectiveUserId) return
 
-    apiFetch('/api/recommendations', { userId: effectiveUserId })
+    apiFetch('/api/recommendations')
       .then((r) => r.json())
       .then((d) =>
         setRecs(((d.recommendations ?? []) as Rec[]).map(normalizeRec))

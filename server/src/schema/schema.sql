@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   detected_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_charged TIMESTAMPTZ,
   status       TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','cancelled')),
+  rail         TEXT NOT NULL DEFAULT 'email' CHECK (rail IN ('email','card')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

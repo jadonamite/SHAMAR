@@ -48,12 +48,8 @@ export default function SubscriptionsPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('spend')
 
-  const devUser =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   useEffect(() => {
     if (!ready) return
@@ -62,7 +58,7 @@ export default function SubscriptionsPage() {
       return
     }
     if (!effectiveUserId) return
-    apiFetch('/api/subscriptions', { userId: effectiveUserId })
+    apiFetch('/api/subscriptions')
       .then((r) => r.json())
       .then((d) =>
         setSubs(
@@ -100,7 +96,6 @@ export default function SubscriptionsPage() {
       await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))

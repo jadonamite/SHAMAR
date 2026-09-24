@@ -69,12 +69,8 @@ export default function AuditPage() {
   const [filter, setFilter] = useState<'all' | 'reversible' | 'reversed'>('all')
   const [copiedSig, setCopiedSig] = useState<string | null>(null)
 
-  const devUser =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   useEffect(() => {
     if (!ready) return
@@ -89,7 +85,7 @@ export default function AuditPage() {
   async function load(uid: string) {
     setLoading(true)
     try {
-      const res = await apiFetch('/api/actions', { userId: uid })
+      const res = await apiFetch('/api/actions')
       if (res.ok) {
         setActions(((await res.json()).actions ?? []).map(normalizeAction))
       }
@@ -106,7 +102,6 @@ export default function AuditPage() {
     try {
       const res = await apiFetch(`/api/actions/${action.id}/reverse`, {
         method: 'PATCH',
-        userId: effectiveUserId ?? undefined,
       })
       if (res.ok) {
         setActions((prev) =>

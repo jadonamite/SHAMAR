@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import TopNav from '@/components/app/TopNav'
 
 export const metadata: Metadata = {
   title: 'Terms of service — SHAMAR',
@@ -19,8 +19,7 @@ export default function TermsPage() {
             Terms of service
           </h1>
           <p className="type-caption text-label-3 font-mono">
-            Last updated: 22 September 2026. This document has not had formal
-            legal review.
+            Last updated: 24 September 2026.
           </p>
         </header>
 
@@ -75,9 +74,9 @@ export default function TermsPage() {
             </h2>
             <p>
               You can halt all agent operations at any time by sending stop to
-              the connected Telegram bot (@shamar_agent_bot). Once halted, no
-              cancellations or automated dispatches will occur until you
-              explicitly reply resume.
+              the Telegram bot (@shamar_agent_bot) from the chat you linked.
+              Once halted, no cancellations or automated dispatches will occur
+              until you explicitly reply resume.
             </p>
           </section>
 
@@ -96,8 +95,11 @@ export default function TermsPage() {
 
           <section className="pt-6 border-t border-separator/80">
             <p className="type-caption text-label-3">
-              Questions regarding these terms may be directed to
-              team@shamar.namite.xyz or via GitHub issues.
+              Questions about these terms go through{' '}
+              <a href="/support" className="text-accent underline font-medium">
+                Support
+              </a>
+              .
             </p>
           </section>
         </div>

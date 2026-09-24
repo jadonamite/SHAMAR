@@ -80,17 +80,14 @@ export default function SubscriptionDetail() {
   const router = useRouter()
   const { ready, authenticated, user } = usePrivy()
 
-  const devUser =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   const [data, setData] = useState<DetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
+  const [showCardSoon, setShowCardSoon] = useState(false)
   const [reminderSent, setReminderSent] = useState(false)
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderError, setReminderError] = useState<string | null>(null)
@@ -110,9 +107,7 @@ export default function SubscriptionDetail() {
   async function load() {
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/subscriptions/${id}`, {
-        userId: effectiveUserId!,
-      })
+      const res = await apiFetch(`/api/subscriptions/${id}`)
       if (!res.ok) {
         router.replace('/subscriptions')
         return
@@ -137,7 +132,6 @@ export default function SubscriptionDetail() {
     try {
       const res = await apiFetch(`/api/intelligence/analyze/${id}`, {
         method: 'POST',
-        userId: effectiveUserId,
       })
       if (res.ok) {
         const json = await res.json()
@@ -184,7 +178,6 @@ export default function SubscriptionDetail() {
       const res = await apiFetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({
           subscription_id: id,
           remind_at: remindAt,
@@ -216,7 +209,6 @@ export default function SubscriptionDetail() {
       const execRes = await apiFetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({
           subscription_id: id,
           action: 'cancel',
@@ -243,7 +235,6 @@ export default function SubscriptionDetail() {
         const patchRes = await apiFetch(`/api/subscriptions/${id}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          userId: effectiveUserId,
           body: JSON.stringify({ status: 'cancelled' }),
         })
         if (patchRes.ok) {
@@ -272,7 +263,6 @@ export default function SubscriptionDetail() {
       const res = await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       if (res.ok) {
@@ -613,6 +603,30 @@ export default function SubscriptionDetail() {
           <p className="type-caption text-label-2 font-medium">
             {cancelFeedback}
           </p>
+        )}
+        {sub.status === 'active' && (
+          <div className="border-t border-separator/60 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowCardSoon((v) => !v)}
+              aria-expanded={showCardSoon}
+              aria-controls="card-tier-note"
+              className="touch-target inline-flex items-center type-footnote font-semibold text-label-2 underline underline-offset-4 hover:text-label"
+            >
+              Use a SHAMAR card for this subscription
+            </button>
+            {showCardSoon && (
+              <p
+                id="card-tier-note"
+                role="status"
+                className="mt-1 type-footnote text-label-2"
+              >
+                <span className="font-semibold text-label">Coming soon.</span>{' '}
+                This subscription will get its own card, and cancelling will
+                mean closing that card, so the company can&apos;t ignore it.
+              </p>
+            )}
+          </div>
         )}
       </div>
 

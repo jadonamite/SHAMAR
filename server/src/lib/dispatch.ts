@@ -11,6 +11,7 @@ export type DispatchStatus =
   | 'skipped_duplicate'
   | 'blocked_unauthorized'
   | 'blocked_action'
+  | 'blocked_by_rail'
   | 'failed'
 
 export type DispatchResult = {

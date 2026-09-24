@@ -1,21 +1,21 @@
-import { Hono } from 'hono'
-import { sql, getOrCreateUser } from '../lib/db.js'
+import { Hono, type Context } from 'hono'
+import { sql } from '../lib/db.js'
 import { sendEmail, reminderEmail } from '../lib/email.js'
+import { authenticateCaller } from '../lib/auth.js'
 
 const app = new Hono()
 
 // GET /reminders — list user's upcoming (unsent) reminders
 app.get('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const rows = await sql`
     SELECT r.id, r.type, r.remind_at, r.sent_at, r.message, r.user_email,
            s.merchant, s.amount, s.currency, s.cadence, s.id AS subscription_id
     FROM reminders r
     JOIN subscriptions s ON s.id = r.subscription_id
-    WHERE r.user_id = ${dbUserId}
+    WHERE r.user_id = ${auth.dbUserId}
     ORDER BY r.remind_at ASC
   `
   return c.json({ reminders: rows })
@@ -23,8 +23,8 @@ app.get('/', async (c) => {
 
 // POST /reminders — schedule a reminder
 app.post('/', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<{
     subscription_id: string
@@ -44,17 +44,15 @@ app.post('/', async (c) => {
     return c.json({ error: 'remind_at must be a future date' }, 400)
   }
 
-  const dbUserId = await getOrCreateUser(userId)
-
   // Confirm subscription belongs to user
   const [sub] = await sql`
-    SELECT id FROM subscriptions WHERE id = ${subscription_id} AND user_id = ${dbUserId}
+    SELECT id FROM subscriptions WHERE id = ${subscription_id} AND user_id = ${auth.dbUserId}
   `
   if (!sub) return c.json({ error: 'Not found' }, 404)
 
   const [reminder] = await sql`
     INSERT INTO reminders (subscription_id, user_id, type, remind_at, message, user_email)
-    VALUES (${subscription_id}, ${dbUserId}, ${type}, ${remind_at}, ${message ?? null}, ${user_email ?? null})
+    VALUES (${subscription_id}, ${auth.dbUserId}, ${type}, ${remind_at}, ${message ?? null}, ${user_email ?? null})
     RETURNING *
   `
   return c.json({ reminder }, 201)
@@ -62,23 +60,22 @@ app.post('/', async (c) => {
 
 // DELETE /reminders/:id — cancel a reminder
 app.delete('/:id', async (c) => {
-  const userId = c.req.header('x-user-id')
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const { id } = c.req.param()
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const [deleted] = await sql`
     DELETE FROM reminders
-    WHERE id = ${id} AND user_id = ${dbUserId} AND sent_at IS NULL
+    WHERE id = ${id} AND user_id = ${auth.dbUserId} AND sent_at IS NULL
     RETURNING id
   `
   if (!deleted) return c.json({ error: 'Not found or already sent' }, 404)
   return c.json({ deleted: true })
 })
 
-// POST /reminders/send-due — send all unsent reminders due now
-// Called by a cron job or manually from admin. Enforces CRON_SECRET.
-app.post('/send-due', async (c) => {
+// send-due handler — send all unsent reminders due now
+// Called by a cron job or external scheduler. Enforces CRON_SECRET.
+const handleSendDue = async (c: Context) => {
   const cronSecret = process.env.CRON_SECRET
   const authHeader = c.req.header('authorization')
   const secretHeader = c.req.header('x-cron-secret')
@@ -122,6 +119,9 @@ app.post('/send-due', async (c) => {
   }
 
   return c.json({ processed: due.length, sent, failed })
-})
+}
+
+app.post('/send-due', handleSendDue)
+app.get('/send-due', handleSendDue)
 
 export default app

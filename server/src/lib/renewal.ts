@@ -6,7 +6,6 @@ import { executeSubscriptionById } from './execution.js'
 import { getUserTelegramChat, sendTelegram } from './telegram.js'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? ''
-const DEFAULT_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? ''
 const API = `https://api.telegram.org/bot${TOKEN}`
 
 // Notices go out at these hours before renewal. Silence escalates; the last
@@ -61,8 +60,8 @@ function noticeText(s: NoticeState, price: string, hoursLeft: number): string {
 }
 
 export async function sendNotice(s: NoticeState, price: string, hoursLeft: number, chatId?: string | null): Promise<boolean> {
-  const targetChatId = chatId || DEFAULT_CHAT_ID
-  if (!TOKEN || !targetChatId) return false
+  if (!TOKEN || !chatId) return false
+  const targetChatId = chatId
   try {
     const res = await fetch(`${API}/sendMessage`, {
       method: 'POST',
@@ -350,11 +349,13 @@ export async function tick(dbUserId: string, opts: { apply?: boolean } = {}): Pr
     }
 
     // Auto-cancel threshold: within the last 36 hours.
-    // Safety check (B6): Do NOT auto-cancel if no Telegram notice was ever confirmed delivered (notices_sent === 0).
-    // Silence only implies consent if the user was actually notified.
+    // Safety check (B6): Require all 3 Telegram notices confirmed delivered to user's personal chat.
+    // Silence only implies consent if the user received all 3 escalation notices.
     if (left <= AUTO_CANCEL_HOURS && left > 0) {
-      if (state.notices_sent === 0) {
-        console.warn(`[renewal] Skipping auto-cancel for ${sub.merchant}: no notices were confirmed delivered to user.`)
+      if (state.notices_sent < NOTICE_HOURS.length || !userChatId) {
+        console.warn(
+          `[renewal] Skipping auto-cancel for ${sub.merchant}: required all ${NOTICE_HOURS.length} notices delivered to user's Telegram chat (sent: ${state.notices_sent}, hasChat: ${Boolean(userChatId)}).`
+        )
         states.push(state)
         continue
       }

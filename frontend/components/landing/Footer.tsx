@@ -1,15 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useStart } from '@/components/landing/Hero'
+import { PrimaryButton } from '@/components/landing/primitives'
 import {
   CookieIcon,
   GitHubIcon,
   TelegramIcon,
   XIcon,
 } from '@/components/ui/SocialIcons'
-import { PrimaryButton } from '@/components/landing/primitives'
-import { useStart } from '@/components/landing/Hero'
 
 const SOCIAL = [
   { href: 'https://x.com/jadonamite', label: 'SHAMAR on X', icon: <XIcon /> },
@@ -28,6 +28,8 @@ const SOCIAL = [
 const LEGAL = [
   { href: '/terms', label: 'Terms' },
   { href: '/privacy', label: 'Privacy' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/support', label: 'Support' },
 ]
 
 export default function Footer() {

@@ -70,6 +70,8 @@ function DashboardInner() {
 
   const [gmailConnected, setGmailConnected] = useState(false)
   const [telegramLinked, setTelegramLinked] = useState(false)
+  const [showGmailSetup, setShowGmailSetup] = useState(false)
+  const [showInsights, setShowInsights] = useState(false)
   const [subs, setSubs] = useState<Subscription[]>([])
   const [hasPolicies, setHasPolicies] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -83,17 +85,8 @@ function DashboardInner() {
   const [loading, setLoading] = useState(true)
 
   const [readyTimeout, setReadyTimeout] = useState(false)
-  const [devUser, setDevUser] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shamar_dev_user')
-      if (saved) setDevUser(saved)
-    }
-  }, [])
-
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   useEffect(() => {
     const t = setTimeout(() => setReadyTimeout(true), 2500)
@@ -103,10 +96,10 @@ function DashboardInner() {
   async function fetchSubs(uid: string) {
     try {
       const [statusRes, subsRes, polRes, tgRes] = await Promise.all([
-        apiFetch('/api/gmail/status', { userId: uid }).catch(() => null),
-        apiFetch('/api/subscriptions', { userId: uid }).catch(() => null),
-        apiFetch('/api/policies', { userId: uid }).catch(() => null),
-        apiFetch('/api/telegram/status', { userId: uid }).catch(() => null),
+        apiFetch('/api/gmail/status').catch(() => null),
+        apiFetch('/api/subscriptions').catch(() => null),
+        apiFetch('/api/policies').catch(() => null),
+        apiFetch('/api/telegram/status').catch(() => null),
       ])
 
       if (statusRes?.ok) {
@@ -221,7 +214,6 @@ function DashboardInner() {
       const queryString = params.toString() ? `?${params.toString()}` : ''
       const res = await apiFetch(`/api/gmail/scan${queryString}`, {
         method: 'POST',
-        userId: effectiveUserId,
       })
       const data = await res.json()
       if (res.ok) {
@@ -253,7 +245,6 @@ function DashboardInner() {
     try {
       const res = await apiFetch('/api/wallet/scan', {
         method: 'POST',
-        userId: effectiveUserId,
       })
       const data = await res.json()
       if (res.ok) {
@@ -287,7 +278,6 @@ function DashboardInner() {
       await apiFetch(`/api/subscriptions/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ status }),
       })
       setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)))
@@ -335,20 +325,6 @@ function DashboardInner() {
           >
             Connect Wallet
           </motion.button>
-
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.setItem(
-                'shamar_dev_user',
-                'did:privy:cmpd0hyqa00190clat96o5acm'
-              )
-              setDevUser('did:privy:cmpd0hyqa00190clat96o5acm')
-            }}
-            className="touch-target text-label-3 hover:text-accent type-caption underline underline-offset-4 cursor-pointer pt-1 transition-colors"
-          >
-            Enter with demo account (localhost) →
-          </button>
         </div>
 
         <AppFooter />
@@ -369,18 +345,6 @@ function DashboardInner() {
         onScanWallet={triggerWalletScan}
         actions={
           <div className="flex items-center gap-2">
-            {devUser && (
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.removeItem('shamar_dev_user')
-                  setDevUser(null)
-                }}
-                className="touch-target text-xs font-mono text-label-3 hover:text-accent border border-separator/80 px-3 py-1.5 rounded-full bg-surface shadow-2xs cursor-pointer transition-colors"
-              >
-                Exit demo mode
-              </button>
-            )}
             {gmailConnected && (
               <button
                 type="button"
@@ -406,7 +370,7 @@ function DashboardInner() {
       <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 md:px-8 py-8 flex flex-col gap-8">
         {/* Onboarding progress when incomplete */}
         <OnboardingProgress
-          wallet={Boolean(user?.wallet?.address || devUser)}
+          wallet={Boolean(user?.wallet?.address)}
           gmail={gmailConnected}
           firstScan={subs.length > 0}
           telegram={telegramLinked}
@@ -414,9 +378,9 @@ function DashboardInner() {
 
         {/* Dashboard Hero Bento */}
         {subs.length > 0 && (
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3">
             {/* Primary monthly bleed card */}
-            <div className="lg:col-span-2 rounded-[var(--radius-section)] bg-surface p-6 sm:p-8 border border-separator/70 shadow-xs flex flex-col justify-between gap-6">
+            <div className="lg:col-span-2 rounded-[var(--radius-section)] bg-surface p-5 sm:p-6 border border-separator/70 shadow-xs flex flex-col justify-between gap-4">
               <div className="flex items-center justify-between border-b border-separator/50 pb-4">
                 <p className="type-eyebrow inline-flex items-center gap-2 text-label font-semibold">
                   <span className="size-2 rounded-full bg-accent" />
@@ -437,25 +401,22 @@ function DashboardInner() {
             </div>
 
             {/* Quick Stats Bento */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
-              <div className="rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-3">
+              <div className="rounded-[var(--radius-card)] bg-surface px-4 py-3 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1">
                 <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
                   Active Subs
                 </span>
-                <p className="type-display text-2xl sm:text-3xl font-[600] text-label tabular">
+                <p className="type-display text-2xl font-[600] text-label tabular">
                   {stats.count}
-                </p>
-                <p className="type-caption text-label-2 text-[11px] sm:text-xs truncate">
-                  Recurring services
                 </p>
               </div>
 
-              <div className="rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+              <div className="rounded-[var(--radius-card)] bg-surface px-4 py-3 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1">
                 <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
                   Blast Radius
                 </span>
                 <p
-                  className={`type-display text-2xl sm:text-3xl font-[600] tabular ${stats.highRisk > 0 ? 'text-accent-text' : 'text-label'}`}
+                  className={`type-display text-2xl font-[600] tabular ${stats.highRisk > 0 ? 'text-accent-text' : 'text-label'}`}
                 >
                   {stats.highRisk}
                 </p>
@@ -466,11 +427,11 @@ function DashboardInner() {
                 </p>
               </div>
 
-              <div className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-[var(--radius-card)] bg-surface p-4 sm:p-5 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1.5">
+              <div className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-[var(--radius-card)] bg-surface px-4 py-3 border border-separator/70 shadow-2xs flex flex-col justify-between gap-1">
                 <span className="type-caption text-label-3 uppercase tracking-wider font-semibold text-[11px] sm:text-xs">
                   Yearly Projection
                 </span>
-                <p className="type-display text-xl sm:text-2xl font-[600] text-label tabular">
+                <p className="type-display text-xl font-[600] text-label tabular">
                   {formatAggregate(
                     Object.fromEntries(
                       Object.entries(stats.byCurrency).map(([c, v]) => [
@@ -480,21 +441,33 @@ function DashboardInner() {
                     )
                   )}
                 </p>
-                <p className="type-caption text-label-2 text-[11px] sm:text-xs">
-                  Estimated 12-month commitment
-                </p>
               </div>
             </div>
           </div>
         )}
 
         {/* Gmail Setup & Discovery 2-Step Card */}
-        <GmailSetupCard
-          gmailConnected={gmailConnected}
-          scanning={scanning}
-          onScan={() => triggerScan({ reset: true, clear: true })}
-          lastScan={lastScan}
-        />
+        {!gmailConnected || showGmailSetup ? (
+          <GmailSetupCard
+            gmailConnected={gmailConnected}
+            scanning={scanning}
+            onScan={() => triggerScan({ reset: true, clear: true })}
+            lastScan={lastScan}
+          />
+        ) : (
+          <div className="-my-4 flex items-center gap-2 type-footnote text-label-2">
+            <span className="size-1.5 rounded-full bg-success" aria-hidden />
+            <span>Gmail connected</span>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={() => setShowGmailSetup(true)}
+              className="touch-target inline-flex items-center font-semibold text-label underline underline-offset-4 hover:text-accent-text"
+            >
+              Manage Gmail
+            </button>
+          </div>
+        )}
 
         {/* Subscriptions List or Optimistic Shimmer Skeleton */}
         {scanning || loading ? (
@@ -552,6 +525,7 @@ function DashboardInner() {
         {/* Telegram Renewal Alerts & One-Tap Control */}
         <TelegramAlertsCard
           userId={effectiveUserId ?? undefined}
+          hideWhenUnlinked
           onStatusChange={setTelegramLinked}
         />
 
@@ -559,7 +533,18 @@ function DashboardInner() {
         {subs.length > 0 && <RenewalsTimeline subs={subs} />}
 
         {/* AI Insights Carousel */}
-        {subs.length > 0 && <InsightsCarousel subs={subs} />}
+        {subs.length > 0 &&
+          (showInsights ? (
+            <InsightsCarousel subs={subs} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowInsights(true)}
+              className="touch-target -my-4 inline-flex items-center self-start type-footnote font-semibold text-label underline underline-offset-4 hover:text-accent-text"
+            >
+              Show insights
+            </button>
+          ))}
 
         {/* The Black Slab: Agent Activity Dispatch Ledger */}
         {subs.length > 0 && (

@@ -3,10 +3,8 @@ import { sql } from './db.js'
 import { randomBytes } from 'node:crypto'
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? ''
-const DEFAULT_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? ''
 const API = `https://api.telegram.org/bot${TOKEN}`
 
-const GLOBAL_HALT_KEY = 'shamar:halted'
 const OFFSET_KEY = 'shamar:tg_offset'
 
 export type HaltState = {
@@ -19,24 +17,25 @@ export function isTelegramConfigured(): boolean {
   return Boolean(TOKEN)
 }
 
+// Only a chat the person linked themselves. There is no shared fallback chat:
+// an unlinked person gets no Telegram messages, and so is never auto-cancelled.
 export async function getUserTelegramChat(dbUserId: string): Promise<string | null> {
-  if (!dbUserId) return DEFAULT_CHAT_ID || null
+  if (!dbUserId) return null
   try {
     const [user] = await sql`SELECT telegram_chat_id FROM users WHERE id = ${dbUserId}`
-    return (user?.telegram_chat_id as string | null) || DEFAULT_CHAT_ID || null
+    return (user?.telegram_chat_id as string | null) || null
   } catch {
-    return DEFAULT_CHAT_ID || null
+    return null
   }
 }
 
 export async function sendTelegram(
   text: string,
-  explicitChatId?: string | null,
+  chatId: string | null | undefined,
   options?: { replyToMessageId?: number }
 ): Promise<boolean> {
-  if (!isTelegramConfigured()) return false
-  const targetChatId = explicitChatId || DEFAULT_CHAT_ID
-  if (!targetChatId) return false
+  if (!isTelegramConfigured() || !chatId) return false
+  const targetChatId = chatId
 
   try {
     const payload: Record<string, any> = {
@@ -181,16 +180,8 @@ export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: nu
             chatId
           )
         } else {
-          await redis.set(GLOBAL_HALT_KEY, '1')
           await sendTelegram(
-            [
-              `*SHAMAR paused.*`,
-              ``,
-              `All automated cancellations are now paused.`,
-              `No further actions will be taken.`,
-              ``,
-              `Reply resume anytime to re-enable.`,
-            ].join('\n'),
+            'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
             chatId
           )
         }
@@ -222,15 +213,8 @@ export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: nu
             chatId
           )
         } else {
-          await redis.del(GLOBAL_HALT_KEY)
           await sendTelegram(
-            [
-              `*SHAMAR resumed.*`,
-              ``,
-              `Automated renewal monitoring and cancellation dispatch are active again.`,
-              ``,
-              `Reply stop anytime to pause.`,
-            ].join('\n'),
+            'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
             chatId
           )
         }
@@ -411,21 +395,11 @@ export async function getHaltState(dbUserId?: string): Promise<HaltState> {
     }
   }
 
-  // Check global halt
-  const globalHalted = Boolean(await redis.get(GLOBAL_HALT_KEY))
-  if (globalHalted) {
-    return {
-      halted: true,
-      source: 'telegram',
-      reason: 'Halted globally via Telegram (stop)',
-    }
-  }
-
   return { halted: false, source: 'none', reason: 'Active' }
 }
 
-export async function setHalt(halted: boolean, dbUserId?: string): Promise<void> {
-  const targetKey = dbUserId ? `shamar:halted:${dbUserId}` : GLOBAL_HALT_KEY
+export async function setHalt(halted: boolean, dbUserId: string): Promise<void> {
+  const targetKey = `shamar:halted:${dbUserId}`
   if (halted) await redis.set(targetKey, '1')
   else await redis.del(targetKey)
 }

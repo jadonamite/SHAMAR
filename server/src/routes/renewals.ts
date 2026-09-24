@@ -69,6 +69,10 @@ app.get('/:id', async (c) => {
 // POST /renewals/stage — position a subscription near its renewal so the
 // escalation can be demonstrated without waiting for real time to pass.
 app.post('/stage', async (c) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_STAGING !== 'true') {
+    return c.json({ error: 'Endpoint disabled in production' }, 403)
+  }
+
   const auth = await authenticateCaller(c)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const { merchant = '', hours_out = 100, notices_sent = 0 } =

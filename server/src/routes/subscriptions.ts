@@ -136,6 +136,10 @@ app.get('/:id', async (c) => {
 
 // POST /subscriptions/purge-unregistered
 app.post('/purge-unregistered', async (c) => {
+  if (process.env.NODE_ENV === 'production') {
+    return c.json({ error: 'Endpoint disabled in production' }, 403)
+  }
+
   const auth = await authenticateCaller(c)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 

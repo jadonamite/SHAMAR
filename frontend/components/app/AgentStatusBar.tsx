@@ -39,7 +39,7 @@ export default function AgentStatusBar({
   useEffect(() => {
     if (!userId) return
 
-    apiFetch('/api/agent/status', { userId })
+    apiFetch('/api/agent/status')
       .then((r) => r.json())
       .then((d) => {
         setStatus({

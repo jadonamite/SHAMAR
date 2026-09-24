@@ -1,30 +1,29 @@
 import { Hono } from 'hono'
-import { sql, getOrCreateUser, setUserWallet } from '../lib/db.js'
+import { sql, setUserWallet } from '../lib/db.js'
 import { detectWalletSubscriptions } from '../lib/wallet.js'
 import { getWalletScanLock } from '../lib/cache.js'
+import { authenticateCaller } from '../lib/auth.js'
 
 const app = new Hono()
 
 // GET /wallet/status — how many wallet-sourced subs exist for this user
 app.get('/status', async (c) => {
-  const userId = c.req.query('user_id') ?? c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'user_id required' }, 400)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
-  const dbUserId = await getOrCreateUser(userId)
   const rows = await sql`
     SELECT COUNT(*) AS count FROM subscriptions
-    WHERE user_id = ${dbUserId} AND source = 'wallet'
+    WHERE user_id = ${auth.dbUserId} AND source = 'wallet'
   `
   const count = Number(rows[0]?.count ?? 0)
   return c.json({ walletScanned: count > 0, count })
 })
 
 // POST /wallet/scan
-// Headers: x-user-id: <privy_did>
-// Body:    { address: string }
+// Body: { address: string }
 app.post('/scan', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+  const auth = await authenticateCaller(c)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<{ address: string }>()
   const { address } = body ?? {}
@@ -33,12 +32,12 @@ app.post('/scan', async (c) => {
     return c.json({ error: 'Invalid wallet address' }, 400)
   }
 
-  const acquired = await getWalletScanLock(userId)
+  const acquired = await getWalletScanLock(auth.dbUserId)
   if (!acquired) {
     return c.json({ error: 'Wallet scan in progress. Try again in 5 minutes.' }, 429)
   }
 
-  const dbUserId = await getOrCreateUser(userId)
+  const dbUserId = auth.dbUserId
   await setUserWallet(dbUserId, address)
 
   try {

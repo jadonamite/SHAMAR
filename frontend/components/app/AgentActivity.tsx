@@ -47,7 +47,7 @@ export default function AgentActivity({ userId }: AgentActivityProps) {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    apiFetch('/api/agent/history', { userId })
+    apiFetch('/api/agent/history')
       .then((r) => (r.ok ? r.json() : { actions: [] }))
       .then((d) => {
         if (!cancelled) setActions(d.actions ?? [])

@@ -9,48 +9,63 @@ import {
 } from '../lib/agent.js'
 import { logAction } from '../lib/actions.js'
 import { authenticateCaller } from '../lib/auth.js'
-import { getHaltState } from '../lib/telegram.js'
+import { getHaltState, getUserTelegramChat } from '../lib/telegram.js'
+import { hasGmailConnected } from '../lib/cache.js'
 
 const app = new Hono()
 
 // GET /agent/status — agent identity + user's policy grant status
 app.get('/status', async (c) => {
   const auth = await authenticateCaller(c)
+  if (!auth) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
   const agentReady = isAgentConfigured()
 
-  let userStatus = null
+  const [row] = await sql`
+    SELECT wallet_address, telegram_chat_id
+    FROM users WHERE id = ${auth.dbUserId}
+  `
+
+  const haltState = await getHaltState(auth.dbUserId)
+  const halted = haltState.halted
+
+  const gmailConnected =
+    (await hasGmailConnected(auth.dbUserId)) ||
+    (await hasGmailConnected(auth.privyDid))
+
+  const userChatId = await getUserTelegramChat(auth.dbUserId)
+  const telegramLinked = Boolean(row?.telegram_chat_id || userChatId)
+
   let onchainAuthorized = false
-  let halted = false
-
-  if (auth) {
-    const [row] = await sql`
-      SELECT self_verified, self_verified_at, policy_granted, policy_granted_at, wallet_address, telegram_chat_id
-      FROM users WHERE id = ${auth.dbUserId}
-    `
-    userStatus = row ?? null
-
-    const haltState = await getHaltState(auth.dbUserId)
-    halted = haltState.halted
-
-    if (row?.wallet_address) {
-      try {
-        onchainAuthorized = await checkOnchainAuthorization(row.wallet_address, SCOPES.CANCEL)
-      } catch {
-        onchainAuthorized = false
-      }
+  if (row?.wallet_address) {
+    try {
+      onchainAuthorized = await checkOnchainAuthorization(row.wallet_address, SCOPES.CANCEL)
+    } catch {
+      onchainAuthorized = false
     }
   }
 
   let state: 'authorized' | 'halted' | 'blocked' | 'unauthorized' = 'unauthorized'
-  let reason = 'Wallet not connected or policy session key not yet granted on Base.'
+  let reason = 'Policy not granted on Base mainnet. Grant permissions in your wallet to enable automated actions.'
 
-  if (halted) {
+  if (!agentReady) {
+    state = 'blocked'
+    reason = 'Agent service or policy contract is not configured.'
+  } else if (halted) {
     state = 'halted'
     reason = 'Agent is paused via Telegram /stop. Send /resume in Telegram to re-enable.'
+  } else if (!gmailConnected && !telegramLinked) {
+    state = 'blocked'
+    reason = 'Agent channels blocked: connect Gmail or link Telegram to activate autonomous monitoring.'
   } else if (onchainAuthorized) {
     state = 'authorized'
     reason = 'Authorized on Base mainnet. SHAMAR will act on your subscriptions within policy.'
-  } else if (userStatus?.wallet_address) {
+  } else if (!row?.wallet_address) {
+    state = 'unauthorized'
+    reason = 'Wallet not connected. Connect a wallet to grant on-chain policy.'
+  } else {
     state = 'unauthorized'
     reason = 'Policy not granted on Base mainnet. Grant permissions in your wallet to enable automated actions.'
   }
@@ -58,6 +73,8 @@ app.get('/status', async (c) => {
   return c.json({
     state,
     reason,
+    gmail_connected: gmailConnected,
+    telegram_linked: telegramLinked,
     contract: getPolicyContract() || null,
     agent: getAgentAddress(),
     scopes: [SCOPES.CANCEL, SCOPES.PAUSE, SCOPES.REMIND, SCOPES.ANALYZE, SCOPES.PAY],
@@ -70,7 +87,7 @@ app.get('/status', async (c) => {
       erc8004Registry: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
       scan8004Url: `https://8004scan.me/agent/${getAgentAddress()}`,
     },
-    user: userStatus,
+    user: row ?? null,
   })
 })
 
@@ -124,28 +141,6 @@ app.get('/history', async (c) => {
     LIMIT 50
   `
   return c.json({ actions: rows })
-})
-
-// POST /agent/grant-policy — user explicitly records local Shamar policy grant flag
-app.post('/grant-policy', async (c) => {
-  const auth = await authenticateCaller(c)
-  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
-
-  await sql`
-    UPDATE users
-    SET policy_granted = true, policy_granted_at = NOW()
-    WHERE id = ${auth.dbUserId}
-  `
-  return c.json({ granted: true })
-})
-
-// POST /agent/revoke-policy — user revokes local policy grant flag
-app.post('/revoke-policy', async (c) => {
-  const auth = await authenticateCaller(c)
-  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
-
-  await sql`UPDATE users SET policy_granted = false WHERE id = ${auth.dbUserId}`
-  return c.json({ revoked: true })
 })
 
 export default app

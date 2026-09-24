@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import TopNav from '@/components/app/TopNav'
 import AppFooter from '@/components/app/AppFooter'
+import TopNav from '@/components/app/TopNav'
 
 export const metadata: Metadata = {
   title: 'Privacy policy — SHAMAR',
@@ -19,8 +19,7 @@ export default function PrivacyPage() {
             Privacy policy
           </h1>
           <p className="type-caption text-label-3 font-mono">
-            Last updated: 22 September 2026. This document has not had formal
-            legal review.
+            Last updated: 24 September 2026.
           </p>
         </header>
 
@@ -39,9 +38,12 @@ export default function PrivacyPage() {
                   Gmail receipts (read-only):
                 </strong>{' '}
                 When you connect Google, we request the gmail.readonly scope.
-                Our scanner filters exclusively for messages matching domains in
-                our subscription registry. We do not download or store personal
-                emails or contact lists.
+                The scanner asks Gmail only for receipt-like mail from the last
+                year (messages in Purchases, or with subjects such as receipt,
+                invoice, subscription or renewal). From each receipt we keep the
+                sender&apos;s service name, the amount, the currency, the date
+                and the subject line. We do not store the rest of the message,
+                and we never read or store your contacts.
               </li>
               <li>
                 <strong className="text-label">
@@ -69,11 +71,11 @@ export default function PrivacyPage() {
               Token storage and security
             </h2>
             <p>
-              OAuth refresh tokens are encrypted and kept strictly server-side
-              in our Postgres database. Tokens are never transmitted to
-              client-side browsers. You can disconnect your Google account at
-              any time via your Google Security dashboard or from the SHAMAR
-              dashboard.
+              Your Google access token is kept only on SHAMAR&apos;s server, in
+              our Postgres database hosted by Neon, which encrypts its storage.
+              It is never sent to your browser. You can remove SHAMAR&apos;s
+              access at any time from your Google Account&apos;s security
+              settings, or by deleting your SHAMAR account.
             </p>
           </section>
 
@@ -92,8 +94,31 @@ export default function PrivacyPage() {
                 email dispatch for cancellation requests.
               </li>
               <li>
-                <strong className="text-label">Telegram:</strong> Delivery of
-                approval buttons and emergency halt messages.
+                <strong className="text-label">Google:</strong> Gmail
+                (read-only) to find receipts, and Calendar to add renewal and
+                confirmation reminders.
+              </li>
+              <li>
+                <strong className="text-label">Privy:</strong> Sign-in with
+                email, Google or a wallet.
+              </li>
+              <li>
+                <strong className="text-label">Groq and NVIDIA:</strong> The AI
+                models that make decisions. They receive a subscription&apos;s
+                name, category, price and charge dates, never email content.
+              </li>
+              <li>
+                <strong className="text-label">Telegram:</strong> Renewal
+                messages and approval buttons, sent only to the chat you link
+                yourself. Nothing is sent if you haven&apos;t linked one.
+              </li>
+              <li>
+                <strong className="text-label">Vercel:</strong> Hosting for the
+                website and server.
+              </li>
+              <li>
+                <strong className="text-label">Etherscan:</strong> Reading
+                payments from a wallet you connect, if you choose to scan it.
               </li>
               <li>
                 <strong className="text-label">Base RPC:</strong> Reading
@@ -126,8 +151,8 @@ export default function PrivacyPage() {
             <p className="mt-2">Specifically:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>
-                We only use Gmail data to detect active recurring subscriptions
-                and billing receipts matching our vetted merchant registry.
+                We only use Gmail data to detect recurring subscriptions and
+                their billing receipts.
               </li>
               <li>
                 We do not transfer or disclose your Google user data to third
@@ -148,21 +173,25 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="type-headline font-semibold text-label mb-2">
-              Account deletion (R28)
+              Deleting your account
             </h2>
             <p>
-              You can trigger full deletion of your account and all associated
-              data directly from the Agent Governance page or via API. Calling
-              the deletion endpoint permanently removes all detected
-              subscriptions, recommendations, action signatures, policy rules,
-              and encrypted tokens.
+              You can delete your account yourself at the bottom of the Agent
+              page. This permanently removes your subscriptions, decisions,
+              action history, rules, Telegram link and saved Gmail access, and
+              asks Google to cancel SHAMAR&apos;s access. Permissions you
+              granted on Base are public blockchain records that SHAMAR cannot
+              erase; revoke them on the Agent page before deleting.
             </p>
           </section>
 
           <section className="pt-6 border-t border-separator/80">
             <p className="type-caption text-label-3">
-              For privacy inquiries or deletion requests, write to
-              privacy@shamar.namite.xyz.
+              For privacy questions, see{' '}
+              <a href="/support" className="text-accent underline font-medium">
+                Support
+              </a>
+              .
             </p>
           </section>
         </div>

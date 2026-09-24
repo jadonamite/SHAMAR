@@ -344,9 +344,10 @@ function getOAuthClient() {
 
 app.get('/status', async (c) => {
   const auth = await authenticateCaller(c)
-  const userId = auth?.dbUserId ?? c.req.query('user_id') ?? c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'user_id required' }, 400)
-  const connected = await hasGmailConnected(userId)
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  const connected =
+    (await hasGmailConnected(auth.dbUserId)) ||
+    (await hasGmailConnected(auth.privyDid))
   return c.json({ connected })
 })
 
@@ -383,32 +384,6 @@ app.post('/connect', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// GET /gmail/auth (Legacy fallback)
-// ---------------------------------------------------------------------------
-
-app.get('/auth', (c) => {
-  const userId = c.req.query('user_id')
-  if (!userId) return c.json({ error: 'user_id required' }, 400)
-
-  if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET) {
-    return c.json(
-      { error: 'Gmail OAuth not configured.' },
-      503
-    )
-  }
-
-  const oauth2Client = getOAuthClient()
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/gmail.readonly', CALENDAR_SCOPE],
-    state: userId,
-  })
-
-  return c.redirect(authUrl)
-})
-
-// ---------------------------------------------------------------------------
 // GET /gmail/callback
 // ---------------------------------------------------------------------------
 
@@ -431,21 +406,16 @@ app.get('/callback', async (c) => {
     return c.redirect(`${frontendUrl}/dashboard?error=oauth_failed`)
   }
 
-  let targetUserId: string | null = null
-
   // 1. Verify cryptographic state nonce from KV
   const stateKey = `oauth_state:${state}`
   const stored = await cache.get<{ dbUserId: string; privyDid: string }>(stateKey)
-  if (stored) {
-    targetUserId = stored.privyDid || stored.dbUserId
-    await cache.del(stateKey)
-  } else if (state.startsWith('did:') || state.length > 20) {
-    // Backward compatibility for legacy callers
-    targetUserId = state
-  } else {
-    console.warn('[Gmail OAuth] State expired or invalid:', state)
+  if (!stored) {
+    console.warn('[Gmail OAuth] State expired, invalid or unrecognized:', state)
     return c.redirect(`${frontendUrl}/dashboard?error=oauth_expired`)
   }
+
+  const targetUserId = stored.privyDid || stored.dbUserId
+  await cache.del(stateKey)
 
   try {
     const oauth2Client = getOAuthClient()
@@ -934,19 +904,15 @@ app.post('/scan', async (c) => {
   }
 })
 
-// DELETE /gmail/scan-lock — clear stuck scan lock (debug)
-app.delete('/scan-lock', async (c) => {
-  const userId = c.req.header('x-user-id')
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
-  await releaseScanLock(userId)
-  return c.json({ cleared: true })
-})
-
 // ---------------------------------------------------------------------------
-// POST /gmail/parse — manual single-email parse (for testing)
+// POST /gmail/parse — manual single-email parse (for testing only)
 // ---------------------------------------------------------------------------
 
 app.post('/parse', async (c) => {
+  if (process.env.NODE_ENV === 'production') {
+    return c.json({ error: 'Endpoint disabled in production' }, 403)
+  }
+
   const auth = await authenticateCaller(c)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
   const dbUserId = auth.dbUserId

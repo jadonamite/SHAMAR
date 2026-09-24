@@ -16,11 +16,7 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const effectiveUserId =
-    user?.id ||
-    (typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null)
+  const effectiveUserId = user?.id ?? null
 
   async function handleConnect() {
     if (!effectiveUserId) return
@@ -29,7 +25,6 @@ export default function ConnectGmail({ compact = false }: ConnectGmailProps) {
     try {
       const res = await apiFetch('/api/gmail/connect', {
         method: 'POST',
-        userId: effectiveUserId,
       })
       if (!res.ok) {
         setError("We couldn't start the Gmail connection. Please try again.")

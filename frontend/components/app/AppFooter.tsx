@@ -12,6 +12,8 @@ import {
 const LEGAL = [
   { href: '/terms', label: 'Terms' },
   { href: '/privacy', label: 'Privacy' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/support', label: 'Support' },
 ]
 
 const SOCIAL = [

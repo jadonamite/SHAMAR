@@ -152,7 +152,6 @@ function TelemetryStat({
 
 export default function RunPage() {
   const { ready, authenticated, user, login } = usePrivy()
-  const [devUser, setDevUser] = useState<string | null>(null)
   const [result, setResult] = useState<RunResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -160,22 +159,13 @@ export default function RunPage() {
     null
   )
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shamar_dev_user')
-      if (saved) setDevUser(saved)
-    }
-  }, [])
-
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   const refreshHalt = useCallback(async () => {
     if (!effectiveUserId) return
     try {
-      const res = await apiFetch('/api/execute/control', {
-        userId: effectiveUserId,
-      })
+      const res = await apiFetch('/api/execute/control')
       if (res.ok) {
         setHalt(await res.json())
       }
@@ -199,7 +189,6 @@ export default function RunPage() {
       const res = await apiFetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ apply }),
       })
       const data = await res.json()

@@ -19,14 +19,15 @@ export type AuthContext = {
   privyDid: string
   dbUserId: string
   walletAddress: string | null
-  authMethod: 'privy_jwt' | 'wallet_signature' | 'header_fallback'
+  authMethod: 'privy_jwt' | 'wallet_signature'
 }
 
 /**
- * Verifies caller identity via:
+ * Verifies caller identity strictly via:
  * 1. Privy Bearer token in Authorization header
  * 2. MiniPay / EVM wallet signed message via headers (x-wallet-address, x-wallet-signature, x-wallet-timestamp)
- * 3. Fallback to x-user-id header (for development, internal crons, or backward compatibility)
+ *
+ * Unverified user IDs in headers or query parameters are strictly rejected.
  */
 export async function authenticateCaller(c: Context): Promise<AuthContext | null> {
   const authHeader = c.req.header('authorization') || c.req.header('Authorization')
@@ -89,19 +90,6 @@ export async function authenticateCaller(c: Context): Promise<AuthContext | null
     }
   }
 
-  // 3. Fallback to x-user-id header
-  const fallbackUserId = c.req.header('x-user-id') || c.req.query('user_id')
-  if (fallbackUserId) {
-    const dbUserId = await getOrCreateUser(fallbackUserId)
-    const [user] = await sql`SELECT wallet_address FROM users WHERE id = ${dbUserId}`
-    return {
-      privyDid: fallbackUserId,
-      dbUserId,
-      walletAddress: (user?.wallet_address as string | null) ?? null,
-      authMethod: 'header_fallback',
-    }
-  }
-
   return null
 }
 
@@ -111,7 +99,7 @@ export async function authenticateCaller(c: Context): Promise<AuthContext | null
 export async function requireAuth(c: Context, next: Next) {
   const auth = await authenticateCaller(c)
   if (!auth) {
-    return c.json({ error: 'Unauthorized: valid Privy token, wallet signature, or user header required' }, 401)
+    return c.json({ error: 'Unauthorized: valid Privy token or wallet signature required' }, 401)
   }
   c.set('auth', auth)
   return next()

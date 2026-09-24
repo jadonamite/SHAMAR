@@ -1,6 +1,7 @@
 import { sql } from './db.js'
 import { applyGuardrails, type Decision, fallbackDecision, gatherEvidence } from './reasoning.js'
-import { dispatchCancellation, cancellationRecipient, type DispatchResult } from './dispatch.js'
+import { cancellationRecipient, type DispatchResult } from './dispatch.js'
+import { getRail, railForSubscription } from './rails/index.js'
 import { resolveAuthorization, type Authorization } from './agent.js'
 import { getHaltState, sendTelegram, dispatchReport, getUserTelegramChat, type HaltState } from './telegram.js'
 import { calendarClientFor, writeCancellationEvent } from './calendar.js'
@@ -15,6 +16,7 @@ export type ExecuteDecisionParams = {
   userPrivyDid: string
   accountEmail?: string
   apply?: boolean
+  rail?: string
 }
 
 export type ExecuteSubscriptionParams = {
@@ -38,7 +40,7 @@ export type ExecuteSubscriptionParams = {
  * 5. Downstream notifications (Google Calendar event + Telegram report)
  */
 export async function executeDecision(params: ExecuteDecisionParams): Promise<DispatchResult> {
-  const { decision, trigger, dbUserId, userPrivyDid, accountEmail, apply = false } = params
+  const { decision, trigger, dbUserId, userPrivyDid, accountEmail, apply = false, rail } = params
 
   // 1. Enforce Guardrails
   const guarded = applyGuardrails(decision)
@@ -91,12 +93,12 @@ export async function executeDecision(params: ExecuteDecisionParams): Promise<Di
   }
 
   // 4. Dispatch via Cancellation Rail (Email adapter)
-  const result = await dispatchCancellation({
+  const railKind = rail ?? (await railForSubscription(guarded.subscription_id))
+  const result = await getRail(railKind).cancel({
     decision: guarded,
     userPrivyDid,
     dbUserId,
     accountEmail: effectiveEmail,
-    authorized: true, // Already verified above
     apply,
   })
 

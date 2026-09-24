@@ -123,12 +123,8 @@ export default function PoliciesPage() {
   const [evalResults, setEvalResults] = useState<EvalResult[] | null>(null)
   const [applying, setApplying] = useState(false)
 
-  const devUser =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('shamar_dev_user')
-      : null
-  const effectiveUserId = user?.id || devUser
-  const isUserAuthenticated = authenticated || Boolean(devUser)
+  const effectiveUserId = user?.id ?? null
+  const isUserAuthenticated = authenticated
 
   useEffect(() => {
     if (!ready) return
@@ -137,14 +133,14 @@ export default function PoliciesPage() {
       return
     }
     if (!effectiveUserId) return
-    load(effectiveUserId)
+    load()
   }, [ready, isUserAuthenticated, effectiveUserId])
 
-  async function load(uid = effectiveUserId) {
-    if (!uid) return
+  async function load() {
+    if (!effectiveUserId) return
     setLoading(true)
     try {
-      const res = await apiFetch('/api/policies', { userId: uid })
+      const res = await apiFetch('/api/policies')
       if (res.ok) setPolicies((await res.json()).policies ?? [])
     } catch {
       // offline
@@ -160,7 +156,6 @@ export default function PoliciesPage() {
       const res = await apiFetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({
           name: draft.name,
           trigger: draft.trigger,
@@ -190,7 +185,6 @@ export default function PoliciesPage() {
       await apiFetch(`/api/policies/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ enabled }),
       })
     } catch {}
@@ -202,7 +196,6 @@ export default function PoliciesPage() {
     try {
       await apiFetch(`/api/policies/${id}`, {
         method: 'DELETE',
-        userId: effectiveUserId,
       })
     } catch {}
   }
@@ -215,7 +208,6 @@ export default function PoliciesPage() {
       const res = await apiFetch('/api/policies/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ apply: false }),
       })
       if (res.ok) {
@@ -236,11 +228,10 @@ export default function PoliciesPage() {
       await apiFetch('/api/policies/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        userId: effectiveUserId,
         body: JSON.stringify({ apply: true }),
       })
       setEvalResults(null)
-      await load(effectiveUserId)
+      await load()
     } catch {
       // offline
     } finally {

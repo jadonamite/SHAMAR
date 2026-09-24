@@ -768,336 +768,249 @@ export default function HowItWorks() {
   }
 
   return (
-    <>
-      {/* DESKTOP: Native CSS Sticky + Framer Motion Spring Container */}
-      <div
-        ref={containerRef}
-        id="how"
-        className="relative hidden md:block h-[340vh]"
-      >
-        <div className="sticky top-4 flex h-[calc(100vh-32px)] flex-col justify-between overflow-hidden rounded-[var(--radius-section)] bg-surface border border-separator/40 p-6 md:p-8 shadow-[var(--shadow-card)]">
-          {/* Ambient drifting decorative glow orbs */}
-          <motion.div
-            aria-hidden
-            style={{ x: orbX }}
-            className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-accent/[0.04] blur-3xl"
-          />
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute -left-24 -bottom-24 size-96 rounded-full bg-black/[0.02] blur-3xl"
-          />
+    <div
+      ref={containerRef}
+      id="how"
+      className="relative w-full h-[320vh] sm:h-[340vh]"
+    >
+      <div className="sticky top-2 sm:top-4 flex h-[calc(100svh-1rem)] sm:h-[calc(100vh-2rem)] flex-col justify-between overflow-hidden rounded-[var(--radius-section)] bg-surface border border-separator/40 p-4 sm:p-6 md:p-8 shadow-[var(--shadow-card)]">
+        {/* Ambient drifting decorative glow orbs */}
+        <motion.div
+          aria-hidden
+          style={{ x: orbX }}
+          className="pointer-events-none absolute -right-24 -top-24 size-64 sm:size-96 rounded-full bg-accent/[0.04] blur-3xl"
+        />
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -left-24 -bottom-24 size-64 sm:size-96 rounded-full bg-black/[0.02] blur-3xl"
+        />
 
-          {/* Top Control Bar: Eyebrow, Step Navigation Tabs, Progress, and Arrows */}
-          <div className="relative z-10 flex items-center justify-between border-b border-separator/50 pb-5">
-            <div className="flex items-center gap-6">
-              <p className="type-eyebrow inline-flex items-center gap-2 text-label font-semibold">
-                <span
-                  aria-hidden
-                  className="size-2 rounded-full bg-accent animate-pulse"
-                />
-                How it works
-              </p>
+        {/* Top Control Bar: Eyebrow, Step Navigation Tabs, Progress, and Arrows */}
+        <div className="relative z-10 flex items-center justify-between gap-3 border-b border-separator/50 pb-3 sm:pb-5">
+          <div className="flex items-center gap-2.5 sm:gap-6 min-w-0">
+            <p className="type-eyebrow inline-flex items-center gap-2 text-label font-semibold shrink-0">
+              <span
+                aria-hidden
+                className="size-1.5 sm:size-2 rounded-full bg-accent animate-pulse"
+              />
+              <span className="hidden xs:inline">How it works</span>
+              <span className="xs:hidden">Steps</span>
+            </p>
 
-              {/* Step indicator tabs: Clickable with smooth spring pill */}
-              <div className="flex items-center gap-1.5 rounded-full bg-surface-2 p-1 ring-1 ring-black/[0.04]">
-                {STEPS.map((s, idx) => {
-                  const isActive = activeStep === idx
-                  return (
-                    <motion.button
-                      key={s.n}
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => scrollToStep(idx)}
-                      className={`relative min-h-[38px] px-3.5 py-1.5 rounded-full type-footnote font-semibold transition-all duration-300 ${
-                        isActive
-                          ? 'text-white'
-                          : 'text-label-2 hover:text-label hover:bg-black/[0.02]'
-                      }`}
-                    >
-                      {isActive && (
-                        <motion.span
-                          layoutId="activeStepIndicator"
-                          className="absolute inset-0 rounded-full bg-accent shadow-sm"
-                          transition={{
-                            type: 'spring',
-                            stiffness: 350,
-                            damping: 30,
-                          }}
-                        />
-                      )}
-                      <span className="relative z-10 flex items-center gap-1.5">
-                        <span
-                          className={isActive ? 'opacity-80' : 'opacity-50'}
-                        >
-                          {s.n}
-                        </span>
-                        <span>{s.label}</span>
-                      </span>
-                    </motion.button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Right: Step arrows and scroll indicator */}
-            <div className="flex items-center gap-3">
-              <span className="type-caption text-label-3">
-                Scroll or click to advance
-              </span>
-              <div className="flex items-center gap-1">
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
-                  onClick={handlePrev}
-                  disabled={activeStep === 0}
-                  aria-label="Previous step"
-                  className="touch-target flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-label transition-colors hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    className="size-4"
-                    aria-hidden
-                  >
-                    <path
-                      d="M10 12L6 8L10 4"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </motion.button>
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
-                  onClick={handleNext}
-                  disabled={activeStep === STEPS.length - 1}
-                  aria-label="Next step"
-                  className="touch-target flex size-9 items-center justify-center rounded-full border border-separator bg-surface text-label transition-colors hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    className="size-4"
-                    aria-hidden
-                  >
-                    <path
-                      d="M6 12L10 8L6 4"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </motion.button>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Horizontal Stage Track */}
-          <div className="relative my-auto w-full overflow-visible py-4">
-            <motion.div
-              ref={trackRef}
-              style={{ x }}
-              className="flex w-max items-center gap-8 pl-2 pr-12 will-change-transform"
-            >
-              {/* Lead Headline Column */}
-              <div className="flex w-[26rem] shrink-0 flex-col justify-between gap-6 pr-4">
-                <div className="flex flex-col gap-4">
-                  <h2 className="type-display text-[2.75rem] font-[600] leading-[1.05] tracking-[-0.035em]">
-                    Four steps.{' '}
-                    <span className="em-claim text-accent-text">
-                      Zero effort
-                    </span>{' '}
-                    after the first.
-                  </h2>
-                  <p className="type-callout text-label-2 text-[1.0625rem] leading-[1.5]">
-                    You do step one. SHAMAR does the rest, every month, for as
-                    long as you want it to.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 text-label-3">
-                  <div className="size-2 rounded-full bg-accent animate-ping" />
-                  <p className="type-caption font-medium">
-                    Fully autonomous · Revoke permission any time
-                  </p>
-                </div>
-              </div>
-
-              {/* Step Cards with 3D Depth, Scaling & Focus Elevation */}
+            {/* Step indicator tabs: Clickable with smooth spring pill */}
+            <div className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-surface-2 p-1 ring-1 ring-black/[0.04] shrink-0">
               {STEPS.map((s, idx) => {
-                const isFocus = activeStep === idx
+                const isActive = activeStep === idx
                 return (
-                  <motion.article
+                  <motion.button
                     key={s.n}
-                    whileHover={{ y: -6, scale: isFocus ? 1.015 : 0.98 }}
-                    animate={{
-                      scale: isFocus ? 1 : 0.95,
-                      opacity: isFocus ? 1 : 0.72,
-                    }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className={`relative flex h-[31.5rem] w-[28.5rem] shrink-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] bg-surface-2 p-7 transition-all duration-300 ${
-                      isFocus
-                        ? 'shadow-[0_16px_40px_-12px_rgba(217,0,18,0.12)] ring-2 ring-accent/30 bg-surface'
-                        : 'shadow-sm ring-1 ring-black/[0.04]'
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => scrollToStep(idx)}
+                    className={`relative min-h-[34px] sm:min-h-[38px] px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full type-footnote font-semibold transition-all duration-300 cursor-pointer ${
+                      isActive
+                        ? 'text-white'
+                        : 'text-label-2 hover:text-label hover:bg-black/[0.02]'
                     }`}
                   >
-                    {/* Watermark Step Number with Parallax */}
-                    <motion.span
-                      aria-hidden
-                      style={{ x: watermarkX }}
-                      className="pointer-events-none absolute -right-2 -top-5 select-none text-[8.5rem] font-[700] leading-none tracking-[-0.06em] text-label/[0.04]"
-                    >
-                      {s.n}
-                    </motion.span>
-
-                    <div className="relative z-10 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <p className="type-eyebrow font-semibold text-accent-text">
-                          {s.n} · {s.label}
-                        </p>
-                        {isFocus && (
-                          <motion.span
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            className="type-caption flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 font-semibold text-accent-text"
-                          >
-                            <span className="size-1.5 rounded-full bg-accent animate-pulse" />{' '}
-                            Active stage
-                          </motion.span>
-                        )}
-                      </div>
-                      <h3 className="type-title-2 font-[600] text-label tracking-[-0.02em]">
-                        {s.title}
-                      </h3>
-                      <p className="type-callout text-label-2 leading-relaxed">
-                        {s.body}
-                      </p>
-                    </div>
-
-                    <div className="relative z-10 mt-3">{s.art}</div>
-                  </motion.article>
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeStepIndicator"
+                        className="absolute inset-0 rounded-full bg-accent shadow-sm"
+                        transition={{
+                          type: 'spring',
+                          stiffness: 350,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1">
+                      <span
+                        className={
+                          isActive ? 'opacity-90 font-bold' : 'opacity-60'
+                        }
+                      >
+                        {s.n}
+                      </span>
+                      <span className="hidden sm:inline">{s.label}</span>
+                    </span>
+                  </motion.button>
                 )
               })}
-            </motion.div>
+            </div>
           </div>
 
-          {/* Bottom Progress Bar: Continuous Feedback */}
-          <div className="relative z-10 flex items-center justify-between pt-4 border-t border-separator/40">
-            <div className="flex items-center gap-3">
-              <span className="type-caption font-semibold tabular text-label">
-                Step {activeStep + 1} of {STEPS.length}
-              </span>
-              <span className="type-caption text-label-3">·</span>
-              <span className="type-caption text-label-2 font-medium">
-                {STEPS[activeStep].title}
-              </span>
+          {/* Right: Step arrows and scroll indicator */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span className="type-caption text-label-3 hidden md:inline">
+              Scroll or click to advance
+            </span>
+            <div className="flex items-center gap-1">
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={handlePrev}
+                disabled={activeStep === 0}
+                aria-label="Previous step"
+                className="touch-target flex size-8 sm:size-9 items-center justify-center rounded-full border border-separator bg-surface text-label transition-colors hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="size-3.5 sm:size-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M10 12L6 8L10 4"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </motion.button>
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={handleNext}
+                disabled={activeStep === STEPS.length - 1}
+                aria-label="Next step"
+                className="touch-target flex size-8 sm:size-9 items-center justify-center rounded-full border border-separator bg-surface text-label transition-colors hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="size-3.5 sm:size-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M6 12L10 8L6 4"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </motion.button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Horizontal Stage Track */}
+        <div className="relative my-auto w-full overflow-visible py-2 sm:py-4">
+          <motion.div
+            ref={trackRef}
+            style={{ x }}
+            className="flex w-max items-center gap-4 sm:gap-6 md:gap-8 pl-1 sm:pl-2 pr-6 sm:pr-12 will-change-transform"
+          >
+            {/* Lead Headline Column */}
+            <div className="flex w-[80vw] max-w-[19rem] sm:w-[22rem] md:w-[26rem] shrink-0 flex-col justify-between gap-4 sm:gap-6 pr-2 sm:pr-4">
+              <div className="flex flex-col gap-2.5 sm:gap-4">
+                <h2 className="type-display text-[1.85rem] sm:text-[2.25rem] md:text-[2.75rem] font-[600] leading-[1.08] tracking-[-0.035em]">
+                  Four steps.{' '}
+                  <span className="em-claim text-accent-text">
+                    Zero effort
+                  </span>{' '}
+                  after the first.
+                </h2>
+                <p className="type-callout text-label-2 text-[0.9375rem] sm:text-[1.0625rem] leading-[1.45]">
+                  You do step one. SHAMAR does the rest, every month, for as
+                  long as you want it to.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 text-label-3">
+                <div className="size-2 rounded-full bg-accent animate-ping" />
+                <p className="type-caption font-medium text-xs sm:text-sm">
+                  Fully autonomous · Revoke any time
+                </p>
+              </div>
             </div>
 
-            {/* Smooth Progress Track */}
-            <div className="h-2 w-48 overflow-hidden rounded-full bg-surface-2 ring-1 ring-black/[0.06]">
-              <motion.div
-                className="h-full bg-accent rounded-full shadow-[0_0_8px_var(--color-accent)]"
-                style={{ scaleX: smoothProgress, transformOrigin: '0%' }}
-              />
-            </div>
+            {/* Step Cards with 3D Depth, Scaling & Focus Elevation */}
+            {STEPS.map((s, idx) => {
+              const isFocus = activeStep === idx
+              return (
+                <motion.article
+                  key={s.n}
+                  whileHover={{ y: -4, scale: isFocus ? 1.01 : 0.98 }}
+                  animate={{
+                    scale: isFocus ? 1 : 0.96,
+                    opacity: isFocus ? 1 : 0.72,
+                  }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className={`relative flex h-[min(480px,calc(100svh-10rem))] sm:h-[31.5rem] w-[84vw] max-w-[340px] sm:w-[26rem] md:w-[28.5rem] shrink-0 flex-col justify-between overflow-hidden rounded-[var(--radius-card)] bg-surface-2 p-4 sm:p-6 md:p-7 transition-all duration-300 ${
+                    isFocus
+                      ? 'shadow-[0_16px_40px_-12px_rgba(217,0,18,0.12)] ring-2 ring-accent/30 bg-surface'
+                      : 'shadow-sm ring-1 ring-black/[0.04]'
+                  }`}
+                >
+                  {/* Watermark Step Number with Parallax */}
+                  <motion.span
+                    aria-hidden
+                    style={{ x: watermarkX }}
+                    className="pointer-events-none absolute -right-2 -top-4 sm:-top-5 select-none text-[6rem] sm:text-[8.5rem] font-[700] leading-none tracking-[-0.06em] text-label/[0.04]"
+                  >
+                    {s.n}
+                  </motion.span>
+
+                  <div className="relative z-10 flex flex-col gap-1.5 sm:gap-3">
+                    <div className="flex items-center justify-between">
+                      <p className="type-eyebrow font-semibold text-accent-text text-xs sm:text-sm">
+                        {s.n} · {s.label}
+                      </p>
+                      {isFocus && (
+                        <motion.span
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="type-caption flex items-center gap-1.5 rounded-full bg-accent-soft px-2 sm:px-2.5 py-0.5 font-semibold text-accent-text text-[11px] sm:text-xs"
+                        >
+                          <span className="size-1.5 rounded-full bg-accent animate-pulse" />{' '}
+                          Active stage
+                        </motion.span>
+                      )}
+                    </div>
+                    <h3 className="type-title-2 text-base sm:text-lg md:text-xl font-[600] text-label tracking-[-0.02em]">
+                      {s.title}
+                    </h3>
+                    <p className="type-callout text-xs sm:text-sm text-label-2 leading-relaxed">
+                      {s.body}
+                    </p>
+                  </div>
+
+                  <div className="relative z-10 mt-auto pt-2 overflow-y-auto sm:overflow-visible max-h-[230px] sm:max-h-none">
+                    {s.art}
+                  </div>
+                </motion.article>
+              )
+            })}
+          </motion.div>
+        </div>
+
+        {/* Bottom Progress Bar: Continuous Feedback */}
+        <div className="relative z-10 flex items-center justify-between pt-3 sm:pt-4 border-t border-separator/40">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="type-caption font-semibold tabular text-label shrink-0 text-xs sm:text-sm">
+              Step {activeStep + 1} of {STEPS.length}
+            </span>
+            <span className="type-caption text-label-3">·</span>
+            <span className="type-caption text-label-2 font-medium truncate text-xs sm:text-sm">
+              {STEPS[activeStep].title}
+            </span>
+          </div>
+
+          {/* Smooth Progress Track */}
+          <div className="h-1.5 sm:h-2 w-24 sm:w-48 overflow-hidden rounded-full bg-surface-2 ring-1 ring-black/[0.06] shrink-0">
+            <motion.div
+              className="h-full bg-accent rounded-full shadow-[0_0_8px_var(--color-accent)]"
+              style={{ scaleX: smoothProgress, transformOrigin: '0%' }}
+            />
           </div>
         </div>
       </div>
-
-      {/* MOBILE: Clean Interactive Swipeable Carousel with Snap & Step Switcher */}
-      <section className="block md:hidden rounded-[var(--radius-section)] bg-surface border border-separator/40 p-5 shadow-sm">
-        <div className="flex flex-col gap-3 pb-5 border-b border-separator/50">
-          <p className="type-eyebrow inline-flex items-center gap-2 text-label font-semibold">
-            <span aria-hidden className="size-1.5 rounded-full bg-accent" /> How
-            it works
-          </p>
-          <h2 className="type-display text-[2rem] font-[600] leading-tight">
-            Four steps.{' '}
-            <span className="em-claim text-accent-text">Zero effort</span> after
-            the first.
-          </h2>
-          <p className="type-callout text-label-2">
-            You do step one. SHAMAR does the rest, every month, for as long as
-            you want it to.
-          </p>
-
-          {/* Step Pill Selectors */}
-          <div className="grid grid-cols-4 gap-1 pt-2">
-            {STEPS.map((s, idx) => (
-              <button
-                key={s.n}
-                type="button"
-                onClick={() => setActiveStep(idx)}
-                className={`flex min-h-[44px] flex-col items-center justify-center rounded-xl p-2 transition-all ${
-                  activeStep === idx
-                    ? 'bg-accent text-white shadow-xs font-semibold'
-                    : 'bg-surface-2 text-label-2 hover:text-label'
-                }`}
-              >
-                <span className="type-caption font-bold">{s.n}</span>
-                <span className="type-caption text-[11px] truncate max-w-full">
-                  {s.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Selected Step Card on Mobile */}
-        <div className="pt-5">
-          <article className="relative flex flex-col justify-between gap-6 overflow-hidden rounded-[var(--radius-card)] bg-surface-2 p-5 shadow-sm ring-1 ring-black/[0.04]">
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -right-2 -top-4 select-none text-[6.5rem] font-[700] leading-none tracking-[-0.06em] text-label/[0.04]"
-            >
-              {STEPS[activeStep].n}
-            </span>
-
-            <div className="relative flex flex-col gap-2">
-              <p className="type-eyebrow font-semibold text-accent-text">
-                {STEPS[activeStep].n} · {STEPS[activeStep].label}
-              </p>
-              <h3 className="type-title-2 font-[600] text-label">
-                {STEPS[activeStep].title}
-              </h3>
-              <p className="type-callout text-label-2">
-                {STEPS[activeStep].body}
-              </p>
-            </div>
-
-            <div className="relative pt-2">{STEPS[activeStep].art}</div>
-
-            {/* Mobile Next / Prev buttons */}
-            <div className="flex items-center justify-between pt-2 border-t border-separator/40">
-              <button
-                type="button"
-                onClick={handlePrev}
-                disabled={activeStep === 0}
-                className="type-footnote flex min-h-[44px] items-center gap-1 font-semibold text-label-2 hover:text-label disabled:opacity-30 disabled:pointer-events-none"
-              >
-                ← Previous
-              </button>
-              <span className="type-caption text-label-3">
-                {activeStep + 1} of {STEPS.length}
-              </span>
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={activeStep === STEPS.length - 1}
-                className="type-footnote flex min-h-[44px] items-center gap-1 font-semibold text-accent-text hover:underline disabled:opacity-30 disabled:pointer-events-none"
-              >
-                Next →
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
-    </>
+    </div>
   )
 }
