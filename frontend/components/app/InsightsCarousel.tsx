@@ -40,15 +40,17 @@ const CATEGORY_MAP: Record<string, string[]> = {
     'DigitalOcean',
     'AWS',
   ],
-  Design: ['Figma', 'Adobe', 'Canva', 'Midjourney'],
-  AI: ['OpenAI', 'Anthropic', 'ChatGPT Plus', 'Midjourney'],
+  Design: ['Figma', 'Adobe', 'Canva', 'Midjourney', 'CapCut'],
+  AI: ['OpenAI', 'Anthropic', 'ChatGPT Plus', 'Midjourney', 'Google AI Pro', 'Claude Pro'],
   Cloud: ['Dropbox', 'iCloud', 'Google Cloud', 'AWS'],
   Communication: ['Slack', 'Zoom'],
 }
 
 function getCategory(merchant: string): string {
   for (const [cat, merchants] of Object.entries(CATEGORY_MAP)) {
-    if (merchants.includes(merchant)) return cat
+    if (merchants.some((m) => merchant.toLowerCase().includes(m.toLowerCase()))) {
+      return cat
+    }
   }
   return 'Other'
 }
@@ -84,9 +86,9 @@ function computeInsights(subs: Subscription[]): Insight[] {
       const names = items.map((s) => s.merchant).join(' + ')
       insights.push({
         id: `dup-${cat}`,
-        tag: 'DUPLICATE STACK',
-        title: `${items.length} ${cat.toLowerCase()} tools running in parallel`,
-        detail: `${names} — ${total}/mo combined. Likely overlapping value.`,
+        tag: 'STACK OVERLAP',
+        title: `${items.length} ${cat.toLowerCase()} subscriptions running concurrently`,
+        detail: `${names} totalling ${total}/mo. Potential for consolidation.`,
         tone: 'warn',
       })
     }
@@ -98,71 +100,36 @@ function computeInsights(subs: Subscription[]): Insight[] {
     const total = formatAggregate(
       aggregateByCurrency(highRisk, monthly, currencyOf)
     )
+    const names = highRisk.map((s) => s.merchant).join(', ')
     insights.push({
       id: 'high-risk',
-      tag: 'AT RISK',
-      title: `${highRisk.length} subscription${highRisk.length === 1 ? '' : 's'} flagged for review`,
-      detail: `${total}/mo across services with weak engagement signals.`,
+      tag: 'CANCELLATION CANDIDATES',
+      title: `${highRisk.length} service${highRisk.length === 1 ? '' : 's'} recommended for review`,
+      detail: `${names} — ${total}/mo eligible for automated cancellation.`,
       tone: 'alert',
     })
   }
 
-  // 3. Top spend category — pick by the largest single-currency bucket so the
-  // percentage stays meaningful even when totals span multiple currencies.
-  const catTotals = Object.entries(byCategory).map(([cat, items]) => {
-    const map = aggregateByCurrency(items, monthly, currencyOf)
-    const peak = Math.max(0, ...Object.values(map))
-    return { cat, items, map, peak }
-  })
-  catTotals.sort((a, b) => b.peak - a.peak)
-  if (catTotals.length > 0 && catTotals[0].peak > 0) {
-    const top = catTotals[0]
-    const grandByCurrency = aggregateByCurrency(active, monthly, currencyOf)
-    const totalStr = formatAggregate(top.map)
-    // Percentage uses the dominant currency in the top category against the
-    // same currency's grand total, falling back to absolute share if absent.
-    const dominantCurrency = Object.entries(top.map).sort(
-      (a, b) => b[1] - a[1]
-    )[0][0]
-    const grandSame = grandByCurrency[dominantCurrency] ?? 0
-    const pct =
-      grandSame > 0
-        ? Math.round((top.map[dominantCurrency] / grandSame) * 100)
-        : null
-    insights.push({
-      id: 'top-spend',
-      tag: 'SPEND BREAKDOWN',
-      title: `${top.cat} is your largest recurring cost`,
-      detail:
-        pct != null
-          ? `${totalStr}/mo — ${pct}% of total ${dominantCurrency} spend.`
-          : `${totalStr}/mo across this category.`,
-      tone: 'info',
-    })
-  }
-
-  // 4. Yearly cadence — often overlooked
+  // 3. Yearly vs monthly breakdown
   const yearly = active.filter((s) => s.cadence === 'yearly')
   if (yearly.length > 0) {
     const total = formatAggregate(
-      aggregateByCurrency(yearly, (s) => s.amount, currencyOf)
+      aggregateByCurrency(
+        yearly,
+        (s) => s.amount,
+        currencyOf
+      )
     )
     insights.push({
       id: 'yearly',
-      tag: 'YEARLY BILLING',
+      tag: 'ANNUAL COMMITMENT',
       title: `${yearly.length} annual subscription${yearly.length === 1 ? '' : 's'} active`,
-      detail: `${total} renews each year — easy to forget until charged.`,
+      detail: `${total} committed across yearly renewals.`,
       tone: 'info',
     })
   }
 
   return insights
-}
-
-const TONE_COLORS = {
-  warn: { border: 'rgba(217,119,6,0.3)', tag: '#D97706' },
-  alert: { border: 'rgba(229,9,20,0.35)', tag: '#E50914' },
-  info: { border: 'rgba(255,255,255,0.1)', tag: '#A3A3A3' },
 }
 
 export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
@@ -182,41 +149,27 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
   if (insights.length === 0) return null
 
   const current = insights[index % insights.length]
-  const c = TONE_COLORS[current.tone]
 
   return (
     <div
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-2.5"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       <div className="flex items-center justify-between">
-        <span
-          style={{
-            fontFamily: 'var(--font-sans)',
-            color: '#525252',
-            fontSize: '10px',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Intelligence
+        <span className="type-eyebrow text-label-3 uppercase tracking-wider font-semibold">
+          AI Intelligence
         </span>
         {insights.length > 1 && (
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 items-center">
             {insights.map((_, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => setIndex(i)}
-                style={{
-                  width: i === index ? '16px' : '4px',
-                  height: '2px',
-                  background: i === index ? '#E50914' : '#2a2a2a',
-                  border: 'none',
-                  borderRadius: 0,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                }}
+                className={`h-1 rounded-full transition-all cursor-pointer ${
+                  i === index ? 'w-5 bg-accent' : 'w-2 bg-separator'
+                }`}
                 aria-label={`Insight ${i + 1}`}
               />
             ))}
@@ -227,50 +180,26 @@ export default function InsightsCarousel({ subs }: { subs: Subscription[] }) {
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          className="p-5"
-          style={{
-            background: '#0f0f0f',
-            border: `1px solid ${c.border}`,
-            borderRadius: '3px',
-            borderLeft: `2px solid ${c.tag}`,
-          }}
+          transition={{ duration: 0.3 }}
+          className={`p-5 sm:p-6 rounded-[var(--radius-card)] bg-surface border shadow-xs border-l-4 ${
+            current.tone === 'alert'
+              ? 'border-separator/80 border-l-accent'
+              : current.tone === 'warn'
+                ? 'border-separator/80 border-l-warning'
+                : 'border-separator/80 border-l-label'
+          }`}
         >
-          <div className="flex flex-col gap-2">
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: c.tag,
-                fontSize: '10px',
-                letterSpacing: '0.16em',
-                fontWeight: 600,
-              }}
-            >
+          <div className="flex flex-col gap-1.5">
+            <span className="type-eyebrow text-[11px] font-semibold text-label-3 uppercase tracking-wider">
               {current.tag}
             </span>
-            <h3
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#fff',
-                fontSize: '18px',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.3,
-                fontWeight: 600,
-              }}
-            >
+            <h4 className="type-headline font-semibold text-label">
               {current.title}
-            </h3>
-            <p
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#A3A3A3',
-                fontSize: '13px',
-                lineHeight: 1.5,
-              }}
-            >
+            </h4>
+            <p className="type-caption text-label-2 leading-relaxed">
               {current.detail}
             </p>
           </div>

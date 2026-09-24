@@ -374,7 +374,13 @@ export default function SubscriptionDetail() {
           className="flex items-start gap-4 sm:gap-5 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
         >
           <div className="size-14 shrink-0 rounded-2xl bg-surface-2 p-1 border border-separator/60 flex items-center justify-center">
-            <BrandLogo name={sub.merchant} size={44} label={sub.merchant} />
+            <BrandLogo
+              merchant={sub.merchant}
+              domain={(sub as any).domain}
+              logoUrl={(sub as any).logo_url}
+              size={44}
+              label={sub.merchant}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">

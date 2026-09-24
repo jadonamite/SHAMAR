@@ -1,21 +1,30 @@
-// Official marks from Simple Icons (public/logos), shown as app-icon tiles in each
-// brand's own colours. Used only to show which services SHAMAR recognises.
+'use client'
+
+import { useState } from 'react'
+import {
+  resolveMerchantDomain,
+  getRealLogoUrl,
+  getGoogleFaviconUrl,
+} from '@/lib/brand'
 
 type Brand = {
-  file: string
+  file?: string
   tile: string
-  glyph: string
+  glyph?: string
   // A full-bleed raster app icon, used instead of a masked glyph
   image?: string
 }
 
 const BRANDS: Record<string, Brand> = {
   claude: { file: 'claude', tile: '#F4EFE6', glyph: '#D97757' },
+  anthropic: { file: 'claude', tile: '#F4EFE6', glyph: '#D97757' },
+  claudepro: { file: 'claude', tile: '#F4EFE6', glyph: '#D97757' },
   netflix: { file: 'netflix', tile: '#000000', glyph: '#E50914' },
   spotify: { file: 'spotify', tile: '#000000', glyph: '#1ED760' },
   youtube: { file: 'youtube', tile: '#FFFFFF', glyph: '#FF0000' },
   notion: { file: 'notion', tile: '#FFFFFF', glyph: '#000000' },
   chatgpt: { file: 'openai', tile: '#FFFFFF', glyph: '#000000' },
+  openai: { file: 'openai', tile: '#FFFFFF', glyph: '#000000' },
   duolingo: {
     file: 'duolingo',
     tile: '#58CC02',
@@ -29,13 +38,28 @@ const BRANDS: Record<string, Brand> = {
   gmail: { file: 'gmail', tile: '#FFFFFF', glyph: '#EA4335' },
   googlecalendar: { file: 'googlecalendar', tile: '#FFFFFF', glyph: '#4285F4' },
   github: { file: 'github', tile: '#181717', glyph: '#FFFFFF' },
+  capcut: {
+    tile: '#000000',
+    image: '/CapCut.png',
+  },
 }
 
-export type BrandName = keyof typeof BRANDS | 'figma' | 'vercel' | 'google'
+export type BrandName =
+  | keyof typeof BRANDS
+  | 'figma'
+  | 'vercel'
+  | 'google'
+  | string
 
 function VercelMark() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden fill="currentColor" style={{ height: '50%', width: '50%' }} className="text-white">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="currentColor"
+      style={{ height: '50%', width: '50%' }}
+      className="text-white"
+    >
       <path d="M12 2L2 22h20L12 2z" />
     </svg>
   )
@@ -90,63 +114,171 @@ function FigmaMark() {
 
 export default function BrandLogo({
   name,
+  domain,
+  merchant,
+  logoUrl,
   size = 40,
   label,
+  className = '',
 }: {
-  name: BrandName
+  name?: BrandName | string
+  domain?: string
+  merchant?: string
+  logoUrl?: string
   size?: number
   label?: string
+  className?: string
 }) {
-  const isSpecial = name === 'figma' || name === 'vercel' || name === 'google'
-  const brand = isSpecial ? null : BRANDS[name]
-  const tileBg =
-    name === 'vercel'
-      ? '#000000'
-      : name === 'google'
-        ? '#FFFFFF'
-        : brand
-          ? brand.tile
-          : '#1E1E1E'
+  const [loadState, setLoadState] = useState<'primary' | 'secondary' | 'failed'>(
+    'primary'
+  )
+  const identifier = merchant || name || ''
+  const cleanKey = identifier.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  // 1. Check curated custom SVG components
+  if (cleanKey === 'figma') {
+    return (
+      <span
+        role={label ? 'img' : undefined}
+        aria-label={label}
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-black/[0.06] ${className}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.26,
+          background: '#1E1E1E',
+        }}
+      >
+        <FigmaMark />
+      </span>
+    )
+  }
+
+  if (cleanKey === 'vercel') {
+    return (
+      <span
+        role={label ? 'img' : undefined}
+        aria-label={label}
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-black/[0.06] ${className}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.26,
+          background: '#000000',
+        }}
+      >
+        <VercelMark />
+      </span>
+    )
+  }
+
+  if (cleanKey === 'google' || cleanKey === 'googleone') {
+    return (
+      <span
+        role={label ? 'img' : undefined}
+        aria-label={label}
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-black/[0.06] ${className}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.26,
+          background: '#FFFFFF',
+        }}
+      >
+        <GoogleMark />
+      </span>
+    )
+  }
+
+  // 2. Check local curated brand marks with SVGs or raster app icons
+  const curated = BRANDS[cleanKey] || BRANDS[identifier.toLowerCase()]
+  if (curated) {
+    return (
+      <span
+        role={label ? 'img' : undefined}
+        aria-label={label}
+        className={`inline-flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-black/[0.06] ${className}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.26,
+          background: curated.tile,
+        }}
+      >
+        {curated.image ? (
+          // biome-ignore lint/performance/noImgElement: tiny static icon
+          <img
+            src={curated.image}
+            alt={label || identifier}
+            width={size}
+            height={size}
+            className="size-full object-cover"
+          />
+        ) : curated.file ? (
+          <span
+            style={{
+              width: '56%',
+              height: '56%',
+              background: curated.glyph,
+              WebkitMask: `url(/logos/${curated.file}.svg) center / contain no-repeat`,
+              mask: `url(/logos/${curated.file}.svg) center / contain no-repeat`,
+            }}
+          />
+        ) : null}
+      </span>
+    )
+  }
+
+  // 3. Dynamic Real Logo Resolution for ANY merchant / service
+  const targetDomain = domain || resolveMerchantDomain(identifier)
+  const initialUrl = logoUrl || getRealLogoUrl(targetDomain)
+  const secondaryUrl = getGoogleFaviconUrl(targetDomain)
+
+  if (loadState === 'failed' || !targetDomain) {
+    const initial = (identifier.charAt(0) || 'S').toUpperCase()
+    return (
+      <span
+        aria-hidden
+        className={`inline-flex shrink-0 items-center justify-center rounded-[11px] bg-surface-2 ring-1 ring-black/[0.06] text-label font-bold text-sm select-none ${className}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size * 0.26,
+        }}
+      >
+        {initial}
+      </span>
+    )
+  }
+
+  const currentSrc = loadState === 'primary' ? initialUrl : secondaryUrl
 
   return (
     <span
       role={label ? 'img' : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      className="inline-flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-black/[0.06]"
+      aria-label={label || identifier}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden bg-surface-2 ring-1 ring-black/[0.06] relative ${className}`}
       style={{
         width: size,
         height: size,
         borderRadius: size * 0.26,
-        background: tileBg,
       }}
     >
-      {brand?.image ? (
-        // biome-ignore lint/performance/noImgElement: tiny static icon, no optimisation needed
-        <img
-          src={brand.image}
-          alt=""
-          width={size}
-          height={size}
-          className="size-full object-cover"
-        />
-      ) : brand ? (
-        <span
-          style={{
-            width: '56%',
-            height: '56%',
-            background: brand.glyph,
-            WebkitMask: `url(/logos/${brand.file}.svg) center / contain no-repeat`,
-            mask: `url(/logos/${brand.file}.svg) center / contain no-repeat`,
-          }}
-        />
-      ) : name === 'vercel' ? (
-        <VercelMark />
-      ) : name === 'google' ? (
-        <GoogleMark />
-      ) : (
-        <FigmaMark />
-      )}
+      {/* biome-ignore lint/performance/noImgElement: dynamic real logo loader */}
+      <img
+        src={currentSrc}
+        alt={label || identifier}
+        width={size}
+        height={size}
+        className="size-full object-contain p-1"
+        onError={() => {
+          if (loadState === 'primary') {
+            setLoadState('secondary')
+          } else {
+            setLoadState('failed')
+          }
+        }}
+      />
     </span>
   )
 }

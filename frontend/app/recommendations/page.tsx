@@ -182,7 +182,7 @@ export default function RecommendationsPage() {
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="size-12 rounded-xl bg-surface-2 border border-separator/60 p-1 flex items-center justify-center shrink-0">
                       <BrandLogo
-                        name={rec.merchant}
+                        merchant={rec.merchant}
                         size={36}
                         label={rec.merchant}
                       />

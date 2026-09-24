@@ -19,6 +19,8 @@ export type Subscription = {
   action?: 'cancel' | 'pause' | 'remind' | 'keep'
   last_charged?: string | null
   detected_at?: string | null
+  domain?: string
+  logo_url?: string
 }
 
 interface SubscriptionRowProps {
@@ -28,48 +30,6 @@ interface SubscriptionRowProps {
     status: 'active' | 'paused' | 'cancelled'
   ) => void
   href?: string
-}
-
-const KNOWN_BRANDS: Record<string, BrandName> = {
-  netflix: 'netflix',
-  spotify: 'spotify',
-  claude: 'claude',
-  anthropic: 'claude',
-  figma: 'figma',
-  youtube: 'youtube',
-  googleone: 'google',
-  google: 'google',
-  gmail: 'gmail',
-  chatgpt: 'chatgpt',
-  openai: 'chatgpt',
-  notion: 'notion',
-  duolingo: 'duolingo',
-  dropbox: 'dropbox',
-  canva: 'canva',
-  adobe: 'adobe',
-  telegram: 'telegram',
-  vercel: 'vercel',
-  github: 'github',
-}
-
-function resolveBrand(merchant: string): BrandName | null {
-  const clean = merchant.toLowerCase().replace(/[^a-z0-9]/g, '')
-  for (const [key, brand] of Object.entries(KNOWN_BRANDS)) {
-    if (clean.includes(key)) return brand
-  }
-  return null
-}
-
-function FallbackAvatar({ name }: { name: string }) {
-  const initial = name.charAt(0).toUpperCase()
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 size-10 items-center justify-center rounded-[11px] bg-surface-2 ring-1 ring-black/[0.06] text-label font-bold text-sm select-none"
-    >
-      {initial}
-    </span>
-  )
 }
 
 const CADENCE_LABELS: Record<string, string> = {
@@ -86,7 +46,6 @@ export default function SubscriptionRow({
 }: SubscriptionRowProps) {
   const [hovered, setHovered] = useState(false)
   const router = useRouter()
-  const brand = resolveBrand(sub.merchant || sub.name)
 
   const isHighRisk = (sub.confidence ?? 0) >= 60
 
@@ -107,11 +66,13 @@ export default function SubscriptionRow({
       <div className="flex items-center justify-between sm:justify-start gap-3 min-w-0 sm:flex-1">
         {/* Avatar + Merchant Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {brand ? (
-            <BrandLogo name={brand} size={40} label={sub.merchant} />
-          ) : (
-            <FallbackAvatar name={sub.merchant || sub.name} />
-          )}
+          <BrandLogo
+            merchant={sub.merchant || sub.name}
+            domain={sub.domain}
+            logoUrl={sub.logo_url}
+            size={40}
+            label={sub.merchant || sub.name}
+          />
 
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2">

@@ -488,22 +488,12 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* AI Insights & Timeline */}
-        {subs.length > 0 && <InsightsCarousel subs={subs} />}
-        {subs.length > 0 && <RenewalsTimeline subs={subs} />}
-
         {/* Gmail Setup & Discovery 2-Step Card */}
         <GmailSetupCard
           gmailConnected={gmailConnected}
           scanning={scanning}
           onScan={() => triggerScan({ reset: true, clear: true })}
           lastScan={lastScan}
-        />
-
-        {/* Telegram Renewal Alerts & One-Tap Control */}
-        <TelegramAlertsCard
-          userId={effectiveUserId ?? undefined}
-          onStatusChange={setTelegramLinked}
         />
 
         {/* Subscriptions List or Optimistic Shimmer Skeleton */}
@@ -558,6 +548,18 @@ function DashboardInner() {
             </div>
           </div>
         )}
+
+        {/* Telegram Renewal Alerts & One-Tap Control */}
+        <TelegramAlertsCard
+          userId={effectiveUserId ?? undefined}
+          onStatusChange={setTelegramLinked}
+        />
+
+        {/* Next 14 Days Upcoming Renewals Timeline */}
+        {subs.length > 0 && <RenewalsTimeline subs={subs} />}
+
+        {/* AI Insights Carousel */}
+        {subs.length > 0 && <InsightsCarousel subs={subs} />}
 
         {/* The Black Slab: Agent Activity Dispatch Ledger */}
         {subs.length > 0 && (

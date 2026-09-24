@@ -81,8 +81,8 @@ export const SUBSCRIPTION_REGISTRY: SubscriptionService[] = [
   { name: 'Poe', domains: ['poe.com'], category: 'ai' },
   { name: 'Pika', domains: ['pika.art'], category: 'ai' },
   { name: 'DeepSeek', domains: ['deepseek.com'], category: 'ai' },
-  { name: 'GitHub Copilot', domains: [], category: 'ai', aliases: ['github copilot'] },
-  { name: 'Google AI Pro', domains: [], category: 'ai', aliases: ['google ai pro', 'gemini advanced'] },
+  { name: 'GitHub Copilot', domains: ['github.com'], category: 'ai', aliases: ['github copilot'] },
+  { name: 'Google AI Pro', domains: ['google.com', 'gemini.google.com'], category: 'ai', aliases: ['google ai pro', 'gemini advanced'] },
 
   // ── Dev Tools / Hosting ──────────────────────────────────────────────────
   { name: 'GitHub', domains: ['github.com', 'noreply.github.com'], category: 'dev' },
@@ -118,6 +118,7 @@ export const SUBSCRIPTION_REGISTRY: SubscriptionService[] = [
   { name: 'Figma', domains: ['figma.com'], category: 'design' },
   { name: 'Canva', domains: ['canva.com'], category: 'design' },
   { name: 'Adobe Creative Cloud', domains: ['adobe.com'], category: 'design' },
+  { name: 'CapCut', domains: ['capcut.com', 'mail.capcut.com', 'bytedance.com'], category: 'design', aliases: ['capcut'] },
   { name: 'Framer', domains: ['framer.com'], category: 'design' },
   { name: 'Webflow', domains: ['webflow.com'], category: 'design' },
   { name: 'Sketch', domains: ['sketch.com'], category: 'design' },

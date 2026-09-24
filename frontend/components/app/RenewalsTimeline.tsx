@@ -1,14 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { Subscription } from './SubscriptionRow'
 import { aggregateByCurrency, formatAggregate, formatMoney } from '@/lib/format'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 interface Renewal {
   sub: Subscription
   date: Date
-  // TODO: add error boundary here
   daysFromNow: number
 }
 
@@ -54,162 +54,127 @@ export default function RenewalsTimeline({ subs }: { subs: Subscription[] }) {
     )
   )
 
+  const activeRenewal = hovered || renewals[0]
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-col gap-4 p-4 sm:p-5"
-      style={{
-        background: '#0f0f0f',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '3px',
-      }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-[var(--radius-section)] bg-surface p-6 sm:p-8 border border-separator/80 shadow-xs space-y-6"
+      aria-label="Upcoming renewals in next 14 days"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1 min-w-0">
-          <span
-            style={{
-              fontFamily: 'var(--font-sans)',
-              color: '#525252',
-              fontSize: '10px',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Next {WINDOW} Days
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: '#fff',
-              fontSize: '20px',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {totalStr}{' '}
-            <span style={{ color: '#525252', fontSize: '12px' }}>
-              · {renewals.length}
+      {/* Header with Title and Selected/Hovered Card Summary */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-separator/60 pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-accent" />
+            <span className="type-eyebrow text-label-3 uppercase tracking-wider font-semibold">
+              Next {WINDOW} Days
             </span>
-          </span>
+          </div>
+          <div className="flex items-baseline gap-2.5">
+            <span className="type-display text-2xl sm:text-3xl font-[600] text-label tabular">
+              {totalStr}
+            </span>
+            <span className="type-caption text-label-2 font-medium">
+              across {renewals.length} upcoming{' '}
+              {renewals.length === 1 ? 'renewal' : 'renewals'}
+            </span>
+          </div>
         </div>
-        {hovered && (
-          <div className="flex flex-col items-end gap-0.5 text-right min-w-0">
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                color: '#fff',
-                fontSize: '13px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                maxWidth: '180px',
-              }}
-            >
-              {hovered.sub.merchant}
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: '#E50914',
-                fontSize: '12px',
-              }}
-            >
-              {formatMoney(hovered.sub.amount, hovered.sub.currency)} ·{' '}
-              {hovered.daysFromNow}d
-            </span>
+
+        {/* Hover / Selected Focus Badge */}
+        {activeRenewal && (
+          <div className="flex items-center gap-3 p-2.5 sm:px-4 sm:py-2.5 rounded-[var(--radius-tile)] bg-surface-2 border border-separator/70 self-start sm:self-auto">
+            <BrandLogo
+              merchant={activeRenewal.sub.merchant}
+              domain={(activeRenewal.sub as any).domain}
+              size={24}
+              label={activeRenewal.sub.merchant}
+            />
+            <div className="flex flex-col">
+              <span className="type-footnote font-semibold text-label">
+                {activeRenewal.sub.merchant}
+              </span>
+              <span className="type-caption font-mono font-medium text-accent">
+                {formatMoney(activeRenewal.sub.amount, activeRenewal.sub.currency)} ·{' '}
+                {activeRenewal.daysFromNow === 0
+                  ? 'Due today'
+                  : activeRenewal.daysFromNow === 1
+                    ? 'Due tomorrow'
+                    : `In ${activeRenewal.daysFromNow} days`}
+              </span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* timeline */}
-      <div className="relative" style={{ height: '40px' }}>
-        {/* baseline */}
-        <div
-          className="absolute left-0 right-0"
-          style={{
-            top: '50%',
-            height: '1px',
-            background: 'rgba(255,255,255,0.06)',
-          }}
-        />
+      {/* Interactive Timeline Bar */}
+      <div className="pt-4 pb-2 px-2">
+        <div className="relative h-12 flex items-center">
+          {/* Base track line */}
+          <div className="absolute left-0 right-0 h-2 rounded-full bg-surface-2 border border-separator/70" />
 
-        {/* today marker */}
-        <div
-          className="absolute"
-          style={{
-            left: '0%',
-            top: '20%',
-            bottom: '20%',
-            width: '1px',
-            background: '#E50914',
-            boxShadow: '0 0 6px rgba(229,9,20,0.6)',
-          }}
-        />
+          {/* Today Start Indicator */}
+          <div className="absolute left-0 -top-1 -bottom-1 w-1 rounded-full bg-accent z-10" />
 
-        {/* day ticks */}
-        {Array.from({ length: WINDOW + 1 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute"
-            style={{
-              left: `${(i / WINDOW) * 100}%`,
-              top: '45%',
-              width: '1px',
-              height: '4px',
-              background: i % 7 === 0 ? '#525252' : '#2a2a2a',
-            }}
-          />
-        ))}
+          {/* Day Grid Markers */}
+          {Array.from({ length: WINDOW + 1 }).map((_, i) => (
+            <div
+              key={i}
+              className={`absolute -translate-x-1/2 ${
+                i % 7 === 0 ? 'h-4 w-[1.5px] bg-separator-strong' : 'h-2 w-[1px] bg-separator'
+              }`}
+              style={{ left: `${(i / WINDOW) * 100}%` }}
+            />
+          ))}
 
-        {/* renewal dots */}
-        {renewals.map((r) => (
-          <motion.button
-            key={r.sub.id}
-            onMouseEnter={() => setHovered(r)}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() =>
-              setHovered((cur) => (cur?.sub.id === r.sub.id ? null : r))
-            }
-            whileHover={{ scale: 1.6 }}
-            transition={{ duration: 0.18 }}
-            className="absolute"
-            style={{
-              left: `${(r.daysFromNow / WINDOW) * 100}%`,
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '14px',
-              height: '14px',
-              borderRadius: '50%',
-              background: r.daysFromNow <= 3 ? '#E50914' : '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              boxShadow:
-                r.daysFromNow <= 3
-                  ? '0 0 12px rgba(229,9,20,0.5)'
-                  : '0 0 0 transparent',
-            }}
-            aria-label={`${r.sub.merchant} in ${r.daysFromNow} days`}
-          />
-        ))}
+          {/* Interactive Renewal Nodes */}
+          {renewals.map((r) => {
+            const isHovered = hovered?.sub.id === r.sub.id
+            const isImminent = r.daysFromNow <= 3
+            const leftPercent = Math.min(Math.max((r.daysFromNow / WINDOW) * 100, 2), 98)
+
+            return (
+              <div
+                key={r.sub.id}
+                className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `${leftPercent}%`,
+                  top: '50%',
+                }}
+              >
+                <motion.button
+                  type="button"
+                  onMouseEnter={() => setHovered(r)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() =>
+                    setHovered((cur) => (cur?.sub.id === r.sub.id ? null : r))
+                  }
+                  whileHover={{ scale: 1.35 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`touch-target size-5 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center ${
+                    isImminent
+                      ? 'bg-accent border-surface ring-2 ring-accent/30 shadow-xs'
+                      : 'bg-label border-surface ring-2 ring-separator shadow-2xs'
+                  } ${isHovered ? 'scale-125 ring-4 ring-accent/40' : ''}`}
+                  aria-label={`${r.sub.merchant} renewing in ${r.daysFromNow} days`}
+                >
+                  <span className="size-1.5 rounded-full bg-white" />
+                </motion.button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Axis Labels */}
+        <div className="flex justify-between items-center pt-2 type-caption font-mono text-label-3">
+          <span>Today</span>
+          <span>+7 days</span>
+          <span>+{WINDOW} days</span>
+        </div>
       </div>
-
-      {/* axis labels */}
-      <div className="flex justify-between" style={{ marginTop: '-8px' }}>
-        {[0, 7, WINDOW].map((d) => (
-          <span
-            key={d}
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: '#3a3a3a',
-              fontSize: '10px',
-            }}
-          >
-            {d === 0 ? 'today' : `+${d}d`}
-          </span>
-        ))}
-      </div>
-    </motion.div>
+    </motion.section>
   )
 }

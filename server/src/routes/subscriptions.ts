@@ -11,6 +11,35 @@ const REGISTERED_MERCHANT_NAMES = new Set(
   SUBSCRIPTION_REGISTRY.map((s) => s.name.toLowerCase())
 )
 
+function resolveSubscriptionDomain(merchant: string): string | null {
+  const clean = (merchant || '').trim().toLowerCase()
+  if (!clean) return null
+  for (const s of SUBSCRIPTION_REGISTRY) {
+    if (
+      s.name.toLowerCase() === clean ||
+      s.aliases?.some((a) => clean.includes(a.toLowerCase()))
+    ) {
+      return s.domains[0] ?? null
+    }
+  }
+  for (const s of SUBSCRIPTION_REGISTRY) {
+    if (s.domains.some((d) => clean.includes(d.replace(/\..+$/, '')))) {
+      return s.domains[0] ?? null
+    }
+  }
+  if (clean.includes('.') && !clean.includes(' ')) {
+    return clean
+  }
+  const stripped = clean.replace(/[^a-z0-9]/g, '')
+  return stripped ? `${stripped}.com` : null
+}
+
+function getSubscriptionLogoUrl(domain: string | null): string | null {
+  if (!domain) return null
+  const googleFallback = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+  return `https://unavatar.io/${domain}?fallback=${encodeURIComponent(googleFallback)}`
+}
+
 app.get('/', async (c) => {
   const auth = await authenticateCaller(c)
   if (!auth) return c.json({ error: 'Unauthorized' }, 401)
@@ -56,10 +85,17 @@ app.get('/', async (c) => {
     }
   }
 
-  const deduplicated = Array.from(byMerchant.values()).map((r) => ({
-    ...r,
-    amount: parseFloat(r.amount as string),
-  }))
+  const deduplicated = Array.from(byMerchant.values()).map((r) => {
+    const merchantName = ((r.merchant as string) || (r.name as string) || '')
+    const domain = resolveSubscriptionDomain(merchantName)
+    const logo_url = getSubscriptionLogoUrl(domain)
+    return {
+      ...r,
+      amount: parseFloat(r.amount as string),
+      domain,
+      logo_url,
+    }
+  })
 
   return c.json({
     subscriptions: deduplicated,
@@ -76,6 +112,9 @@ app.get('/:id', async (c) => {
   `
   if (!sub) return c.json({ error: 'Not found' }, 404)
   sub.amount = parseFloat(sub.amount)
+  const domain = resolveSubscriptionDomain((sub.merchant as string) || (sub.name as string))
+  sub.domain = domain
+  sub.logo_url = getSubscriptionLogoUrl(domain)
 
   const signals = await sql`
     SELECT * FROM signals WHERE subscription_id = ${id} ORDER BY created_at DESC
