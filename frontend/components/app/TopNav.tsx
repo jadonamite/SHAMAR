@@ -17,6 +17,7 @@ const APP_ROUTES = [
   '/policies',
   '/audit',
   '/run',
+  '/agent',
 ]
 
 interface TopNavProps {

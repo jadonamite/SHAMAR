@@ -349,6 +349,20 @@ export default function AgentPage() {
             Non-custodial session authorization on Base mainnet. You hold full
             revoke power.
           </p>
+          <div className="flex flex-wrap items-center gap-2 pt-3">
+            <a
+              href="#telegram-section"
+              className="touch-target px-3.5 py-1.5 rounded-full border border-separator bg-surface text-label-2 hover:text-label hover:bg-surface-2 type-caption font-semibold transition-colors"
+            >
+              Telegram Connection ↓
+            </a>
+            <a
+              href="#danger-zone"
+              className="touch-target px-3.5 py-1.5 rounded-full border border-danger/40 text-danger hover:bg-danger/10 type-caption font-semibold transition-colors"
+            >
+              Permanently Delete Account & Reset ↓
+            </a>
+          </div>
         </div>
 
         {/* Status Line (R23) */}
@@ -459,6 +473,7 @@ export default function AgentPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
+          id="telegram-section"
           className="flex flex-col gap-4 rounded-[var(--radius-card)] bg-surface p-6 border border-separator/80 shadow-xs"
         >
           <div className="flex items-center justify-between">
@@ -571,14 +586,20 @@ export default function AgentPage() {
         )}
 
         {/* Your Data & Account Deletion (PRD R28 / B1 / A7) */}
-        <div className="mt-4 rounded-[var(--radius-card)] border border-separator/80 bg-surface p-6 shadow-xs flex flex-col gap-4">
+        <div
+          id="danger-zone"
+          className="mt-6 rounded-[var(--radius-card)] border-2 border-danger/40 bg-surface p-6 sm:p-8 shadow-xs flex flex-col gap-4"
+        >
           <div>
-            <h2 className="type-headline font-semibold text-label">
-              Your Data & Account
-            </h2>
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-danger" />
+              <h2 className="type-headline font-semibold text-danger">
+                Danger Zone: Permanently Delete Account & Reset Data
+              </h2>
+            </div>
             <p className="type-callout text-label-2 mt-1">
               Permanently delete all your detected subscriptions, rules, action
-              history, and revoke linked Gmail tokens.
+              history, unlinks Telegram, and revokes Gmail tokens to start over completely fresh.
             </p>
           </div>
 
@@ -601,7 +622,7 @@ export default function AgentPage() {
           </div>
 
           {!confirmDelete ? (
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={handleLogout}
@@ -616,9 +637,9 @@ export default function AgentPage() {
                   setDeleteInput('')
                   setDeleteError(null)
                 }}
-                className="touch-target inline-flex min-h-[44px] items-center self-start rounded-full border border-danger/40 bg-surface px-5 type-footnote font-semibold text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
+                className="touch-target inline-flex min-h-[44px] items-center self-start rounded-full bg-danger px-6 type-footnote font-semibold text-white hover:bg-danger/90 transition-colors cursor-pointer shadow-xs"
               >
-                Delete account & reset all data
+                Permanently Delete Account
               </button>
             </div>
           ) : (

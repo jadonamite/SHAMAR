@@ -90,7 +90,7 @@ export default function MobileMenu({
 
               {/* User Identity Chip */}
               {(email || walletAddress) && (
-                <div className="p-4 mx-4 mt-3 rounded-[var(--radius-tile)] bg-surface-2 border border-separator/60 flex flex-col gap-1">
+                <div className="p-4 mx-4 mt-3 rounded-[var(--radius-tile)] bg-surface-2 border border-separator/60 flex flex-col gap-1.5">
                   <span className="type-caption uppercase tracking-wider text-label-3 font-semibold">
                     Signed in as
                   </span>
@@ -98,6 +98,14 @@ export default function MobileMenu({
                     {email ??
                       `${walletAddress?.slice(0, 6)}…${walletAddress?.slice(-4)}`}
                   </span>
+                  <Link
+                    href="/agent"
+                    onClick={() => setOpen(false)}
+                    className="type-caption text-accent hover:underline font-semibold pt-0.5 inline-flex items-center gap-1"
+                  >
+                    <span>Agent & Account Settings</span>
+                    <span aria-hidden>→</span>
+                  </Link>
                 </div>
               )}
 
@@ -171,6 +179,16 @@ export default function MobileMenu({
                   >
                     Log out
                   </button>
+                )}
+
+                {(email || walletAddress) && (
+                  <Link
+                    href="/agent#danger-zone"
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-danger/30 text-danger hover:bg-danger/10 type-footnote font-semibold transition-colors cursor-pointer"
+                  >
+                    Permanently Delete Account
+                  </Link>
                 )}
               </div>
             </motion.aside>

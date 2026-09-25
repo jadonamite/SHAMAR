@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import AgentStateBadge, { type AgentStateKind } from './AgentStateBadge'
 import { apiFetch } from '@/lib/api'
@@ -109,13 +110,20 @@ export default function AgentStatusBar({
       </div>
 
       {/* R23 Agent State at a glance */}
-      <div className="flex items-center gap-2 shrink-0 pl-3">
+      <Link
+        href="/agent"
+        className="flex items-center gap-2 shrink-0 pl-3 hover:opacity-80 transition-opacity cursor-pointer"
+        title="Open Agent & Policy settings"
+      >
         <AgentStateBadge
           state={agentStateKind}
           reason={status?.reason}
           compact
         />
-      </div>
+        <span className="type-caption text-label-3 text-[11px] hidden sm:inline font-semibold">
+          Agent Settings →
+        </span>
+      </Link>
     </div>
   )
 }

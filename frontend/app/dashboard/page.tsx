@@ -550,6 +550,35 @@ function DashboardInner() {
         {subs.length > 0 && (
           <AgentActivity userId={effectiveUserId ?? undefined} />
         )}
+
+        {/* Account & Agent Settings Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-[var(--radius-card)] bg-surface border border-separator/80 text-label">
+          <div className="flex items-center gap-2.5">
+            <span className="size-2 rounded-full bg-accent" />
+            <div>
+              <p className="type-footnote font-semibold text-label">
+                Agent Governance & Account Controls
+              </p>
+              <p className="type-caption text-label-3">
+                Configure Base session keys, link Telegram alerts, or permanently reset and delete account data.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/agent"
+              className="touch-target px-4 py-1.5 rounded-full border border-separator bg-surface-2 hover:bg-surface text-label type-caption font-semibold transition-colors"
+            >
+              Open Agent Page →
+            </Link>
+            <Link
+              href="/agent#danger-zone"
+              className="touch-target px-4 py-1.5 rounded-full border border-danger/30 text-danger hover:bg-danger/10 type-caption font-semibold transition-colors"
+            >
+              Delete Account
+            </Link>
+          </div>
+        </div>
       </div>
 
       <AppFooter />
