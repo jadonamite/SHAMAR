@@ -8,6 +8,8 @@ import {
   isTelegramConfigured,
   pollControl,
   sendTestRenewalNotice,
+  handleTelegramUpdate,
+  setupTelegramWebhook,
 } from '../lib/telegram.js'
 import { sql } from '../lib/db.js'
 
@@ -94,6 +96,40 @@ app.post('/resume', async (c) => {
 
   await setHalt(false, auth.dbUserId)
   return c.json({ halted: false, reason: 'Active' })
+})
+
+// POST /telegram/webhook — real-time webhook endpoint for Telegram push updates
+app.post('/webhook', async (c) => {
+  try {
+    const update = (await c.req.json()) as Record<string, any>
+    if (update && typeof update === 'object') {
+      await handleTelegramUpdate(update)
+    }
+  } catch (err) {
+    console.warn('[Telegram Webhook] Error processing update:', (err as Error).message)
+  }
+  return c.json({ ok: true })
+})
+
+// POST /telegram/setup-webhook — registers the public webhook URL with Telegram API
+app.post('/setup-webhook', async (c) => {
+  const cronSecret = process.env.CRON_SECRET
+  const authHeader = c.req.header('authorization')
+  const secretHeader = c.req.header('x-cron-secret')
+  const isCronAuthed = cronSecret && (secretHeader === cronSecret || authHeader === `Bearer ${cronSecret}`)
+
+  if (!isCronAuthed) {
+    const auth = await authenticateCaller(c)
+    if (!auth) return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  const serverUrl = process.env.FRONTEND_URL?.includes('localhost')
+    ? 'https://shamar-api.namite.xyz'
+    : (process.env.NEXT_PUBLIC_SERVER_URL || 'https://shamar-api.namite.xyz')
+
+  const webhookUrl = `${serverUrl.replace(/\/$/, '')}/telegram/webhook`
+  const result = await setupTelegramWebhook(webhookUrl)
+  return c.json({ webhook_url: webhookUrl, ...result })
 })
 
 export default app

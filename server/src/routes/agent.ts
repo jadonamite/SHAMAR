@@ -9,7 +9,7 @@ import {
 } from '../lib/agent.js'
 import { logAction } from '../lib/actions.js'
 import { authenticateCaller } from '../lib/auth.js'
-import { getHaltState, getUserTelegramChat } from '../lib/telegram.js'
+import { getHaltState, getUserTelegramChat, pollControl } from '../lib/telegram.js'
 import { hasGmailConnected } from '../lib/cache.js'
 
 const app = new Hono()
@@ -20,6 +20,9 @@ app.get('/status', async (c) => {
   if (!auth) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
+
+  // Poll pending telegram updates to sync any recent linking or commands
+  await pollControl(auth.dbUserId)
 
   const agentReady = isAgentConfigured()
 

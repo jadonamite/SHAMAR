@@ -41,7 +41,7 @@ export default function TopNav({
   onScanWallet,
 }: TopNavProps) {
   const pathname = usePathname()
-  const { user } = usePrivy()
+  const { user, logout } = usePrivy()
   const { isMiniPay } = useMiniPay()
   // In-app screens only; the Agent page has its own Telegram section.
   const showTelegramBar =
@@ -107,18 +107,31 @@ export default function TopNav({
             {actions}
             {rightMeta}
 
-            {/* User Session Pill */}
+            {/* User Session Pill & Logout */}
             {user?.email?.address || user?.wallet?.address ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-separator bg-surface text-label type-caption font-mono shadow-2xs">
-                {isMiniPay && (
-                  <span className="rounded-full bg-success/15 border border-success/30 px-1.5 py-0.5 text-[9px] font-bold text-success uppercase">
-                    MiniPay
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-separator bg-surface text-label type-caption font-mono shadow-2xs">
+                  {isMiniPay && (
+                    <span className="rounded-full bg-success/15 border border-success/30 px-1.5 py-0.5 text-[9px] font-bold text-success uppercase">
+                      MiniPay
+                    </span>
+                  )}
+                  <span className="text-label-2">
+                    {user?.email?.address ??
+                      `${user?.wallet?.address?.slice(0, 6)}…${user?.wallet?.address?.slice(-4)}`}
                   </span>
-                )}
-                <span className="text-label-2">
-                  {user?.email?.address ??
-                    `${user?.wallet?.address?.slice(0, 6)}…${user?.wallet?.address?.slice(-4)}`}
-                </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await logout()
+                    window.location.href = '/'
+                  }}
+                  className="touch-target px-3 py-1.5 rounded-full border border-separator bg-surface text-label type-caption font-semibold hover:bg-surface-2 transition-colors cursor-pointer"
+                  title="Sign out of SHAMAR"
+                >
+                  Log out
+                </button>
               </div>
             ) : null}
           </div>

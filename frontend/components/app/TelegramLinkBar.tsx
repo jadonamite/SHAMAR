@@ -2,16 +2,16 @@
 
 import { usePrivy } from '@privy-io/react-auth'
 import { useEffect, useState } from 'react'
-import Button from '@/components/ui/Button'
+import { TelegramIcon } from '@/components/ui/SocialIcons'
 import { apiFetch } from '@/lib/api'
 
-type Phase = 'hidden' | 'idle' | 'starting' | 'waiting' | 'error'
+export type LinkPhase = 'hidden' | 'idle' | 'starting' | 'waiting' | 'error'
 
 // Quiet, persistent prompt for people who haven't linked Telegram. Without a
 // linked chat SHAMAR can't ask before acting, so it never cancels on its own.
 export default function TelegramLinkBar() {
   const { ready, authenticated } = usePrivy()
-  const [phase, setPhase] = useState<Phase>('hidden')
+  const [phase, setPhase] = useState<LinkPhase>('hidden')
   const [linkUrl, setLinkUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function TelegramLinkBar() {
     }
   }, [ready, authenticated])
 
-  // While waiting for /start in Telegram, check every few seconds.
+  // While waiting for Start in Telegram, check every few seconds.
   useEffect(() => {
     if (phase !== 'waiting') return
     const timer = setInterval(async () => {
@@ -57,40 +57,93 @@ export default function TelegramLinkBar() {
     }
   }
 
-  if (phase === 'hidden') return null
+  return (
+    <TelegramLinkBarView phase={phase} linkUrl={linkUrl} onLink={startLink} />
+  )
+}
 
-  const message =
-    phase === 'waiting'
-      ? 'Press Start in Telegram to finish. This bar goes away once you do.'
-      : phase === 'error'
-        ? "We couldn't start the link. Try again."
-        : 'Link Telegram so SHAMAR can ask you before it cancels anything.'
+const COPY: Record<
+  Exclude<LinkPhase, 'hidden'>,
+  { long: string; short: string }
+> = {
+  idle: {
+    long: 'Link Telegram so SHAMAR can ask you before it cancels anything.',
+    short: 'Link Telegram to get renewal alerts.',
+  },
+  starting: {
+    long: 'Opening Telegram…',
+    short: 'Opening Telegram…',
+  },
+  waiting: {
+    long: 'Press Start in Telegram to finish linking.',
+    short: 'Press Start in Telegram.',
+  },
+  error: {
+    long: "We couldn't start the link.",
+    short: "Couldn't start the link.",
+  },
+}
+
+const pill =
+  'touch-target inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border border-separator bg-surface px-4 type-footnote font-semibold text-label shadow-2xs transition-colors hover:bg-surface-2 disabled:opacity-40'
+
+export function TelegramLinkBarView({
+  phase,
+  linkUrl,
+  onLink,
+}: {
+  phase: LinkPhase
+  linkUrl: string | null
+  onLink: () => void
+}) {
+  if (phase === 'hidden') return null
+  const copy = COPY[phase]
+  const dot =
+    phase === 'error'
+      ? 'bg-accent'
+      : phase === 'waiting'
+        ? 'bg-warning motion-safe:animate-pulse'
+        : 'bg-warning'
 
   return (
-    <div role="status" className="border-b border-separator/60 bg-surface-2/80">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 md:px-8">
-        <p className="type-footnote text-label-2">{message}</p>
-        {phase === 'waiting' && linkUrl ? (
-          <a
-            href={linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="touch-target type-footnote inline-flex items-center self-start font-semibold text-accent-text underline sm:self-auto"
-          >
-            Open Telegram again
-          </a>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={startLink}
-            disabled={phase === 'starting'}
-            className="self-start sm:self-auto"
-          >
-            {phase === 'starting' ? 'Opening…' : 'Link Telegram'}
-          </Button>
-        )}
+    <div
+      role="status"
+      className="flex items-center justify-between gap-3 border-b border-separator/80 bg-surface px-4 py-2 sm:px-6"
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="shrink-0 text-label-2" aria-hidden>
+          <TelegramIcon size={16} />
+        </span>
+        <span className="hidden shrink-0 type-eyebrow text-[9px] tracking-[0.14em] text-label-3 sm:inline">
+          TELEGRAM
+        </span>
+        <span className={`size-1.5 shrink-0 rounded-full ${dot}`} aria-hidden />
+        <p className="min-w-0 type-footnote text-label-2">
+          <span className="sm:hidden">{copy.short}</span>
+          <span className="hidden sm:inline">{copy.long}</span>
+        </p>
       </div>
+
+      {phase === 'waiting' && linkUrl ? (
+        <a
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={pill}
+        >
+          Open again
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={onLink}
+          disabled={phase === 'starting'}
+          className={pill}
+        >
+          {phase === 'error' ? 'Try again' : 'Link Telegram'}
+          <span aria-hidden>→</span>
+        </button>
+      )}
     </div>
   )
 }

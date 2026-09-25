@@ -157,3 +157,23 @@ test('Security: Health check reports shamar-server', async () => {
   const data = await res.json()
   assert.equal(data.service, 'shamar-server', 'Health check service must be shamar-server')
 })
+
+test('Security: Telegram webhook endpoint accepts valid payloads and returns 200', async () => {
+  const res = await app.request('/telegram/webhook', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      update_id: 999999,
+      message: {
+        message_id: 1,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: 123456789, type: 'private' },
+        text: 'help',
+      },
+    }),
+  })
+  assert.equal(res.status, 200)
+  const data = await res.json()
+  assert.equal(data.ok, true)
+})
+

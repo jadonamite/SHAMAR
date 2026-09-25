@@ -67,6 +67,234 @@ export async function createTelegramLinkCode(dbUserId: string): Promise<string> 
 
 import { handleCallbackQuery, sendNotice, type NoticeState } from './renewal.js'
 
+/**
+ * Handles a single incoming Telegram update (message command or callback query).
+ * Shared by both the real-time webhook endpoint and polling fallback.
+ */
+export async function handleTelegramUpdate(u: Record<string, any>): Promise<void> {
+  // Handle interactive renewal action buttons
+  if (u.callback_query) {
+    try {
+      await handleCallbackQuery(u.callback_query)
+    } catch (cbErr) {
+      console.warn('[Telegram Bot] Callback handling error:', (cbErr as Error).message)
+    }
+    return
+  }
+
+  const message = u.message
+  if (!message?.text) return
+
+  const chatId = String(message.chat?.id ?? '')
+  const text = String(message.text).trim()
+  const lower = text.toLowerCase()
+
+  // 1. Account linking: /start link_<code>, /start <code>, or direct <code> / link_<code>
+  const isStart = lower.startsWith('/start')
+  const isDirectCode = /^(link_)?[A-Fa-f0-9]{8}$/i.test(text)
+
+  if (isStart || isDirectCode) {
+    let code = ''
+    if (isStart) {
+      const parts = text.split(/\s+/)
+      const arg = parts[1] || ''
+      code = arg.replace(/^link_/i, '').trim().toUpperCase()
+    } else {
+      code = text.replace(/^link_/i, '').trim().toUpperCase()
+    }
+
+    if (code) {
+      const targetUserId = await redis.get<string>(`telegram:link:${code}`)
+      if (targetUserId) {
+        await sql`UPDATE users SET telegram_chat_id = ${chatId} WHERE id = ${targetUserId}`
+        await redis.del(`telegram:link:${code}`)
+        await sendTelegram(
+          [
+            `*SHAMAR Connected.*`,
+            ``,
+            `Your Telegram is linked to your account. You will receive renewal alerts before each charge with one-tap Keep or Cancel buttons.`,
+            ``,
+            `• Send status anytime to view your subscriptions.`,
+            `• Send stop anytime to pause cancellations.`,
+          ].join('\n'),
+          chatId
+        )
+        return
+      } else {
+        await sendTelegram(
+          'Link code expired or invalid. Please open SHAMAR in your browser to generate a new connection link.',
+          chatId
+        )
+        return
+      }
+    } else {
+      await sendTelegram(
+        [
+          `*SHAMAR Bot*`,
+          ``,
+          `Connect your account from your dashboard to receive interactive subscription renewal alerts.`,
+          ``,
+          `Send help to view available commands.`,
+        ].join('\n'),
+        chatId
+      )
+      return
+    }
+  }
+
+  // 2. Stop command: stop, /stop, halt, /halt, pause, /pause
+  const isStop =
+    lower === 'stop' ||
+    lower === '/stop' ||
+    lower.startsWith('/stop') ||
+    lower.startsWith('stop') ||
+    lower === 'halt' ||
+    lower === '/halt' ||
+    lower.startsWith('/halt') ||
+    lower === 'pause' ||
+    lower === '/pause' ||
+    lower.startsWith('/pause')
+
+  if (isStop) {
+    const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
+    if (linkedUser?.id) {
+      await redis.set(`shamar:halted:${linkedUser.id}`, '1')
+      await sendTelegram(
+        [
+          `*SHAMAR paused.*`,
+          ``,
+          `All automated cancellations are now paused for your account.`,
+          `No further actions will be taken.`,
+          ``,
+          `Reply resume anytime to re-enable.`,
+        ].join('\n'),
+        chatId
+      )
+    } else {
+      await sendTelegram(
+        'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
+        chatId
+      )
+    }
+    return
+  }
+
+  // 3. Resume command: resume, /resume, unpause, /unpause
+  const isResume =
+    lower === 'resume' ||
+    lower === '/resume' ||
+    lower.startsWith('/resume') ||
+    lower.startsWith('resume') ||
+    lower === 'unpause' ||
+    lower === '/unpause' ||
+    lower.startsWith('/unpause')
+
+  if (isResume) {
+    const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
+    if (linkedUser?.id) {
+      await redis.del(`shamar:halted:${linkedUser.id}`)
+      await sendTelegram(
+        [
+          `*SHAMAR resumed.*`,
+          ``,
+          `Automated renewal monitoring and cancellation dispatch are active again.`,
+          ``,
+          `Reply stop anytime to pause.`,
+        ].join('\n'),
+        chatId
+      )
+    } else {
+      await sendTelegram(
+        'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
+        chatId
+      )
+    }
+    return
+  }
+
+  // 4. Status command: status, /status
+  const isStatus =
+    lower === 'status' ||
+    lower === '/status' ||
+    lower.startsWith('/status') ||
+    lower.startsWith('status')
+
+  if (isStatus) {
+    const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
+    if (linkedUser?.id) {
+      const subs = await sql`
+        SELECT merchant, amount, currency, cadence, last_charged
+        FROM subscriptions
+        WHERE user_id = ${linkedUser.id} AND status = 'active'
+        ORDER BY amount DESC
+      `
+      const halt = await getHaltState(linkedUser.id)
+      const lines = [
+        `*SHAMAR Status: ${halt.halted ? 'Paused' : 'Active'}*`,
+        ``,
+        `*Tracked Subscriptions (${subs.length}):*`,
+      ]
+      if (subs.length === 0) {
+        lines.push(`_No active subscriptions found. Scan your receipts on the dashboard._`)
+      } else {
+        for (const s of subs.slice(0, 8)) {
+          const sym = s.currency === 'USD' ? '$' : `${s.currency} `
+          lines.push(`• *${s.merchant}* — ${sym}${s.amount} / ${s.cadence || 'mo'}`)
+        }
+        if (subs.length > 8) lines.push(`_...and ${subs.length - 8} more_`)
+      }
+      lines.push(``)
+      lines.push(halt.halted ? `Reply resume to unpause.` : `Reply stop to pause cancellations anytime.`)
+      await sendTelegram(lines.join('\n'), chatId)
+    } else {
+      await sendTelegram(
+        `This Telegram account is not yet linked to SHAMAR.\nOpen your dashboard to connect your account.`,
+        chatId
+      )
+    }
+    return
+  }
+
+  // 5. Help command: help, /help, info, menu
+  const isHelp =
+    lower === 'help' ||
+    lower === '/help' ||
+    lower.startsWith('/help') ||
+    lower.startsWith('help') ||
+    lower === 'info' ||
+    lower === 'menu'
+
+  if (isHelp) {
+    const helpText = [
+      `*SHAMAR Bot*`,
+      ``,
+      `Monitors your subscriptions, alerts you before renewals, and handles cancellations on your behalf.`,
+      ``,
+      `*Commands:*`,
+      `• status — View active subscriptions and agent state`,
+      `• stop — Immediately halt all automated cancellations`,
+      `• resume — Re-enable cancellation dispatches`,
+      `• help — Show this help message`,
+    ].join('\n')
+    await sendTelegram(helpText, chatId)
+    return
+  }
+
+  // 6. Fallback response for unrecognised text
+  await sendTelegram(
+    [
+      `*SHAMAR Bot*`,
+      ``,
+      `Commands:`,
+      `• status — View active subscriptions and state`,
+      `• stop — Pause all automated cancellations`,
+      `• resume — Re-enable cancellations`,
+      `• help — View help guide`,
+    ].join('\n'),
+    chatId
+  )
+}
+
 // Drains pending messages, handles account linking (/start link_<code>),
 // interactive button clicks, and honours per-user commands (/status, /stop, /resume, /help).
 export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: number } = {}): Promise<HaltState> {
@@ -77,7 +305,7 @@ export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: nu
   const timeoutSec = opts.timeoutSeconds ?? 0
   try {
     const offset = (await redis.get<number>(OFFSET_KEY)) ?? 0
-    const res = await fetch(`${API}/getUpdates?offset=${offset}&timeout=${timeoutSec}`, {
+    const res = await fetch(`${API}/getUpdates?offset=${offset}&timeout=${timeoutSec}&allowed_updates=["message","callback_query"]`, {
       signal: AbortSignal.timeout((timeoutSec + 6) * 1000),
     })
     if (!res.ok) return await getHaltState(dbUserId)
@@ -88,220 +316,7 @@ export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: nu
     let highest = offset
     for (const u of updates) {
       highest = Math.max(highest, Number(u.update_id) + 1)
-
-      // Handle interactive renewal action buttons
-      if (u.callback_query) {
-        try {
-          await handleCallbackQuery(u.callback_query)
-        } catch (cbErr) {
-          console.warn('[Telegram Bot] Callback handling error:', (cbErr as Error).message)
-        }
-        continue
-      }
-
-      const message = u.message
-      if (!message?.text) continue
-
-      const chatId = String(message.chat?.id ?? '')
-      const text = String(message.text).trim()
-      const lower = text.toLowerCase()
-
-      // 1. Account linking: /start link_<code> or /start <code>
-      if (lower.startsWith('/start')) {
-        const parts = text.split(/\s+/)
-        const arg = parts[1] || ''
-        const code = arg.replace(/^link_/i, '').trim().toUpperCase()
-
-        if (code) {
-          const targetUserId = await redis.get<string>(`telegram:link:${code}`)
-          if (targetUserId) {
-            await sql`UPDATE users SET telegram_chat_id = ${chatId} WHERE id = ${targetUserId}`
-            await redis.del(`telegram:link:${code}`)
-            await sendTelegram(
-              [
-                `*SHAMAR Connected.*`,
-                ``,
-                `Your Telegram is linked to your account. You will receive renewal alerts before each charge with one-tap Keep or Cancel buttons.`,
-                ``,
-                `• Send status anytime to view your subscriptions.`,
-                `• Send stop anytime to pause cancellations.`,
-              ].join('\n'),
-              chatId
-            )
-            continue
-          } else {
-            await sendTelegram(
-              'Link code expired or invalid. Please open SHAMAR in your browser to generate a new connection link.',
-              chatId
-            )
-            continue
-          }
-        } else {
-          await sendTelegram(
-            [
-              `*SHAMAR Bot*`,
-              ``,
-              `Connect your account from your dashboard to receive interactive subscription renewal alerts.`,
-              ``,
-              `Send help to view available commands.`,
-            ].join('\n'),
-            chatId
-          )
-          continue
-        }
-      }
-
-      // 2. Stop command: stop, /stop, halt, /halt, pause, /pause
-      const isStop =
-        lower === 'stop' ||
-        lower === '/stop' ||
-        lower.startsWith('/stop') ||
-        lower.startsWith('stop') ||
-        lower === 'halt' ||
-        lower === '/halt' ||
-        lower.startsWith('/halt') ||
-        lower === 'pause' ||
-        lower === '/pause' ||
-        lower.startsWith('/pause')
-
-      if (isStop) {
-        const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
-        if (linkedUser?.id) {
-          await redis.set(`shamar:halted:${linkedUser.id}`, '1')
-          await sendTelegram(
-            [
-              `*SHAMAR paused.*`,
-              ``,
-              `All automated cancellations are now paused for your account.`,
-              `No further actions will be taken.`,
-              ``,
-              `Reply resume anytime to re-enable.`,
-            ].join('\n'),
-            chatId
-          )
-        } else {
-          await sendTelegram(
-            'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
-            chatId
-          )
-        }
-        continue
-      }
-
-      // 3. Resume command: resume, /resume, unpause, /unpause
-      const isResume =
-        lower === 'resume' ||
-        lower === '/resume' ||
-        lower.startsWith('/resume') ||
-        lower.startsWith('resume') ||
-        lower === 'unpause' ||
-        lower === '/unpause' ||
-        lower.startsWith('/unpause')
-
-      if (isResume) {
-        const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
-        if (linkedUser?.id) {
-          await redis.del(`shamar:halted:${linkedUser.id}`)
-          await sendTelegram(
-            [
-              `*SHAMAR resumed.*`,
-              ``,
-              `Automated renewal monitoring and cancellation dispatch are active again.`,
-              ``,
-              `Reply stop anytime to pause.`,
-            ].join('\n'),
-            chatId
-          )
-        } else {
-          await sendTelegram(
-            'This Telegram account is not linked to SHAMAR, so there is nothing to pause or resume here. Open SHAMAR in your browser and link Telegram from the Agent page.',
-            chatId
-          )
-        }
-        continue
-      }
-
-      // 4. Status command: status, /status
-      const isStatus =
-        lower === 'status' ||
-        lower === '/status' ||
-        lower.startsWith('/status') ||
-        lower.startsWith('status')
-
-      if (isStatus) {
-        const [linkedUser] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
-        if (linkedUser?.id) {
-          const subs = await sql`
-            SELECT merchant, amount, currency, cadence, last_charged
-            FROM subscriptions
-            WHERE user_id = ${linkedUser.id} AND status = 'active'
-            ORDER BY amount DESC
-          `
-          const halt = await getHaltState(linkedUser.id)
-          const lines = [
-            `*SHAMAR Status: ${halt.halted ? 'Paused' : 'Active'}*`,
-            ``,
-            `*Tracked Subscriptions (${subs.length}):*`,
-          ]
-          if (subs.length === 0) {
-            lines.push(`_No active subscriptions found. Scan your receipts on the dashboard._`)
-          } else {
-            for (const s of subs.slice(0, 8)) {
-              const sym = s.currency === 'USD' ? '$' : `${s.currency} `
-              lines.push(`• *${s.merchant}* — ${sym}${s.amount} / ${s.cadence || 'mo'}`)
-            }
-            if (subs.length > 8) lines.push(`_...and ${subs.length - 8} more_`)
-          }
-          lines.push(``)
-          lines.push(halt.halted ? `Reply resume to unpause.` : `Reply stop to pause cancellations anytime.`)
-          await sendTelegram(lines.join('\n'), chatId)
-        } else {
-          await sendTelegram(
-            `This Telegram account is not yet linked to SHAMAR.\nOpen your dashboard to connect your account.`,
-            chatId
-          )
-        }
-        continue
-      }
-
-      // 5. Help command: help, /help, info, menu
-      const isHelp =
-        lower === 'help' ||
-        lower === '/help' ||
-        lower.startsWith('/help') ||
-        lower.startsWith('help') ||
-        lower === 'info' ||
-        lower === 'menu'
-
-      if (isHelp) {
-        const helpText = [
-          `*SHAMAR Bot*`,
-          ``,
-          `Monitors your subscriptions, alerts you before renewals, and handles cancellations on your behalf.`,
-          ``,
-          `*Commands:*`,
-          `• status — View active subscriptions and agent state`,
-          `• stop — Immediately halt all automated cancellations`,
-          `• resume — Re-enable cancellation dispatches`,
-          `• help — Show this help message`,
-        ].join('\n')
-        await sendTelegram(helpText, chatId)
-        continue
-      }
-
-      // 6. Fallback response for unrecognised text
-      await sendTelegram(
-        [
-          `*SHAMAR Bot*`,
-          ``,
-          `Commands:`,
-          `• status — View active subscriptions and state`,
-          `• stop — Pause all automated cancellations`,
-          `• resume — Re-enable cancellations`,
-          `• help — View help guide`,
-        ].join('\n'),
-        chatId
-      )
+      await handleTelegramUpdate(u)
     }
 
     if (highest !== offset) await redis.set(OFFSET_KEY, highest)
@@ -309,6 +324,28 @@ export async function pollControl(dbUserId?: string, opts: { timeoutSeconds?: nu
     return await getHaltState(dbUserId)
   } catch (err) {
     return await getHaltState(dbUserId)
+  }
+}
+
+/**
+ * Registers or updates the Telegram Bot Webhook endpoint with Telegram API
+ */
+export async function setupTelegramWebhook(webhookUrl: string): Promise<{ ok: boolean; description?: string }> {
+  if (!isTelegramConfigured()) return { ok: false, description: 'Telegram bot not configured' }
+  try {
+    const res = await fetch(`${API}/setWebhook`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ['message', 'callback_query'],
+      }),
+      signal: AbortSignal.timeout(10000),
+    })
+    const data = (await res.json()) as { ok: boolean; description?: string }
+    return data
+  } catch (err) {
+    return { ok: false, description: (err as Error).message }
   }
 }
 

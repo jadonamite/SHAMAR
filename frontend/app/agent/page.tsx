@@ -42,6 +42,8 @@ type AgentStatus = {
     wallet_address: string | null
     telegram_chat_id: string | null
   } | null
+  telegram_linked?: boolean
+  gmail_connected?: boolean
   onchainAuthorized?: boolean
   halted?: boolean
 }
@@ -124,6 +126,9 @@ export default function AgentPage() {
     botUsername: string
     url: string
   } | null>(null)
+  const isTelegramLinked = Boolean(
+    status?.telegram_linked || status?.user?.telegram_chat_id
+  )
 
   // Account Deletion State (R28 / A7)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -251,6 +256,31 @@ export default function AgentPage() {
     }
   }
 
+  // Poll while user is in linking flow
+  useEffect(() => {
+    if (!tgLinkData || isTelegramLinked) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiFetch('/api/telegram/status')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.linked) {
+            setTgLinkData(null)
+            load()
+            clearInterval(interval)
+          }
+        }
+      } catch {}
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [tgLinkData, isTelegramLinked])
+
+  async function handleLogout() {
+    await logout()
+    router.push('/')
+  }
+
   async function handleDeleteAccount() {
     if (!user?.id || deleting || deleteInput.trim().toUpperCase() !== 'DELETE')
       return
@@ -290,7 +320,6 @@ export default function AgentPage() {
   const isPolicyGranted = Boolean(
     status?.onchainAuthorized || status?.user?.policy_granted
   )
-  const isTelegramLinked = Boolean(status?.user?.telegram_chat_id)
 
   const agentStateKind: AgentStateKind = status?.halted
     ? 'halted'
@@ -572,17 +601,26 @@ export default function AgentPage() {
           </div>
 
           {!confirmDelete ? (
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmDelete(true)
-                setDeleteInput('')
-                setDeleteError(null)
-              }}
-              className="touch-target inline-flex min-h-[44px] items-center self-start rounded-full border border-danger/40 bg-surface px-5 type-footnote font-semibold text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
-            >
-              Delete my account
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="touch-target inline-flex min-h-[44px] items-center self-start rounded-full border border-separator bg-surface px-5 type-footnote font-semibold text-label hover:bg-surface-2 transition-colors cursor-pointer"
+              >
+                Log out
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDelete(true)
+                  setDeleteInput('')
+                  setDeleteError(null)
+                }}
+                className="touch-target inline-flex min-h-[44px] items-center self-start rounded-full border border-danger/40 bg-surface px-5 type-footnote font-semibold text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
+              >
+                Delete account & reset all data
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col gap-3.5 rounded-xl bg-danger/5 p-5 border border-danger/30 shadow-xs">
               <div>

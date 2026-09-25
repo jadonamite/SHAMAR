@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { usePrivy } from '@privy-io/react-auth'
 import { NAV_LINKS } from '@/lib/nav'
 import Logo from '@/components/ui/Logo'
 
@@ -28,6 +29,7 @@ export default function MobileMenu({
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const { logout } = usePrivy()
 
   return (
     <>
@@ -154,6 +156,20 @@ export default function MobileMenu({
                     className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-separator bg-surface text-label type-footnote font-semibold hover:bg-surface-2 transition-colors disabled:opacity-50"
                   >
                     {walletScanning ? 'Scanning…' : 'Scan Base Wallet'}
+                  </button>
+                )}
+
+                {(email || walletAddress) && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setOpen(false)
+                      await logout()
+                      window.location.href = '/'
+                    }}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-full border border-danger/40 bg-surface text-danger type-footnote font-semibold hover:bg-danger hover:text-white transition-colors cursor-pointer"
+                  >
+                    Log out
                   </button>
                 )}
               </div>
