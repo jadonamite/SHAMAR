@@ -8,7 +8,7 @@ interface SubscriptionSkeletonProps {
 }
 
 export default function SubscriptionSkeleton({
-  scanning = true,
+  scanning = false,
   count = 3,
 }: SubscriptionSkeletonProps) {
   return (
@@ -22,7 +22,9 @@ export default function SubscriptionSkeleton({
           </h3>
         </div>
         <span className="type-caption font-mono text-label-3">
-          Analyzing past 12 months for recurring charges
+          {scanning
+            ? 'Analyzing past 12 months for recurring charges'
+            : 'Retrieving your detected subscriptions'}
         </span>
       </div>
 

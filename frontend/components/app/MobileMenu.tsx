@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { NAV_LINKS } from '@/lib/nav'
 import Logo from '@/components/ui/Logo'
+import { clearUserCache } from '@/lib/cache'
 
 interface MobileMenuProps {
   walletAddress?: string
@@ -29,7 +30,7 @@ export default function MobileMenu({
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
-  const { logout } = usePrivy()
+  const { user, logout } = usePrivy()
 
   return (
     <>
@@ -172,6 +173,7 @@ export default function MobileMenu({
                     type="button"
                     onClick={async () => {
                       setOpen(false)
+                      clearUserCache(user?.id)
                       await logout()
                       window.location.href = '/'
                     }}

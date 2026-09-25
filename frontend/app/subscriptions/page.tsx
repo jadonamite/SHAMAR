@@ -39,6 +39,7 @@ function filterAndSortSubscriptions(
 }
 
 import { apiFetch } from '@/lib/api'
+import { getCachedDashboardData, setCachedDashboardData } from '@/lib/cache'
 
 export default function SubscriptionsPage() {
   const { ready, authenticated, user } = usePrivy()
@@ -51,6 +52,16 @@ export default function SubscriptionsPage() {
   const effectiveUserId = user?.id ?? null
   const isUserAuthenticated = authenticated
 
+  // Instant hydration from cache
+  useEffect(() => {
+    if (!effectiveUserId) return
+    const cached = getCachedDashboardData(effectiveUserId)
+    if (cached?.subs && cached.subs.length > 0) {
+      setSubs(cached.subs)
+      setLoading(false)
+    }
+  }, [effectiveUserId])
+
   useEffect(() => {
     if (!ready) return
     if (!isUserAuthenticated) {
@@ -58,13 +69,19 @@ export default function SubscriptionsPage() {
       return
     }
     if (!effectiveUserId) return
+    const cached = getCachedDashboardData(effectiveUserId)
+    if (!cached || cached.subs.length === 0) {
+      setLoading(true)
+    }
     apiFetch('/api/subscriptions')
       .then((r) => r.json())
-      .then((d) =>
-        setSubs(
-          ((d.subscriptions ?? []) as Subscription[]).map(normalizeSubscription)
+      .then((d) => {
+        const list = ((d.subscriptions ?? []) as Subscription[]).map(
+          normalizeSubscription
         )
-      )
+        setSubs(list)
+        setCachedDashboardData(effectiveUserId, { subs: list })
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [ready, isUserAuthenticated, effectiveUserId, router])

@@ -13,6 +13,7 @@ import AgentStateBadge, {
   type AgentStateKind,
 } from '@/components/app/AgentStateBadge'
 import { apiFetch } from '@/lib/api'
+import { clearUserCache } from '@/lib/cache'
 
 type AgentStatus = {
   state?: AgentStateKind
@@ -277,6 +278,7 @@ export default function AgentPage() {
   }, [tgLinkData, isTelegramLinked])
 
   async function handleLogout() {
+    clearUserCache(user?.id)
     await logout()
     router.push('/')
   }
@@ -291,6 +293,7 @@ export default function AgentPage() {
         method: 'DELETE',
       })
       if (res.ok) {
+        clearUserCache(user?.id)
         await logout()
         router.push('/?account_deleted=1')
       } else {

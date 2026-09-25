@@ -9,6 +9,7 @@ import MobileMenu from './MobileMenu'
 import TelegramLinkBar from './TelegramLinkBar'
 import { useMiniPay } from '@/components/providers/MiniPayProvider'
 import Logo from '@/components/ui/Logo'
+import { clearUserCache } from '@/lib/cache'
 
 const APP_ROUTES = [
   '/dashboard',
@@ -125,6 +126,7 @@ export default function TopNav({
                 <button
                   type="button"
                   onClick={async () => {
+                    clearUserCache(user?.id)
                     await logout()
                     window.location.href = '/'
                   }}

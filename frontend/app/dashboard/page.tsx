@@ -1,12 +1,18 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import GmailSetupCard from '@/components/app/GmailSetupCard'
 import SubscriptionSkeleton from '@/components/app/SubscriptionSkeleton'
+import {
+  getCachedDashboardData,
+  setCachedDashboardData,
+  hasInitialScanCompleted,
+  markInitialScanCompleted,
+} from '@/lib/cache'
 import SubscriptionRow, {
   type Subscription,
 } from '@/components/app/SubscriptionRow'
@@ -87,6 +93,23 @@ function DashboardInner() {
   const [readyTimeout, setReadyTimeout] = useState(false)
   const effectiveUserId = user?.id ?? null
   const isUserAuthenticated = authenticated
+  const oauthHandledRef = useRef(false)
+
+  // Instant hydration from cache on tab switch or re-navigation
+  useEffect(() => {
+    if (!effectiveUserId) return
+    const cached = getCachedDashboardData(effectiveUserId)
+    if (cached) {
+      if (cached.subs && cached.subs.length > 0) {
+        setSubs(cached.subs)
+        setLoading(false)
+      }
+      setGmailConnected(cached.gmailConnected)
+      setTelegramLinked(cached.telegramLinked)
+      setHasPolicies(cached.hasPolicies)
+      if (cached.lastScan) setLastScan(cached.lastScan)
+    }
+  }, [effectiveUserId])
 
   useEffect(() => {
     const t = setTimeout(() => setReadyTimeout(true), 2500)
@@ -102,17 +125,25 @@ function DashboardInner() {
         apiFetch('/api/telegram/status').catch(() => null),
       ])
 
+      let nextGmail = gmailConnected
+      let nextTg = telegramLinked
+      let nextSubs = subs
+      let nextPolicies = hasPolicies
+      let nextLastScan = lastScan
+
       if (statusRes?.ok) {
         try {
           const statusData = await statusRes.json()
-          setGmailConnected(statusData.connected ?? false)
+          nextGmail = statusData.connected ?? false
+          setGmailConnected(nextGmail)
         } catch {}
       }
 
       if (tgRes?.ok) {
         try {
           const tgData = await tgRes.json()
-          setTelegramLinked(tgData.linked ?? false)
+          nextTg = tgData.linked ?? false
+          setTelegramLinked(nextTg)
         } catch {}
       }
 
@@ -121,22 +152,35 @@ function DashboardInner() {
           const raw = ((await subsRes.json()).subscriptions ??
             []) as Subscription[]
           const list = raw.map(normalizeSubscription)
+          nextSubs = list
           setSubs(list)
           const latest = list
             .map((s) => s.detected_at)
             .filter(Boolean)
             .sort()
             .pop()
-          if (latest) setLastScan(latest as string)
+          if (latest) {
+            nextLastScan = latest as string
+            setLastScan(nextLastScan)
+          }
         } catch {}
       }
 
       if (polRes?.ok) {
         try {
           const pols = (await polRes.json()).policies ?? []
-          setHasPolicies(pols.length > 0)
+          nextPolicies = pols.length > 0
+          setHasPolicies(nextPolicies)
         } catch {}
       }
+
+      setCachedDashboardData(uid, {
+        subs: nextSubs,
+        gmailConnected: nextGmail,
+        telegramLinked: nextTg,
+        hasPolicies: nextPolicies,
+        lastScan: nextLastScan,
+      })
     } finally {
       setLoading(false)
     }
@@ -148,7 +192,10 @@ function DashboardInner() {
       if (ready && !isUserAuthenticated) setLoading(false)
       return
     }
-    setLoading(true)
+    const cached = getCachedDashboardData(effectiveUserId)
+    if (!cached || cached.subs.length === 0) {
+      setLoading(true)
+    }
     fetchSubs(effectiveUserId)
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -166,16 +213,38 @@ function DashboardInner() {
 
   // Handle OAuth redirect params
   useEffect(() => {
-    if (searchParams.get('connected') === 'gmail') {
-      setGmailConnected(true)
+    const connectedParam = searchParams.get('connected')
+    if (connectedParam === 'gmail') {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/dashboard')
+      }
       router.replace('/dashboard')
-      triggerScan()
+      setGmailConnected(true)
+
+      if (oauthHandledRef.current) return
+      oauthHandledRef.current = true
+
+      const cached = effectiveUserId ? getCachedDashboardData(effectiveUserId) : null
+      const alreadyHasSubs = subs.length > 0 || (cached?.subs?.length ?? 0) > 0
+      const alreadyScanned = effectiveUserId ? hasInitialScanCompleted(effectiveUserId) : false
+
+      // Only scan automatically if user has NO scans/subscriptions yet
+      if (!alreadyHasSubs && !alreadyScanned) {
+        if (effectiveUserId) markInitialScanCompleted(effectiveUserId)
+        showToast('Gmail connected. Scanning receipts for subscriptions…', 'info')
+        triggerScan({ reset: false, clear: false })
+      } else {
+        showToast('Gmail connected successfully', 'success')
+      }
       return
     }
 
     const errorParam = searchParams.get('error')
     const detailParam = searchParams.get('detail')
     if (errorParam) {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/dashboard')
+      }
       router.replace('/dashboard')
       if (errorParam === 'access_denied') {
         showToast(
@@ -201,7 +270,7 @@ function DashboardInner() {
         )
       }
     }
-  }, [searchParams, router, showToast])
+  }, [searchParams, router, showToast, effectiveUserId, subs.length])
 
   async function triggerScan(opts?: { reset?: boolean; clear?: boolean }) {
     if (!effectiveUserId || scanning) return
@@ -209,7 +278,7 @@ function DashboardInner() {
     setScanResult(null)
     try {
       const params = new URLSearchParams()
-      if (opts?.reset ?? true) params.set('reset', '1')
+      if (opts?.reset) params.set('reset', '1')
       if (opts?.clear) params.set('clear', '1')
       const queryString = params.toString() ? `?${params.toString()}` : ''
       const res = await apiFetch(`/api/gmail/scan${queryString}`, {
@@ -222,7 +291,11 @@ function DashboardInner() {
           updated: data.updated,
           source: 'Gmail',
         })
-        setLastScan(new Date().toISOString())
+        const nowIso = new Date().toISOString()
+        setLastScan(nowIso)
+        if (effectiveUserId) {
+          markInitialScanCompleted(effectiveUserId)
+        }
         showToast(
           `Scan complete: ${data.created} found, ${data.updated} updated`,
           'success'
@@ -341,14 +414,14 @@ function DashboardInner() {
         gmailConnected={gmailConnected}
         scanning={scanning}
         walletScanning={walletScanning}
-        onScanGmail={() => triggerScan({ reset: true, clear: true })}
+        onScanGmail={() => triggerScan({ reset: false, clear: false })}
         onScanWallet={triggerWalletScan}
         actions={
           <div className="flex items-center gap-2">
             {gmailConnected && (
               <button
                 type="button"
-                onClick={() => triggerScan({ reset: true, clear: true })}
+                onClick={() => triggerScan({ reset: false, clear: false })}
                 disabled={scanning}
                 className="touch-target min-h-[38px] px-4 rounded-full bg-accent text-on-accent type-footnote font-semibold shadow-xs hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
@@ -451,7 +524,7 @@ function DashboardInner() {
           <GmailSetupCard
             gmailConnected={gmailConnected}
             scanning={scanning}
-            onScan={() => triggerScan({ reset: true, clear: true })}
+            onScan={() => triggerScan({ reset: false, clear: false })}
             lastScan={lastScan}
           />
         ) : (
@@ -470,10 +543,15 @@ function DashboardInner() {
         )}
 
         {/* Subscriptions List or Optimistic Shimmer Skeleton */}
-        {scanning || loading ? (
+        {scanning ? (
           <SubscriptionSkeleton
-            scanning={scanning}
+            scanning={true}
             count={subs.length > 0 ? subs.length : 3}
+          />
+        ) : loading && subs.length === 0 ? (
+          <SubscriptionSkeleton
+            scanning={false}
+            count={3}
           />
         ) : subs.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center rounded-[var(--radius-card)] bg-surface p-8 border border-separator/70 shadow-xs">
@@ -482,7 +560,7 @@ function DashboardInner() {
             </p>
             <button
               type="button"
-              onClick={() => triggerScan({ reset: true, clear: true })}
+              onClick={() => triggerScan({ reset: false, clear: false })}
               disabled={scanning}
               className="touch-target rounded-full bg-accent px-6 py-2.5 type-footnote font-semibold text-on-accent shadow-xs hover:bg-accent-hover transition-colors"
             >
