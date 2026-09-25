@@ -6,6 +6,13 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? ''
 const API = `https://api.telegram.org/bot${TOKEN}`
 
 const OFFSET_KEY = 'shamar:tg_offset'
+const SITE_URL = (process.env.FRONTEND_URL ?? 'https://shamar.namite.xyz').replace(/\/$/, '')
+
+// Telegram answers a refused send with a reason; log it so failures are never silent.
+async function logRefusal(where: string, res: Response): Promise<void> {
+  const body = (await res.json().catch(() => null)) as { description?: string } | null
+  console.warn(`[telegram] ${where} refused (${res.status}): ${body?.description ?? 'no reason given'}`)
+}
 
 export type HaltState = {
   halted: boolean
@@ -53,8 +60,10 @@ export async function sendTelegram(
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(8000),
     })
+    if (!res.ok) await logRefusal('sendMessage', res)
     return res.ok
-  } catch {
+  } catch (err) {
+    console.warn('[telegram] sendMessage failed:', (err as Error).message)
     return false
   }
 }
@@ -122,20 +131,33 @@ export async function handleTelegramUpdate(u: Record<string, any>): Promise<void
         return
       } else {
         await sendTelegram(
-          'Link code expired or invalid. Please open SHAMAR in your browser to generate a new connection link.',
+          [
+            `This link has expired or was already used. Links last 15 minutes.`,
+            ``,
+            `Open ${SITE_URL}, press *Link Telegram*, then tap Start in the chat that opens.`,
+          ].join('\n'),
           chatId
         )
         return
       }
     } else {
+      const [linked] = await sql`SELECT id FROM users WHERE telegram_chat_id = ${chatId} LIMIT 1`
       await sendTelegram(
-        [
-          `*SHAMAR Bot*`,
-          ``,
-          `Connect your account from your dashboard to receive interactive subscription renewal alerts.`,
-          ``,
-          `Send help to view available commands.`,
-        ].join('\n'),
+        linked?.id
+          ? [
+              `*This chat is already linked to SHAMAR.*`,
+              ``,
+              `You'll get a message before each renewal. Send status to see your subscriptions, or stop to pause.`,
+            ].join('\n')
+          : [
+              `*This chat isn't linked to a SHAMAR account yet.*`,
+              ``,
+              `1. Open ${SITE_URL} and sign in.`,
+              `2. Press *Link Telegram*.`,
+              `3. Tap Start in the chat that opens.`,
+              ``,
+              `Until then SHAMAR can't message you, and it won't cancel anything on its own.`,
+            ].join('\n'),
         chatId
       )
       return

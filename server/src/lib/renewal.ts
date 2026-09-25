@@ -81,8 +81,13 @@ export async function sendNotice(s: NoticeState, price: string, hoursLeft: numbe
       }),
       signal: AbortSignal.timeout(8000),
     })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { description?: string } | null
+      console.warn(`[telegram] renewal notice refused (${res.status}): ${body?.description ?? 'no reason given'}`)
+    }
     return res.ok
-  } catch {
+  } catch (err) {
+    console.warn('[telegram] renewal notice failed:', (err as Error).message)
     return false
   }
 }
