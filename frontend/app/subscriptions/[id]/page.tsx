@@ -86,6 +86,7 @@ export default function SubscriptionDetail() {
   const [data, setData] = useState<DetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [statusChanging, setStatusChanging] = useState(false)
   const [showCardSoon, setShowCardSoon] = useState(false)
   const [reminderSent, setReminderSent] = useState(false)
@@ -129,38 +130,49 @@ export default function SubscriptionDetail() {
   async function runAnalysis() {
     if (!effectiveUserId || analyzing) return
     setAnalyzing(true)
+    setAnalyzeError(null)
     try {
       const res = await apiFetch(`/api/intelligence/analyze/${id}`, {
         method: 'POST',
       })
-      if (res.ok) {
-        const json = await res.json()
-        setData((prev) =>
-          prev
-            ? {
-                ...prev,
-                signals:
-                  json.signals?.map(
-                    (s: { type: string; label: string; value: number }) => ({
-                      id: s.type,
-                      type: s.type,
-                      value: s.label,
-                      weight: s.value,
-                    })
-                  ) ?? prev.signals,
-                insight: json.insight ?? prev.insight,
-                recommendation: json.recommendation ?? prev.recommendation,
-                subscription: {
-                  ...prev.subscription,
-                  confidence: json.confidence,
-                  action: json.action,
-                },
-              }
-            : prev
+      if (!res.ok) {
+        setAnalyzeError(
+          res.status === 404
+            ? 'Only active subscriptions can be evaluated.'
+            : "The evaluation didn't finish. Try again in a moment."
         )
+        return
       }
+      // The server answers { evidence, decision }.
+      const { decision } = await res.json()
+      if (!decision) {
+        setAnalyzeError("The evaluation didn't return a decision. Try again.")
+        return
+      }
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              recommendation: {
+                id: prev.recommendation?.id ?? 'latest',
+                action: decision.action,
+                confidence: decision.confidence,
+                evidence: [
+                  decision.rationale,
+                  ...(decision.blast_radius?.notes ?? []),
+                ].filter(Boolean),
+                status: 'pending',
+              },
+              subscription: {
+                ...prev.subscription,
+                confidence: decision.confidence,
+                action: decision.action,
+              },
+            }
+          : prev
+      )
     } catch {
-      // offline
+      setAnalyzeError("Couldn't reach SHAMAR. Check your connection and try again.")
     } finally {
       setAnalyzing(false)
     }
@@ -443,6 +455,12 @@ export default function SubscriptionDetail() {
                   : 'Run evaluation'}
             </motion.button>
           </div>
+
+          {analyzeError && (
+            <p role="alert" className="type-footnote text-accent-text">
+              {analyzeError}
+            </p>
+          )}
 
           {confidence !== undefined ? (
             <ConfidenceScore
